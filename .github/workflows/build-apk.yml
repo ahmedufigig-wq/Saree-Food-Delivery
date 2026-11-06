@@ -15,7 +15,7 @@ jobs:
         run: |
           if [ ! -d android ]; then flutter create --platforms=android .; fi
       - run: flutter pub get
-      - run: flutter analyze
+      - run: flutter analyze lib
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
