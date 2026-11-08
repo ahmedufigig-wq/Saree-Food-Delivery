@@ -72,14 +72,81 @@ class SareeApp extends StatelessWidget {
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF6B35)),
       scaffoldBackgroundColor: const Color(0xFFFFFBF8),
-      appBarTheme: const AppBarTheme(centerTitle: true),
+      iconTheme: const IconThemeData(color: Color(0xFFFF6B35), size: 24),
+      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, backgroundColor: Color(0xFFFFFBF8), foregroundColor: Color(0xFF20232B)),
+      cardTheme: CardThemeData(color: Colors.white, elevation: 2, margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(),
         filled: true,
         fillColor: Colors.white,
       ),
     ),
-    home: const SareeGate(),
+    home: const BrandSplashGate(),
+  );
+}
+
+class BrandSplashGate extends StatefulWidget {
+  const BrandSplashGate({super.key});
+  @override
+  State<BrandSplashGate> createState() => _BrandSplashGateState();
+}
+
+class _BrandSplashGateState extends State<BrandSplashGate> {
+  bool _finished = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(const Duration(milliseconds: 1900), () {
+      if (mounted) setState(() => _finished = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: const Duration(milliseconds: 450),
+    switchInCurve: Curves.easeOutCubic,
+    switchOutCurve: Curves.easeInCubic,
+    child: _finished
+      ? const SareeGate(key: ValueKey('app'))
+      : Scaffold(
+          key: const ValueKey('splash'),
+          body: Container(
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Color(0xFFFF8A36), Color(0xFFFF642D), Color(0xFF20232B)],
+                stops: [0, .58, 1],
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 142,
+                    height: 142,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF20232B),
+                      borderRadius: BorderRadius.circular(42),
+                      border: Border.all(color: Colors.white.withValues(alpha: .85), width: 3),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 28, offset: const Offset(0, 12))],
+                    ),
+                    child: const Icon(Icons.delivery_dining, color: Color(0xFFFF9A3D), size: 94),
+                  ),
+                  const SizedBox(height: 22),
+                  const Text('سريع', style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                  const SizedBox(height: 6),
+                  const Text('طعامك يصل إليك', style: TextStyle(color: Colors.white70, fontSize: 17, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 34),
+                  const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)),
+                ],
+              ),
+            ),
+          ),
+        ),
   );
 }
 
