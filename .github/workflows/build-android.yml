@@ -38,14 +38,14 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
+      - name: Analyze Dart source
+        run: flutter analyze lib
+
       - name: Build release APK
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          test -n "$SUPABASE_URL" || { echo "Missing SUPABASE_URL repository secret"; exit 1; }
-          test -n "$SUPABASE_ANON_KEY" || { echo "Missing SUPABASE_ANON_KEY repository secret"; exit 1; }
-          flutter build apk --release --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL=https://zfhqprnsrcxahzvwevse.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=sb_publishable_nJACFgbwtYkfov-OoW76ew_BvI8ZdH6
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
