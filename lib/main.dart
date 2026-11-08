@@ -316,7 +316,7 @@ class RestaurantMenuPage extends StatelessWidget {
               },
             ),
           ),
-        )).toList()),
+        )).toList());
       },
     ),
   );
