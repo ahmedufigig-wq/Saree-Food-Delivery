@@ -56,8 +56,12 @@ jobs:
           XML
           cat > "$RES/drawable/launch_background.xml" <<'XML'
           <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-              <item android:drawable="#20232B" />
-              <item android:drawable="@drawable/saree_launcher" android:gravity="center" android:width="112dp" android:height="112dp" />
+              <item>
+                  <shape android:shape="rectangle">
+                      <solid android:color="#20232B" />
+                  </shape>
+              </item>
+              <item android:drawable="@drawable/saree_launcher" android:gravity="center" />
           </layer-list>
           XML
           MANIFEST=android/app/src/main/AndroidManifest.xml
