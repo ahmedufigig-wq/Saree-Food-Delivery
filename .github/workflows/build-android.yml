@@ -47,6 +47,26 @@ jobs:
             --dart-define=SUPABASE_URL=https://zfhqprnsrcxahzvwevse.supabase.co \
             --dart-define=SUPABASE_ANON_KEY=sb_publishable_nJACFgbwtYkfov-OoW76ew_BvI8ZdH6
 
+      - name: Sign release APK
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          keytool -genkeypair -v \\
+            -keystore "$HOME/.android/saree-release.jks" \\
+            -storepass android \\
+            -alias saree \\
+            -keypass android \\
+            -keyalg RSA -keysize 2048 -validity 10000 \\
+            -dname "CN=Saree Food Delivery, OU=Android, O=Saree, C=YE"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$BUILD_TOOLS/apksigner" sign \\
+            --ks "$HOME/.android/saree-release.jks" \\
+            --ks-pass pass:android \\
+            --key-pass pass:android \\
+            --ks-key-alias saree \\
+            build/app/outputs/flutter-apk/app-release.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose build/app/outputs/flutter-apk/app-release.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
