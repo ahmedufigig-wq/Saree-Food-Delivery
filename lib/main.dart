@@ -5,6 +5,7 @@ void main() => runApp(MultiProvider(
   providers: [
     ChangeNotifierProvider(create: (_) => CartProvider()),
     ChangeNotifierProvider(create: (_) => RestaurantProvider()),
+    ChangeNotifierProvider(create: (_) => OrderProvider()),
   ],
   child: const SareeApp(),
 ));
@@ -77,6 +78,62 @@ class RestaurantProvider extends ChangeNotifier {
   }
 }
 
+enum OrderStatus { sent, accepted, preparing, delivering, delivered, cancelled }
+
+class OrderModel {
+  OrderModel({required this.id, required this.items, required this.address, required this.total, this.status = OrderStatus.sent, DateTime? createdAt}) : createdAt = createdAt ?? DateTime.now();
+  final String id;
+  final List<CartItem> items;
+  final String address;
+  final int total;
+  OrderStatus status;
+  final DateTime createdAt;
+}
+
+class OrderProvider extends ChangeNotifier {
+  final List<OrderModel> _orders = [];
+  List<OrderModel> get orders => List.unmodifiable(_orders);
+
+  OrderModel createOrder({required List<CartItem> items, required String address, required int total}) {
+    final order = OrderModel(
+      id: 'SR' + DateTime.now().millisecondsSinceEpoch.toString(),
+      items: items.map((item) => CartItem(food: item.food, quantity: item.quantity)).toList(),
+      address: address,
+      total: total,
+    );
+    _orders.insert(0, order);
+    notifyListeners();
+    return order;
+  }
+
+  void advanceStatus(String id) {
+    final order = _orders.firstWhere((order) => order.id == id);
+    if (order.status.index < OrderStatus.delivered.index) {
+      order.status = OrderStatus.values[order.status.index + 1];
+      notifyListeners();
+    }
+  }
+
+  void cancel(String id) {
+    final order = _orders.firstWhere((order) => order.id == id);
+    if (order.status.index < OrderStatus.preparing.index) {
+      order.status = OrderStatus.cancelled;
+      notifyListeners();
+    }
+  }
+}
+
+String orderStatusText(OrderStatus status) {
+  switch (status) {
+    case OrderStatus.sent: return 'تم إرسال الطلب';
+    case OrderStatus.accepted: return 'قبل المطعم الطلب';
+    case OrderStatus.preparing: return 'جاري تحضير الطلب';
+    case OrderStatus.delivering: return 'المندوب في الطريق';
+    case OrderStatus.delivered: return 'تم التوصيل';
+    case OrderStatus.cancelled: return 'تم إلغاء الطلب';
+  }
+}
+
 class SareeApp extends StatelessWidget {
   const SareeApp({super.key});
   @override
@@ -101,6 +158,7 @@ class _HomePageState extends State<HomePage> {
     final cart = context.watch<CartProvider>();
     return Scaffold(
       appBar: AppBar(title: const Text('سريع - توصيل الطعام في رداع'), actions: [
+        IconButton(icon: const Icon(Icons.receipt_long), tooltip: 'طلباتي', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersPage()))),
         Badge(label: Text(cart.count.toString()), isLabelVisible: cart.count > 0, child: IconButton(icon: const Icon(Icons.shopping_cart), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage())))),
       ]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
@@ -178,20 +236,93 @@ class _CheckoutPageState extends State<CheckoutPage> {
       const ListTile(leading: Icon(Icons.payments), title: Text('الدفع عند الاستلام')),
       ElevatedButton(onPressed: () {
         if (address.text.trim().isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى إدخال عنوان التوصيل'))); return; }
-        context.read<CartProvider>().clear();
-        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const TrackingPage()), (_) => false);
+        final cart = context.read<CartProvider>();
+        final order = context.read<OrderProvider>().createOrder(
+          items: cart.items,
+          address: address.text.trim(),
+          total: cart.total,
+        );
+        cart.clear();
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => TrackingPage(orderId: order.id)),
+          (_) => false,
+        );
       }, child: const Text('تأكيد الطلب')),
     ])),
   );
 }
 
+class OrdersPage extends StatelessWidget {
+  const OrdersPage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final orders = context.watch<OrderProvider>().orders;
+    return Scaffold(
+      appBar: AppBar(title: const Text('طلباتي')),
+      body: orders.isEmpty
+          ? const Center(child: Text('لا توجد طلبات حتى الآن'))
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: orders.map((order) => Card(
+                child: ListTile(
+                  leading: const Icon(Icons.receipt_long),
+                  title: Text('طلب ' + order.id),
+                  subtitle: Text(orderStatusText(order.status) + ' • ' + order.total.toString() + ' ريال'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TrackingPage(orderId: order.id))),
+                ),
+              )).toList(),
+            ),
+    );
+  }
+}
+
 class TrackingPage extends StatelessWidget {
-  const TrackingPage({super.key});
-  @override Widget build(BuildContext context) {
-    const states = ['تم إرسال الطلب', 'قبل المطعم الطلب', 'جاري تحضير الطلب', 'المندوب في الطريق', 'تم التوصيل'];
-    return Scaffold(appBar: AppBar(title: const Text('تتبع الطلب')), body: ListView(padding: const EdgeInsets.all(20), children: [
-      const Icon(Icons.delivery_dining, size: 80),
-      ...states.map((state) => ListTile(leading: const Icon(Icons.radio_button_unchecked), title: Text(state))),
-    ]));
+  const TrackingPage({super.key, required this.orderId});
+  final String orderId;
+
+  @override
+  Widget build(BuildContext context) {
+    final orders = context.watch<OrderProvider>().orders;
+    final order = orders.firstWhere((item) => item.id == orderId);
+    const steps = [
+      OrderStatus.sent,
+      OrderStatus.accepted,
+      OrderStatus.preparing,
+      OrderStatus.delivering,
+      OrderStatus.delivered,
+    ];
+    return Scaffold(
+      appBar: AppBar(title: const Text('تتبع الطلب')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Icon(Icons.delivery_dining, size: 80),
+          Text('رقم الطلب: ' + order.id, textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          Text('العنوان: ' + order.address),
+          ...steps.map((step) {
+            final done = order.status.index >= step.index && order.status != OrderStatus.cancelled;
+            return ListTile(
+              leading: Icon(done ? Icons.check_circle : Icons.radio_button_unchecked),
+              title: Text(orderStatusText(step)),
+            );
+          }),
+          if (order.status == OrderStatus.cancelled)
+            const ListTile(leading: Icon(Icons.cancel), title: Text('تم إلغاء الطلب')),
+          const SizedBox(height: 12),
+          if (order.status != OrderStatus.delivered && order.status != OrderStatus.cancelled)
+            ElevatedButton(
+              onPressed: () => context.read<OrderProvider>().advanceStatus(order.id),
+              child: const Text('تحديث حالة الطلب'),
+            ),
+          if (order.status.index < OrderStatus.preparing.index)
+            OutlinedButton(
+              onPressed: () => context.read<OrderProvider>().cancel(order.id),
+              child: const Text('إلغاء الطلب'),
+            ),
+        ],
+      ),
+    );
   }
 }
