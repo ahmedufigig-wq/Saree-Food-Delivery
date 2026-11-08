@@ -30,3 +30,33 @@
 - اضبط سياسة الخصوصية وشروط الاستخدام وآلية دعم العملاء.
 - الدفع الإلكتروني غير مفعل؛ الإصدار الأول يدعم الدفع النقدي عند الاستلام فقط.
 - تتبع الموقع يتطلب موافقة المندوب وإعداد صلاحيات الموقع في Android.
+
+## 6) منح الأدوار وربط أول مطعم
+
+بعد تسجيل الحسابات من التطبيق، استخدم SQL Editor في Supabase. استبدل البريد الإلكتروني بالقيم الحقيقية للحسابات:
+
+```sql
+-- ترقية حساب المدير الأول (نفّذها من SQL Editor فقط).
+update public.profiles
+set role = 'admin'
+where id = (select id from auth.users where email = 'admin@example.com');
+
+-- ترقية حساب صاحب المطعم.
+update public.profiles
+set role = 'restaurant_owner'
+where id = (select id from auth.users where email = 'restaurant@example.com');
+
+-- ربط صاحب المطعم بمطعم موجود بالفعل.
+insert into public.restaurant_members (restaurant_id, user_id, member_role)
+select '00000000-0000-0000-0000-000000000000'::uuid, id, 'manager'
+from auth.users
+where email = 'restaurant@example.com'
+on conflict do nothing;
+
+-- ترقية حساب المندوب.
+update public.profiles
+set role = 'courier'
+where id = (select id from auth.users where email = 'courier@example.com');
+```
+
+أنشئ المطعم أولًا من لوحة Supabase أو بعد استكمال لوحة الإدارة، ثم استخدم معرّف المطعم الحقيقي بدل UUID المثال أعلاه. لا تمنح دور admin لأي مستخدم غير موثوق.
