@@ -28,11 +28,15 @@ declare
   v_order_id uuid;
   v_subtotal integer := 0;
   v_delivery_fee integer;
+  v_minimum_order integer;
   v_item jsonb;
   v_menu_item public.menu_items%rowtype;
   v_qty integer;
 begin
   if v_user is null then raise exception 'يجب تسجيل الدخول أولاً'; end if;
+  if not exists (select 1 from public.profiles p where p.id = v_user and p.role = 'customer') then
+    raise exception 'إنشاء الطلب متاح لحسابات العملاء فقط';
+  end if;
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
     raise exception 'السلة فارغة';
   end if;
@@ -46,7 +50,7 @@ begin
     raise exception 'المطعم غير متاح حالياً';
   end if;
 
-  select r.delivery_fee_yer into v_delivery_fee
+  select r.delivery_fee_yer, r.minimum_order_yer into v_delivery_fee, v_minimum_order
   from public.restaurants r where r.id = p_restaurant_id;
 
   for v_item in select value from jsonb_array_elements(p_items)
@@ -64,6 +68,10 @@ begin
     if not found then raise exception 'إحدى الوجبات لم تعد متاحة'; end if;
     v_subtotal := v_subtotal + (v_menu_item.price_yer * v_qty);
   end loop;
+
+  if v_subtotal < v_minimum_order then
+    raise exception 'الطلب أقل من الحد الأدنى للمطعم';
+  end if;
 
   insert into public.orders (
     customer_id, restaurant_id, status, customer_name, customer_phone,
