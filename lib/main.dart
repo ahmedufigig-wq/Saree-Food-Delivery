@@ -524,32 +524,52 @@ class CourierPortal extends StatefulWidget {
 
 class _CourierPortalState extends State<CourierPortal> {
   bool _busy = false;
-  Future<void> _claim(String id) async {
+
+  Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
     try {
-      await SareeBackend.claimOrder(id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم استلام مهمة التوصيل')));
+      await action();
+      if (mounted) setState(() {});
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally { if (mounted) setState(() => _busy = false); }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('طلبات التوصيل المتاحة'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
-    body: FutureBuilder<List<Map<String, dynamic>>>(
-      future: SareeBackend.availableCourierOrders(),
+    appBar: AppBar(title: const Text('طلبات المندوب'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
+    body: FutureBuilder<List<List<Map<String, dynamic>>>>(
+      future: Future.wait([SareeBackend.availableCourierOrders(), SareeBackend.courierOrders()]),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
         if (snapshot.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${snapshot.error}'));
-        final orders = snapshot.data ?? [];
-        if (orders.isEmpty) return const Center(child: Text('لا توجد طلبات جاهزة للاستلام حاليًا'));
-        return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) => Card(child: ListTile(
-          title: Text('طلب #${o['order_number']}'),
-          subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال'),
-          isThreeLine: true,
-          trailing: FilledButton(onPressed: _busy ? null : () => _claim(o['id'].toString()), child: const Text('استلام')),
-        ))).toList());
+        final available = snapshot.data![0];
+        final active = snapshot.data![1].where((o) => o['status'] == 'assigned' || o['status'] == 'picked_up').toList();
+        return ListView(padding: const EdgeInsets.all(12), children: [
+          const Padding(padding: EdgeInsets.all(8), child: Text('مهامك الحالية', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+          if (active.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد لديك توصيلات نشطة')),
+          ...active.map((o) {
+            final status = o['status'].toString();
+            final next = status == 'assigned' ? 'picked_up' : 'delivered';
+            final label = status == 'assigned' ? 'تأكيد استلام الطلب' : 'تأكيد التسليم';
+            return Card(child: ListTile(
+              title: Text('طلب #${o['order_number']}'),
+              subtitle: Text('${o['delivery_address']}\nالحالة: $status'),
+              isThreeLine: true,
+              trailing: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label)),
+            ));
+          }),
+          const Padding(padding: EdgeInsets.all(8), child: Text('طلبات جاهزة للاستلام', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+          if (available.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد طلبات جاهزة حاليًا')),
+          ...available.map((o) => Card(child: ListTile(
+            title: Text('طلب #${o['order_number']}'),
+            subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال'),
+            isThreeLine: true,
+            trailing: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.claimOrder(o['id'].toString())), child: const Text('استلام')),
+          ))),
+        ]);
       },
     ),
   );
