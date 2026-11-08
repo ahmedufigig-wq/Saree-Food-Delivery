@@ -2,6 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SareeBackend {
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  // SUPABASE_ANON_KEY accepts the Supabase publishable key (recommended)
+  // or the legacy anon key. Never put a service_role/secret key in the app.
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
   static bool get isConfigured =>
@@ -12,12 +14,21 @@ class SareeBackend {
 
   static Future<void> initialize() async {
     if (isConfigured) {
-      await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+        ),
+      );
     }
   }
 
   static Future<void> signIn(String email, String password) async {
-    await client.auth.signInWithPassword(email: email.trim(), password: password);
+    await client.auth.signInWithPassword(
+      email: email.trim(),
+      password: password,
+    );
   }
 
   static Future<void> signUp({
@@ -29,7 +40,10 @@ class SareeBackend {
     await client.auth.signUp(
       email: email.trim(),
       password: password,
-      data: {'full_name': fullName.trim(), 'phone': phone.trim()},
+      data: {
+        'full_name': fullName.trim(),
+        'phone': phone.trim(),
+      },
     );
   }
 
@@ -38,20 +52,30 @@ class SareeBackend {
   static Future<Map<String, dynamic>> profile() async {
     final current = user;
     if (current == null) throw Exception('يرجى تسجيل الدخول');
-    final row = await client.from('profiles').select().eq('id', current.id).single();
+    final row = await client
+        .from('profiles')
+        .select('id, full_name, phone, role, created_at')
+        .eq('id', current.id)
+        .single();
     return Map<String, dynamic>.from(row);
   }
 
   static Future<List<Map<String, dynamic>>> restaurants() async {
-    final rows = await client.from('restaurants').select()
-        .eq('is_active', true).order('name');
+    final rows = await client
+        .from('restaurants')
+        .select()
+        .eq('is_active', true)
+        .order('name');
     return List<Map<String, dynamic>>.from(rows);
   }
 
   static Future<List<Map<String, dynamic>>> menu(String restaurantId) async {
-    final rows = await client.from('menu_items').select()
+    final rows = await client
+        .from('menu_items')
+        .select()
         .eq('restaurant_id', restaurantId)
-        .eq('is_available', true).order('name');
+        .eq('is_available', true)
+        .order('name');
     return List<Map<String, dynamic>>.from(rows);
   }
 
@@ -76,30 +100,55 @@ class SareeBackend {
 
   static Stream<List<Map<String, dynamic>>> customerOrders() {
     final id = user!.id;
-    return client.from('orders').stream(primaryKey: ['id'])
-        .eq('customer_id', id).order('created_at', ascending: false);
+    return client
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('customer_id', id)
+        .order('created_at', ascending: false);
   }
 
   static Future<List<Map<String, dynamic>>> restaurantOrders() async {
     final id = user!.id;
-    final memberships = await client.from('restaurant_members')
-        .select('restaurant_id').eq('user_id', id);
+    final memberships = await client
+        .from('restaurant_members')
+        .select('restaurant_id')
+        .eq('user_id', id);
     final ids = List<Map<String, dynamic>>.from(memberships)
-        .map((row) => row['restaurant_id'].toString()).toList();
+        .map((row) => row['restaurant_id'].toString())
+        .toList();
     if (ids.isEmpty) return [];
-    final rows = await client.from('orders').select()
-        .inFilter('restaurant_id', ids).order('created_at', ascending: false);
+    final rows = await client
+        .from('orders')
+        .select()
+        .inFilter('restaurant_id', ids)
+        .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
   }
 
-  static Future<List<Map<String, dynamic>>> courierOrders() async {\n    final rows = await client.from('orders').select()\n        .eq('courier_id', user!.id).order('created_at', ascending: false);\n    return List<Map<String, dynamic>>.from(rows);\n  }\n\n  static Future<List<Map<String, dynamic>>> availableCourierOrders() async {
-    final rows = await client.from('orders').select()
-        .eq('status', 'ready_for_pickup').isFilter('courier_id', null)
+  static Future<List<Map<String, dynamic>>> courierOrders() async {
+    final rows = await client
+        .from('orders')
+        .select()
+        .eq('courier_id', user!.id)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<List<Map<String, dynamic>>> availableCourierOrders() async {
+    final rows = await client
+        .from('orders')
+        .select()
+        .eq('status', 'ready_for_pickup')
+        .isFilter('courier_id', null)
         .order('created_at');
     return List<Map<String, dynamic>>.from(rows);
   }
 
-  static Future<void> transition(String orderId, String status, {String? reason}) async {
+  static Future<void> transition(
+    String orderId,
+    String status, {
+    String? reason,
+  }) async {
     await client.rpc('transition_order', params: {
       'p_order_id': orderId,
       'p_next_status': status,
@@ -108,6 +157,9 @@ class SareeBackend {
   }
 
   static Future<void> claimOrder(String orderId) async {
-    await client.rpc('claim_delivery_order', params: {'p_order_id': orderId});
+    await client.rpc(
+      'claim_delivery_order',
+      params: {'p_order_id': orderId},
+    );
   }
 }
