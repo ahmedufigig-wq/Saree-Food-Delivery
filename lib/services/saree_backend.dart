@@ -92,7 +92,7 @@ class SareeBackend {
     return List<Map<String, dynamic>>.from(rows);
   }
 
-  static Future<List<Map<String, dynamic>>> availableCourierOrders() async {
+  static Future<List<Map<String, dynamic>>> courierOrders() async {\n    final rows = await client.from('orders').select()\n        .eq('courier_id', user!.id).order('created_at', ascending: false);\n    return List<Map<String, dynamic>>.from(rows);\n  }\n\n  static Future<List<Map<String, dynamic>>> availableCourierOrders() async {
     final rows = await client.from('orders').select()
         .eq('status', 'ready_for_pickup').isFilter('courier_id', null)
         .order('created_at');
