@@ -30,9 +30,9 @@ jobs:
       - name: Configure Android minimum SDK
         run: |
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' android/app/build.gradle.kts
           elif [ -f android/app/build.gradle ]; then
-            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
           fi
 
       - name: Resolve dependencies
@@ -51,20 +51,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.android"
-          keytool -genkeypair -v \\
-            -keystore "$HOME/.android/saree-release.jks" \\
-            -storepass android \\
-            -alias saree \\
-            -keypass android \\
-            -keyalg RSA -keysize 2048 -validity 10000 \\
-            -dname "CN=Saree Food Delivery, OU=Android, O=Saree, C=YE"
+          keytool -genkeypair -v -keystore "$HOME/.android/saree-release.jks" -storepass android -alias saree -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Saree Food Delivery, OU=Android, O=Saree, C=YE"
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          "$BUILD_TOOLS/apksigner" sign \\
-            --ks "$HOME/.android/saree-release.jks" \\
-            --ks-pass pass:android \\
-            --key-pass pass:android \\
-            --ks-key-alias saree \\
-            build/app/outputs/flutter-apk/app-release.apk
+          "$BUILD_TOOLS/apksigner" sign --ks "$HOME/.android/saree-release.jks" --ks-pass pass:android --key-pass pass:android --ks-key-alias saree build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/apksigner" verify --verbose build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK
