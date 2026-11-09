@@ -975,7 +975,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         const LinearProgressIndicator()
       else if (_savedAddresses.isNotEmpty) ...[
         DropdownButtonFormField<String>(
-          value: _selectedAddressId,
+          initialValue: _selectedAddressId,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'اختر عنواناً محفوظاً', prefixIcon: Icon(Icons.location_on_outlined)),
           items: _savedAddresses.map((a) => DropdownMenuItem(

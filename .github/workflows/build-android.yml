@@ -94,7 +94,6 @@ jobs:
           sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@drawable\/saree_launcher"/' "$MANIFEST"
           sed -i 's/android:roundIcon="@mipmap\/ic_launcher_round"/android:roundIcon="@drawable\/saree_launcher"/' "$MANIFEST"
           sed -i 's/android:label="[^"]*"/android:label="سريع"/' "$MANIFEST"
-          sed -i 's/android:roundIcon="@mipmap\/ic_launcher_round"/android:roundIcon="@drawable\/saree_launcher"/' "$MANIFEST"
           mkdir -p android/app/src/main/res/drawable-v21
           cp "$RES/drawable/launch_background.xml" android/app/src/main/res/drawable-v21/launch_background.xml
           if [ -f android/app/src/main/res/values/styles.xml ]; then
