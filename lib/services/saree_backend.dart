@@ -253,7 +253,7 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> adminProfiles() async {
-    final rows = await client.from('profiles').select('id, full_name, phone, role, created_at').order('created_at', ascending: false).limit(200);
+    final rows = await client.from('profiles').select('id, full_name, phone, role, approval_status, approval_note, created_at').order('created_at', ascending: false).limit(200);
     return List<Map<String, dynamic>>.from(rows);
   }
 
