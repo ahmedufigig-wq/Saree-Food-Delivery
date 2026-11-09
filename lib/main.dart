@@ -74,19 +74,19 @@ class SareeApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF7A1A), brightness: Brightness.light, secondary: const Color(0xFF14243A)),
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE50914), brightness: Brightness.light, secondary: const Color(0xFF171717)),
       scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-      iconTheme: const IconThemeData(color: Color(0xFFFF7A1A), size: 23),
-      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 1, backgroundColor: Color(0xFFF5F7FA), foregroundColor: Color(0xFF14243A), titleTextStyle: TextStyle(color: Color(0xFF14243A), fontSize: 19, fontWeight: FontWeight.w800)),
+      iconTheme: const IconThemeData(color: Color(0xFFE50914), size: 23),
+      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 1, backgroundColor: Color(0xFFF5F7FA), foregroundColor: Color(0xFF171717), titleTextStyle: TextStyle(color: Color(0xFF171717), fontSize: 19, fontWeight: FontWeight.w800)),
       cardTheme: CardThemeData(color: Colors.white, elevation: 1, shadowColor: Color(0x1420232B), margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE7ECF2)))),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFDCE3EC))),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFDCE3EC))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFFF7A1A), width: 1.6)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFE50914), width: 1.6)),
         filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       ),
-      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF7A1A), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: Color(0xFFFFE7D2), labelTextStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE50914), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
+      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: Color(0xFFFFE6E6), labelTextStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
     ),
     builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink()),
     home: const BrandSplashGate(),
@@ -100,7 +100,7 @@ class BrandMark extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: size, height: size,
     decoration: BoxDecoration(
-      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFF9A32), Color(0xFFFF7A1A), Color(0xFF14243A)]),
+      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFC400), Color(0xFFE50914), Color(0xFF171717)]),
       borderRadius: BorderRadius.circular(size * .30),
       border: Border.all(color: Colors.white, width: 2),
       boxShadow: const [BoxShadow(color: Color(0x30B91F2B), blurRadius: 20, offset: Offset(0, 8))],
@@ -108,7 +108,7 @@ class BrandMark extends StatelessWidget {
     child: Stack(alignment: Alignment.center, children: [
       Positioned(left: size * .09, top: size * .32, child: Icon(Icons.bolt_rounded, color: Colors.white70, size: size * .23)),
       Icon(Icons.delivery_dining_rounded, color: Colors.white, size: size * .67),
-      Positioned(bottom: size * .09, right: size * .12, child: Container(width: size * .19, height: size * .19, decoration: BoxDecoration(color: const Color(0xFFFFC247), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)))),
+      Positioned(bottom: size * .09, right: size * .12, child: Container(width: size * .19, height: size * .19, decoration: BoxDecoration(color: const Color(0xFFFFC400), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)))),
     ]),
   );
 }
@@ -145,7 +145,7 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [Color(0xFFFF8A36), Color(0xFFFF642D), Color(0xFF14243A)],
+                colors: [Color(0xFFE50914), Color(0xFFA9000A), Color(0xFF171717)],
                 stops: [0, .58, 1],
               ),
             ),
@@ -157,7 +157,7 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
                     width: 142,
                     height: 142,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF14243A),
+                      color: const Color(0xFF171717),
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(color: Colors.white.withValues(alpha: .85), width: 3),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 28, offset: const Offset(0, 12))],
@@ -214,7 +214,7 @@ class SetupRequiredPage extends StatelessWidget {
     body: Center(child: Padding(
       padding: EdgeInsets.all(28),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.cloud_off, size: 64, color: const Color(0xFFFF7A1A)),
+        Icon(Icons.cloud_off, size: 64, color: const Color(0xFFE50914)),
         SizedBox(height: 16),
         Text('سريع يحتاج إلى ربط الخادم', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
@@ -347,13 +347,13 @@ class CustomerHome extends StatelessWidget {
         title: const Row(mainAxisSize: MainAxisSize.min, children: [
           BrandMark(size: 34),
           SizedBox(width: 9),
-          Text('سريع', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+          Text('سريع', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF171717))),
         ]),
         actions: [
           IconButton(tooltip: 'طلباتي', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerOrdersPage())), icon: const Icon(Icons.receipt_long_rounded)),
           Stack(children: [
             IconButton(tooltip: 'السلة', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage())), icon: const Icon(Icons.shopping_bag_outlined)),
-            if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, backgroundColor: const Color(0xFFFF7A1A), child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)))),
+            if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, backgroundColor: const Color(0xFFE50914), child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)))),
           ]),
           IconButton(tooltip: 'خروج', onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout_rounded)),
         ],
@@ -370,12 +370,12 @@ class CustomerHome extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF14243A), Color(0xFF284766)]),
+                  gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF650008)]),
                   borderRadius: BorderRadius.circular(26),
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Row(children: [
-                    Icon(Icons.location_on_rounded, color: Color(0xFFFF9A32), size: 18),
+                    Icon(Icons.location_on_rounded, color: Color(0xFFFFC400), size: 18),
                     SizedBox(width: 6),
                     Text('التوصيل إلى', style: TextStyle(color: Colors.white70, fontSize: 13)),
                   ]),
@@ -387,7 +387,7 @@ class CustomerHome extends StatelessWidget {
                   const Text('وجبتك المفضلة تصلك حتى باب بيتك', style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 17),
                   Row(children: [
-                    const Icon(Icons.delivery_dining_rounded, color: Color(0xFFFF9A32), size: 24),
+                    const Icon(Icons.delivery_dining_rounded, color: Color(0xFFFFC400), size: 24),
                     const SizedBox(width: 8),
                     const Text('اطلب بسهولة • تابع طلبك • استمتع', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
                   ]),
@@ -395,17 +395,17 @@ class CustomerHome extends StatelessWidget {
               ),
               const SizedBox(height: 22),
               const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('المطاعم المتاحة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
-                Icon(Icons.tune_rounded, color: Color(0xFFFF7A1A)),
+                Text('المطاعم المتاحة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+                Icon(Icons.tune_rounded, color: Color(0xFFE50914)),
               ]),
               const SizedBox(height: 10),
               if (restaurants.isEmpty)
                 const Card(child: Padding(
                   padding: EdgeInsets.all(22),
                   child: Column(children: [
-                    Icon(Icons.restaurant_menu_rounded, size: 46, color: Color(0xFFFF7A1A)),
+                    Icon(Icons.restaurant_menu_rounded, size: 46, color: Color(0xFFE50914)),
                     SizedBox(height: 10),
-                    Text('لا توجد مطاعم مفعّلة حاليًا', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF14243A))),
+                    Text('لا توجد مطاعم مفعّلة حاليًا', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF171717))),
                     SizedBox(height: 5),
                     Text('ستظهر المطاعم هنا بعد إضافتها واعتمادها من الإدارة.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF748094))),
                   ]),
@@ -421,18 +421,18 @@ class CustomerHome extends StatelessWidget {
                         Container(
                           width: 82, height: 82,
                           decoration: BoxDecoration(color: const Color(0xFFFFF0E3), borderRadius: BorderRadius.circular(18)),
-                          child: const Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFFF7A1A)),
+                          child: const Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFE50914)),
                         ),
                         const SizedBox(width: 13),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+                          Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
                           const SizedBox(height: 5),
                           Text(r['description']?.toString() ?? 'وجبات شهية بانتظارك', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
                           const SizedBox(height: 8),
                           Row(children: [
-                            const Icon(Icons.delivery_dining_rounded, size: 16, color: Color(0xFFFF7A1A)),
+                            const Icon(Icons.delivery_dining_rounded, size: 16, color: Color(0xFFE50914)),
                             const SizedBox(width: 4),
-                            Text('رسوم التوصيل: ${r['delivery_fee_yer'] ?? '—'} ريال', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF14243A))),
+                            Text('رسوم التوصيل: ${r['delivery_fee_yer'] ?? '—'} ريال', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF171717))),
                           ]),
                         ])),
                         const Icon(Icons.chevron_left_rounded, color: Color(0xFF8994A3)),
@@ -482,9 +482,9 @@ class RestaurantMenuPage extends StatelessWidget {
         return ListView(padding: const EdgeInsets.all(16), children: [
           Container(
             padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: const Color(0xFF14243A), borderRadius: BorderRadius.circular(22)),
+            decoration: BoxDecoration(color: const Color(0xFF171717), borderRadius: BorderRadius.circular(22)),
             child: Row(children: [
-              const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFF9A32), size: 32),
+              const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFFC400), size: 32),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(restaurant['name'].toString(), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
@@ -496,7 +496,7 @@ class RestaurantMenuPage extends StatelessWidget {
           ...orderedCategories.expand((category) => [
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
-              child: Text(category, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+              child: Text(category, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
             ),
             ...grouped[category]!.map((item) {
               final available = item['is_available'] == true && (item['price_yer'] as num? ?? 0) > 0;
@@ -513,17 +513,17 @@ class RestaurantMenuPage extends StatelessWidget {
                         child: SizedBox(
                           width: 82, height: 82,
                           child: imageUrl.startsWith('http')
-                              ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFFFF7A1A))))
-                              : const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFFFF7A1A))),
+                              ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFFE50914))))
+                              : const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFFE50914))),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF14243A))),
+                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF171717))),
                         const SizedBox(height: 4),
                         Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
                         const SizedBox(height: 7),
-                        Text(available ? '${item['price_yer']} ريال يمني' : 'السعر والتوفر يحددهما المطعم', style: TextStyle(color: available ? const Color(0xFFFF7A1A) : const Color(0xFF8A6670), fontWeight: FontWeight.w900, fontSize: 12)),
+                        Text(available ? '${item['price_yer']} ريال يمني' : 'السعر والتوفر يحددهما المطعم', style: TextStyle(color: available ? const Color(0xFFE50914) : const Color(0xFF8A6670), fontWeight: FontWeight.w900, fontSize: 12)),
                       ])),
                       Icon(available ? Icons.chevron_left_rounded : Icons.info_outline_rounded, color: const Color(0xFF8994A3)),
                     ]),
@@ -555,12 +555,12 @@ class MealDetailsPage extends StatelessWidget {
           child: SizedBox(
             height: 230,
             child: imageUrl.startsWith('http')
-                ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFFF7A1A))))
-                : const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFFF7A1A))),
+                ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914))))
+                : const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914))),
           ),
         ),
         const SizedBox(height: 20),
-        Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+        Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
         const SizedBox(height: 8),
         Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF748094))),
         const SizedBox(height: 18),
@@ -569,7 +569,7 @@ class MealDetailsPage extends StatelessWidget {
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE7ECF2))),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             const Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF748094))),
-            Text(available ? '${item['price_yer']} ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFFFF7A1A))),
+            Text(available ? '${item['price_yer']} ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFFE50914))),
           ]),
         ),
         const SizedBox(height: 24),
@@ -771,7 +771,7 @@ class OrderTrackingPage extends StatelessWidget {
         return ListView(padding: const EdgeInsets.all(18), children: [
           Container(
             padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: const Color(0xFF14243A), borderRadius: BorderRadius.circular(22)),
+            decoration: BoxDecoration(color: const Color(0xFF171717), borderRadius: BorderRadius.circular(22)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('حالة طلبك الآن', style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 8),
@@ -787,10 +787,10 @@ class OrderTrackingPage extends StatelessWidget {
             final done = !cancelled && index > entry.key;
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor: active ? const Color(0xFFFFE7D2) : const Color(0xFFE7ECF2),
-                child: Icon(done ? Icons.check_rounded : entry.value.$3, color: active ? const Color(0xFFFF7A1A) : const Color(0xFF8994A3)),
+                backgroundColor: active ? const Color(0xFFFFE6E6) : const Color(0xFFE7ECF2),
+                child: Icon(done ? Icons.check_rounded : entry.value.$3, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3)),
               ),
-              title: Text(entry.value.$2, style: TextStyle(fontWeight: active ? FontWeight.w900 : FontWeight.w500, color: active ? const Color(0xFF14243A) : const Color(0xFF8994A3))),
+              title: Text(entry.value.$2, style: TextStyle(fontWeight: active ? FontWeight.w900 : FontWeight.w500, color: active ? const Color(0xFF171717) : const Color(0xFF8994A3))),
             );
           }),
           Card(child: ListTile(leading: const Icon(Icons.location_on_rounded), title: const Text('عنوان التوصيل'), subtitle: Text(current['delivery_address']?.toString() ?? ''))),
@@ -832,7 +832,7 @@ class CourierLiveMap extends StatelessWidget {
           options: MapOptions(initialCenter: point, initialZoom: 15),
           children: [
             TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
-            MarkerLayer(markers: [Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFFF7A1A), size: 44))]),
+            MarkerLayer(markers: [Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFE50914), size: 44))]),
           ],
         )),
         Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: ${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF748094)))),
@@ -895,7 +895,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         final rid = restaurant['id'].toString();
         return Column(children: [
           Padding(padding: const EdgeInsets.all(12), child: Row(children: [
-            const Icon(Icons.storefront_rounded, color: Color(0xFFFF7A1A)),
+            const Icon(Icons.storefront_rounded, color: Color(0xFFE50914)),
             const SizedBox(width: 8),
             Expanded(child: Text(restaurant['name'].toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
           ])),
@@ -1151,17 +1151,17 @@ class _AdminPortalState extends State<AdminPortal> {
           final rows = snap.data ?? [];
           return ListView(padding: const EdgeInsets.all(14), children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('إدارة المطاعم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+              const Text('إدارة المطاعم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
               FilledButton.icon(onPressed: _createRestaurant, icon: const Icon(Icons.add), label: const Text('إضافة')),
             ]),
             const SizedBox(height: 8),
             if (rows.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('لم تتم إضافة مطاعم بعد. أضف مطعمًا للبدء.'))),
             ...rows.map((r) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                const CircleAvatar(backgroundColor: Color(0xFFFFE7D2), child: Icon(Icons.restaurant_rounded)),
+                const CircleAvatar(backgroundColor: Color(0xFFFFE6E6), child: Icon(Icons.restaurant_rounded)),
                 const SizedBox(width: 10),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(r['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+                  Text(r['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF171717))),
                   Text(r['address']?.toString() ?? '', style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
                 ])),
                 Switch(value: r['is_active'] == true, onChanged: (v) async {
@@ -1186,7 +1186,7 @@ class _AdminPortalState extends State<AdminPortal> {
           final profiles = snap.data ?? [];
           const labels = {'customer':'عميل','restaurant_owner':'صاحب مطعم','courier':'مندوب','admin':'مدير'};
           return ListView(padding: const EdgeInsets.all(14), children: [
-            const Text('الحسابات والصلاحيات', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+            const Text('الحسابات والصلاحيات', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
             const SizedBox(height: 8),
             ...profiles.map((p) => Card(child: ListTile(
               leading: const CircleAvatar(child: Icon(Icons.person_rounded)),
