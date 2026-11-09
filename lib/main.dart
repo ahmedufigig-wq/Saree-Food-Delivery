@@ -392,7 +392,7 @@ class _AuthPageState extends State<AuthPage> {
           const SizedBox(height: 18),
           if (_register) ...[
             DropdownButtonFormField<String>(
-              value: _requestedRole,
+              initialValue: _requestedRole,
               decoration: const InputDecoration(labelText: 'نوع الحساب'),
               items: const [
                 DropdownMenuItem(value: 'customer', child: Text('عميل')),
