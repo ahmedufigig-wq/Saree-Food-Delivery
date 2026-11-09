@@ -70,18 +70,42 @@ class SareeApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF6B35)),
-      scaffoldBackgroundColor: const Color(0xFFFFFBF8),
-      iconTheme: const IconThemeData(color: Color(0xFFFF6B35), size: 24),
-      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, backgroundColor: Color(0xFFFFFBF8), foregroundColor: Color(0xFF20232B)),
-      cardTheme: CardThemeData(color: Colors.white, elevation: 2, margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.white,
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE94B2C), brightness: Brightness.light, secondary: const Color(0xFFFFA62B)),
+      scaffoldBackgroundColor: const Color(0xFFFFF9F5),
+      iconTheme: const IconThemeData(color: Color(0xFFE94B2C), size: 23),
+      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 1, backgroundColor: Color(0xFFFFF9F5), foregroundColor: Color(0xFF20232B), titleTextStyle: TextStyle(color: Color(0xFF20232B), fontSize: 19, fontWeight: FontWeight.w800)),
+      cardTheme: CardThemeData(color: Colors.white, elevation: 1, shadowColor: Color(0x1420232B), margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFF1E9E4)))),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFE9DED7))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFE9DED7))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFE94B2C), width: 1.6)),
+        filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       ),
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE94B2C), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
+      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: Color(0xFFFFE5DA), labelTextStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
     ),
+    builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink()),
     home: const BrandSplashGate(),
+  );
+}
+
+class BrandMark extends StatelessWidget {
+  const BrandMark({super.key, this.size = 88});
+  final double size;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size, height: size,
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFA52E), Color(0xFFE9432D), Color(0xFFB91F2B)]),
+      borderRadius: BorderRadius.circular(size * .30),
+      border: Border.all(color: Colors.white, width: 2),
+      boxShadow: const [BoxShadow(color: Color(0x30B91F2B), blurRadius: 20, offset: Offset(0, 8))],
+    ),
+    child: Stack(alignment: Alignment.center, children: [
+      Positioned(left: size * .09, top: size * .32, child: Icon(Icons.bolt_rounded, color: Colors.white70, size: size * .23)),
+      Icon(Icons.delivery_dining_rounded, color: Colors.white, size: size * .67),
+      Positioned(bottom: size * .09, right: size * .12, child: Container(width: size * .19, height: size * .19, decoration: BoxDecoration(color: const Color(0xFFFFC247), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)))),
+    ]),
   );
 }
 
@@ -134,7 +158,7 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
                       border: Border.all(color: Colors.white.withValues(alpha: .85), width: 3),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 28, offset: const Offset(0, 12))],
                     ),
-                    child: const Icon(Icons.delivery_dining, color: Color(0xFFFF9A3D), size: 94),
+                    child: const BrandMark(size: 112),
                   ),
                   const SizedBox(height: 22),
                   const Text('سريع', style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: 1)),
@@ -273,7 +297,7 @@ class _AuthPageState extends State<AuthPage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: Form(key: _form, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const CircleAvatar(radius: 42, child: Icon(Icons.delivery_dining, size: 48)),
+          const BrandMark(size: 86),
           const SizedBox(height: 14),
           const Text('سريع', textAlign: TextAlign.center, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
           const Text('طعامك يصل إليك', textAlign: TextAlign.center),
