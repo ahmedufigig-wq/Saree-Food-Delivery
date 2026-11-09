@@ -206,6 +206,54 @@ class SareeBackend {
     await client.from('restaurant_members').delete().eq('restaurant_id', restaurantId).eq('user_id', userId);
   }
 
+
+  static Future<List<Map<String, dynamic>>> myRestaurants() async {
+    final memberships = await client.from('restaurant_members').select('restaurant_id').eq('user_id', user!.id);
+    final ids = List<Map<String, dynamic>>.from(memberships).map((r) => r['restaurant_id'].toString()).toList();
+    if (ids.isEmpty) return [];
+    final rows = await client.from('restaurants').select().inFilter('id', ids).order('name');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<List<Map<String, dynamic>>> manageMenu(String restaurantId) async {
+    final rows = await client.from('menu_items').select().eq('restaurant_id', restaurantId).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> saveMenuItem({String? id, required String restaurantId, required String name, required String description, required int price, String? imageUrl, required bool available}) async {
+    final values = {
+      'restaurant_id': restaurantId,
+      'name': name.trim(),
+      'description': description.trim(),
+      'price_yer': price,
+      'image_url': imageUrl?.trim().isEmpty == true ? null : imageUrl?.trim(),
+      'is_available': available,
+    };
+    if (id == null) {
+      await client.from('menu_items').insert(values);
+    } else {
+      await client.from('menu_items').update(values..remove('restaurant_id')).eq('id', id);
+    }
+  }
+
+  static Future<void> deleteMenuItem(String id) async {
+    await client.from('menu_items').delete().eq('id', id);
+  }
+
+  static Future<void> updateCourierLocation(double latitude, double longitude) async {
+    await client.from('courier_locations').upsert({
+      'courier_id': user!.id,
+      'latitude': latitude,
+      'longitude': longitude,
+      'is_available': true,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  static Stream<List<Map<String, dynamic>>> courierLocation(String courierId) {
+    return client.from('courier_locations').stream(primaryKey: ['courier_id']).eq('courier_id', courierId);
+  }
+
   static Future<void> claimOrder(String orderId) async {
     await client.rpc(
       'claim_delivery_order',
