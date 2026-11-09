@@ -334,19 +334,24 @@ class _AuthPageState extends State<AuthPage> {
 
 class CustomerHome extends StatelessWidget {
   const CustomerHome({super.key});
+
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartController>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('سريع - رداع'),
+        title: const Row(mainAxisSize: MainAxisSize.min, children: [
+          BrandMark(size: 34),
+          SizedBox(width: 9),
+          Text('سريع', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+        ]),
         actions: [
-          IconButton(tooltip: 'طلباتي', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerOrdersPage())), icon: const Icon(Icons.receipt_long)),
+          IconButton(tooltip: 'طلباتي', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerOrdersPage())), icon: const Icon(Icons.receipt_long_rounded)),
           Stack(children: [
             IconButton(tooltip: 'السلة', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage())), icon: const Icon(Icons.shopping_bag_outlined)),
-            if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10)))),
+            if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, backgroundColor: const Color(0xFFFF7A1A), child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)))),
           ]),
-          IconButton(tooltip: 'خروج', onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout)),
+          IconButton(tooltip: 'خروج', onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout_rounded)),
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -355,24 +360,84 @@ class CustomerHome extends StatelessWidget {
           if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
           if (snapshot.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${snapshot.error}'));
           final restaurants = snapshot.data ?? [];
-          if (restaurants.isEmpty) return const Center(child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('لا توجد مطاعم مفعّلة حاليًا. ستظهر المطاعم هنا بعد إضافتها واعتمادها من الإدارة.', textAlign: TextAlign.center),
-          ));
-          return ListView(padding: const EdgeInsets.all(16), children: [
-            const Card(child: ListTile(leading: Icon(Icons.location_on), title: Text('منطقة الخدمة'), subtitle: Text('رداع - اليمن'))),
-            const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: Text('المطاعم المتاحة', style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold))),
-            ...restaurants.map((r) => Card(
-              child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.restaurant)),
-                title: Text(r['name']?.toString() ?? 'مطعم'),
-                subtitle: Text('${r['description'] ?? ''}\nرسوم التوصيل: ${r['delivery_fee_yer']} ريال'),
-                isThreeLine: true,
-                trailing: const Icon(Icons.chevron_left),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantMenuPage(restaurant: r))),
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF14243A), Color(0xFF284766)]),
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Row(children: [
+                    Icon(Icons.location_on_rounded, color: Color(0xFFFF9A32), size: 18),
+                    SizedBox(width: 6),
+                    Text('التوصيل إلى', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  ]),
+                  const SizedBox(height: 5),
+                  const Text('رداع، اليمن', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                  const SizedBox(height: 18),
+                  const Text('ماذا تشتهي اليوم؟', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24)),
+                  const SizedBox(height: 6),
+                  const Text('وجبتك المفضلة تصلك حتى باب بيتك', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  const SizedBox(height: 17),
+                  Row(children: [
+                    const Icon(Icons.delivery_dining_rounded, color: Color(0xFFFF9A32), size: 24),
+                    const SizedBox(width: 8),
+                    const Text('اطلب بسهولة • تابع طلبك • استمتع', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+                  ]),
+                ]),
               ),
-            )),
-          ]);
+              const SizedBox(height: 22),
+              const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('المطاعم المتاحة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+                Icon(Icons.tune_rounded, color: Color(0xFFFF7A1A)),
+              ]),
+              const SizedBox(height: 10),
+              if (restaurants.isEmpty)
+                const Card(child: Padding(
+                  padding: EdgeInsets.all(22),
+                  child: Column(children: [
+                    Icon(Icons.restaurant_menu_rounded, size: 46, color: Color(0xFFFF7A1A)),
+                    SizedBox(height: 10),
+                    Text('لا توجد مطاعم مفعّلة حاليًا', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF14243A))),
+                    SizedBox(height: 5),
+                    Text('ستظهر المطاعم هنا بعد إضافتها واعتمادها من الإدارة.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF748094))),
+                  ]),
+                ))
+              else
+                ...restaurants.map((r) => Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantMenuPage(restaurant: r))),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(children: [
+                        Container(
+                          width: 82, height: 82,
+                          decoration: BoxDecoration(color: const Color(0xFFFFF0E3), borderRadius: BorderRadius.circular(18)),
+                          child: const Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFFF7A1A)),
+                        ),
+                        const SizedBox(width: 13),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+                          const SizedBox(height: 5),
+                          Text(r['description']?.toString() ?? 'وجبات شهية بانتظارك', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
+                          const SizedBox(height: 8),
+                          Row(children: [
+                            const Icon(Icons.delivery_dining_rounded, size: 16, color: Color(0xFFFF7A1A)),
+                            const SizedBox(width: 4),
+                            Text('رسوم التوصيل: ${r['delivery_fee_yer'] ?? '—'} ريال', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF14243A))),
+                          ]),
+                        ])),
+                        const Icon(Icons.chevron_left_rounded, color: Color(0xFF8994A3)),
+                      ]),
+                    ),
+                  ),
+                )),
+            ],
+          );
         },
       ),
     );
