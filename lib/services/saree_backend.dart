@@ -36,13 +36,18 @@ class SareeBackend {
     required String password,
     required String fullName,
     required String phone,
+    String requestedRole = 'customer',
   }) async {
+    if (!['customer', 'courier', 'restaurant_owner'].contains(requestedRole)) {
+      throw ArgumentError('نوع الحساب غير صالح');
+    }
     await client.auth.signUp(
       email: email.trim(),
       password: password,
       data: {
         'full_name': fullName.trim(),
         'phone': phone.trim(),
+        'requested_role': requestedRole,
       },
     );
   }
@@ -115,7 +120,7 @@ class SareeBackend {
     if (current == null) throw Exception('يرجى تسجيل الدخول');
     final row = await client
         .from('profiles')
-        .select('id, full_name, phone, role, created_at')
+        .select('id, full_name, phone, role, approval_status, approval_note, created_at')
         .eq('id', current.id)
         .single();
     return Map<String, dynamic>.from(row);
@@ -423,6 +428,25 @@ class SareeBackend {
       'status': status,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', id);
+  }
+
+
+  static Future<Map<String, dynamic>> walletBalance() async {
+    final rows = await client.from('wallet_balances').select('balance_yer').eq('user_id', user!.id).maybeSingle();
+    return Map<String, dynamic>.from(rows ?? {'balance_yer': 0});
+  }
+
+  static Future<List<Map<String, dynamic>>> walletTransactions() async {
+    final rows = await client.from('wallet_transactions').select('id,amount_yer,kind,note,created_at').eq('user_id', user!.id).order('created_at', ascending: false).limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> reviewUser(String userId, String decision, {String note = ''}) async {
+    await client.rpc('admin_review_user', params: {
+      'p_user_id': userId,
+      'p_decision': decision,
+      'p_note': note,
+    });
   }
 
   static Future<void> claimOrder(String orderId) async {
