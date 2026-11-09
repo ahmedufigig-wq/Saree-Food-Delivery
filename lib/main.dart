@@ -106,9 +106,13 @@ class BrandMark extends StatelessWidget {
       boxShadow: const [BoxShadow(color: Color(0x30B91F2B), blurRadius: 20, offset: Offset(0, 8))],
     ),
     child: Stack(alignment: Alignment.center, children: [
-      Positioned(left: size * .09, top: size * .32, child: Icon(Icons.bolt_rounded, color: Colors.white70, size: size * .23)),
-      Icon(Icons.delivery_dining_rounded, color: Colors.white, size: size * .67),
-      Positioned(bottom: size * .09, right: size * .12, child: Container(width: size * .19, height: size * .19, decoration: BoxDecoration(color: const Color(0xFFFFC400), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)))),
+      Positioned(left: size * .07, top: size * .27, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(width: size * .28, height: size * .035, decoration: BoxDecoration(color: const Color(0xFFFFC400), borderRadius: BorderRadius.circular(8))),
+        SizedBox(height: size * .055),
+        Container(width: size * .20, height: size * .035, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8))),
+      ])),
+      Icon(Icons.two_wheeler_rounded, color: Colors.white, size: size * .70),
+      Positioned(top: size * .10, right: size * .13, child: Icon(Icons.bolt_rounded, color: const Color(0xFFFFC400), size: size * .23)),
     ]),
   );
 }
