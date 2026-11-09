@@ -47,6 +47,67 @@ class SareeBackend {
     );
   }
 
+
+  static Future<void> updateMyProfile({
+    required String fullName,
+    required String phone,
+  }) async {
+    await client.from('profiles').update({
+      'full_name': fullName.trim(),
+      'phone': phone.trim().isEmpty ? null : phone.trim(),
+    }).eq('id', user!.id);
+  }
+
+  static Future<List<Map<String, dynamic>>> myAddresses() async {
+    final rows = await client
+        .from('customer_addresses')
+        .select()
+        .eq('customer_id', user!.id)
+        .order('is_default', ascending: false)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> saveAddress({
+    String? id,
+    required String label,
+    required String addressText,
+    required String area,
+    required bool isDefault,
+  }) async {
+    final values = {
+      'customer_id': user!.id,
+      'label': label.trim(),
+      'address_text': addressText.trim(),
+      'area': area.trim(),
+      'is_default': isDefault,
+    };
+    if (isDefault) {
+      await client.from('customer_addresses')
+          .update({'is_default': false})
+          .eq('customer_id', user!.id);
+    }
+    if (id == null) {
+      await client.from('customer_addresses').insert(values);
+    } else {
+      values.remove('customer_id');
+      await client.from('customer_addresses').update(values).eq('id', id);
+    }
+  }
+
+  static Future<void> deleteAddress(String id) async {
+    await client.from('customer_addresses')
+        .delete().eq('id', id).eq('customer_id', user!.id);
+  }
+
+  static Future<void> setDefaultAddress(String id) async {
+    await client.from('customer_addresses')
+        .update({'is_default': false}).eq('customer_id', user!.id);
+    await client.from('customer_addresses')
+        .update({'is_default': true})
+        .eq('id', id).eq('customer_id', user!.id);
+  }
+
   static Future<void> signOut() => client.auth.signOut();
 
   static Future<Map<String, dynamic>> profile() async {
