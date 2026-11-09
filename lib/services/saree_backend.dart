@@ -320,16 +320,20 @@ class SareeBackend {
     final term = query.trim();
     if (term.isEmpty) return [];
     final safe = term.replaceAll('%', r'\%').replaceAll('_', r'\_');
-    final results = await Future.wait([
-      client.from('restaurants').select().eq('is_active', true).ilike('name', '%$safe%').limit(20),
-      client.from('menu_items').select('*, restaurants!inner(id,name,is_active)').eq('is_available', true).eq('restaurants.is_active', true).ilike('name', '%$safe%').limit(30),
-    ]);
+    final categories = await client.from('menu_categories').select('id').eq('is_active', true).ilike('name', '%$safe%').limit(30);
+    final categoryIds = List<Map<String,dynamic>>.from(categories).map((row) => row['id'].toString()).toList();
+    final restaurantRows = await client.from('restaurants').select().eq('is_active', true).ilike('name', '%$safe%').limit(20);
+    final mealRows = await client.from('menu_items').select('*, restaurants!inner(id,name,is_active)').eq('is_available', true).eq('restaurants.is_active', true).ilike('name', '%$safe%').limit(30);
+    final categoryMeals = categoryIds.isEmpty
+      ? <Map<String,dynamic>>[]
+      : List<Map<String,dynamic>>.from(await client.from('menu_items').select('*, restaurants!inner(id,name,is_active)').eq('is_available', true).eq('restaurants.is_active', true).inFilter('category_id', categoryIds).limit(30));
     final rows = <Map<String, dynamic>>[];
-    for (final row in List<Map<String, dynamic>>.from(results[0])) {
+    for (final row in List<Map<String, dynamic>>.from(restaurantRows)) {
       rows.add({...row, '_kind': 'restaurant'});
     }
-    for (final row in List<Map<String, dynamic>>.from(results[1])) {
-      rows.add({...row, '_kind': 'meal'});
+    final seenMeals = <String>{};
+    for (final row in [...List<Map<String, dynamic>>.from(mealRows), ...categoryMeals]) {
+      if (seenMeals.add(row['id'].toString())) rows.add({...row, '_kind': 'meal'});
     }
     return rows;
   }
