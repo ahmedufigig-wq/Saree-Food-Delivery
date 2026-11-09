@@ -82,6 +82,14 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
           fi
           grep -q 'android.permission.INTERNET' "$MANIFEST"
+          if ! grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"; then
+            sed -i '/<application/i\    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$MANIFEST"
+          fi
+          if ! grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"; then
+            sed -i '/<application/i\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />' "$MANIFEST"
+          fi
+          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
+          grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
 
       - name: Resolve dependencies
         run: flutter pub get
