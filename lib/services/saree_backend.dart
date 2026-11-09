@@ -338,6 +338,16 @@ class SareeBackend {
     return rows;
   }
 
+  static Future<List<Map<String, dynamic>>> activePromotions() async {
+    final rows = await client.from('promotions').select().eq('is_active', true).lte('starts_at', DateTime.now().toUtc().toIso8601String()).order('starts_at', ascending: false).limit(10);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<List<Map<String, dynamic>>> restaurantReviews(String restaurantId) async {
+    final rows = await client.from('reviews').select('rating,comment,created_at,profiles(full_name)').eq('restaurant_id', restaurantId).eq('is_visible', true).order('created_at', ascending: false).limit(30);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   static Future<List<Map<String, dynamic>>> categories() async {
     final rows = await client.from('menu_categories').select('id,name,sort_order,restaurant_id').eq('is_active', true).order('sort_order').limit(40);
     return List<Map<String, dynamic>>.from(rows);
