@@ -685,13 +685,77 @@ class CustomerOrdersPage extends StatelessWidget {
             title: Text('طلب #${order['order_number']}'),
             subtitle: Text('${statusLabel(order['status'].toString())}\nالإجمالي: ${order['total_yer']} ريال'),
             isThreeLine: true,
-            onTap: () => showDialog(context: context, builder: (_) => AlertDialog(
-              title: Text('طلب #${order['order_number']}'),
-              content: Text('الحالة: ${statusLabel(order['status'].toString())}\nالعنوان: ${order['delivery_address']}\nالإجمالي: ${order['total_yer']} ريال'),
-              actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('إغلاق'))],
-            )),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderTrackingPage(order: order))),
           ),
         )).toList());
+      },
+    ),
+  );
+}
+
+
+class OrderTrackingPage extends StatelessWidget {
+  const OrderTrackingPage({super.key, required this.order});
+  final Map<String, dynamic> order;
+
+  static const steps = [
+    ('pending', 'تم استلام الطلب', Icons.receipt_long_rounded),
+    ('accepted', 'وافق المطعم على الطلب', Icons.thumb_up_alt_rounded),
+    ('preparing', 'المطعم يحضّر طلبك', Icons.soup_kitchen_rounded),
+    ('ready_for_pickup', 'الطلب جاهز للاستلام', Icons.inventory_2_rounded),
+    ('assigned', 'تم تعيين مندوب', Icons.delivery_dining_rounded),
+    ('picked_up', 'الطلب في الطريق إليك', Icons.two_wheeler_rounded),
+    ('delivered', 'تم التوصيل بنجاح', Icons.check_circle_rounded),
+  ];
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('تتبع الطلب')),
+    body: StreamBuilder<List<Map<String, dynamic>>>(
+      stream: SareeBackend.trackOrder(order['id'].toString()),
+      builder: (context, snap) {
+        final current = snap.data?.isNotEmpty == true ? snap.data!.first : order;
+        final status = current['status'].toString();
+        final index = steps.indexWhere((step) => step.$1 == status);
+        final cancelled = status == 'cancelled';
+        return ListView(padding: const EdgeInsets.all(18), children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: const Color(0xFF14243A), borderRadius: BorderRadius.circular(22)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('حالة طلبك الآن', style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 8),
+              Text(cancelled ? 'تم إلغاء الطلب' : steps[index < 0 ? 0 : index].$2, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Text('رقم الطلب #${current['order_number']} • ${current['total_yer']} ريال', style: const TextStyle(color: Colors.white70)),
+            ]),
+          ),
+          const SizedBox(height: 18),
+          if (cancelled) const Card(child: ListTile(leading: Icon(Icons.info_outline), title: Text('هذا الطلب ملغي'))),
+          ...steps.asMap().entries.map((entry) {
+            final active = !cancelled && index >= entry.key;
+            final done = !cancelled && index > entry.key;
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundColor: active ? const Color(0xFFFFE7D2) : const Color(0xFFE7ECF2),
+                child: Icon(done ? Icons.check_rounded : entry.value.$3, color: active ? const Color(0xFFFF7A1A) : const Color(0xFF8994A3)),
+              ),
+              title: Text(entry.value.$2, style: TextStyle(fontWeight: active ? FontWeight.w900 : FontWeight.w500, color: active ? const Color(0xFF14243A) : const Color(0xFF8994A3))),
+            );
+          }),
+          Card(child: ListTile(leading: const Icon(Icons.location_on_rounded), title: const Text('عنوان التوصيل'), subtitle: Text(current['delivery_address']?.toString() ?? ''))),
+          if (status == 'pending')
+            OutlinedButton.icon(
+              onPressed: () async {
+                try {
+                  await SareeBackend.transition(current['id'].toString(), 'cancelled', reason: 'طلب العميل');
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء الطلب')));
+                } catch(e) { if(context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+              },
+              icon: const Icon(Icons.cancel_outlined), label: const Text('إلغاء الطلب'),
+            ),
+          const Padding(padding: EdgeInsets.only(top: 10), child: Text('تتحدث حالة الطلب تلقائيًا عند تغييرها. عرض موقع المندوب على خريطة مباشرة يحتاج إلى تفعيل GPS وإذن الموقع للمندوب، ولم يُفعّل بعد.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
+        ]);
       },
     ),
   );
