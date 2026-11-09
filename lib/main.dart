@@ -378,7 +378,7 @@ class CustomerHome extends StatelessWidget {
               PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout), title: Text('تسجيل الخروج'))),
             ],
           ),
-        ],,
+        ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: SareeBackend.restaurants(),
