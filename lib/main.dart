@@ -206,6 +206,8 @@ class SareeGate extends StatelessWidget {
             }
             if (profile.hasError) return ErrorPage(message: profile.error.toString());
             final role = profile.data?['role']?.toString() ?? 'customer';
+            final approval = profile.data?['approval_status']?.toString() ?? 'approved';
+            if (approval != 'approved' && role != 'admin') return PendingApprovalPage(status: approval, note: profile.data?['approval_note']?.toString());
             if (role == 'restaurant_owner') return const RestaurantPortal();
             if (role == 'courier') return const CourierPortal();
             if (role == 'admin') return const AdminPortal();
@@ -215,6 +217,74 @@ class SareeGate extends StatelessWidget {
       },
     );
   }
+}
+
+
+class PendingApprovalPage extends StatelessWidget {
+  const PendingApprovalPage({super.key, required this.status, this.note});
+  final String status;
+  final String? note;
+  @override
+  Widget build(BuildContext context) {
+    final rejected = status == 'rejected';
+    return Scaffold(
+      body: Center(child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(rejected ? Icons.cancel_outlined : Icons.hourglass_top_rounded, size: 68, color: rejected ? Colors.red : const Color(0xFFFFA000)),
+          const SizedBox(height: 16),
+          Text(rejected ? 'لم تتم الموافقة على الحساب' : 'حسابك قيد المراجعة', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          Text(note?.isNotEmpty == true ? note! : rejected ? 'يرجى التواصل مع إدارة سريع لمعرفة التفاصيل.' : 'سيتم تفعيل حسابك بعد مراجعة الإدارة واعتماد بياناتك.', textAlign: TextAlign.center),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: () => SareeBackend.signOut(), child: const Text('تسجيل الخروج')),
+        ]),
+      )),
+    );
+  }
+}
+
+class WalletPage extends StatefulWidget {
+  const WalletPage({super.key});
+  @override State<WalletPage> createState() => _WalletPageState();
+}
+class _WalletPageState extends State<WalletPage> {
+  late Future<Map<String,dynamic>> _balance;
+  late Future<List<Map<String,dynamic>>> _transactions;
+  @override
+  void initState() { super.initState(); _load(); }
+  void _load() { _balance=SareeBackend.walletBalance(); _transactions=SareeBackend.walletTransactions(); }
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('محفظتي'), actions: [IconButton(onPressed: () => setState(_load), icon: const Icon(Icons.refresh))]),
+    body: RefreshIndicator(onRefresh: () async => setState(_load), child: ListView(padding: const EdgeInsets.all(16), children: [
+      FutureBuilder<Map<String,dynamic>>(future:_balance,builder:(context,snap) {
+        if(snap.hasError) return Text('تعذر تحميل الرصيد: ${snap.error}');
+        if(!snap.hasData) return const LinearProgressIndicator();
+        final amount=(snap.data!['balance_yer'] as num?)?.toInt() ?? 0;
+        return Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFFE50914),Color(0xFFFF8A00)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          const Text('الرصيد الحالي',style:TextStyle(color:Colors.white70)),
+          const SizedBox(height:8),
+          Text('$amount ريال يمني'.replaceFirst('$amount', amount.toString()),style:const TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w900)),
+          const SizedBox(height:6),
+          const Text('الرصيد يعكس الحركات المسجلة فعليًا في حسابك.',style:TextStyle(color:Colors.white)),
+        ]));
+      }),
+      const Padding(padding:EdgeInsets.symmetric(vertical:18),child:Text('سجل العمليات',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900))),
+      FutureBuilder<List<Map<String,dynamic>>>(future:_transactions,builder:(context,snap) {
+        if(snap.hasError) return Text('تعذر تحميل العمليات: ${snap.error}');
+        if(!snap.hasData) return const Center(child:CircularProgressIndicator());
+        final rows=snap.data!;
+        if(rows.isEmpty) return const Padding(padding:EdgeInsets.all(20),child:Text('لا توجد عمليات مالية مسجلة حتى الآن.'));
+        return Column(children:rows.map((row) {
+          final amount=(row['amount_yer'] as num).toInt();
+          return Card(child:ListTile(leading:Icon(amount>0?Icons.add_circle:Icons.remove_circle,color:amount>0?Colors.green:Colors.red),title:Text(row['note']?.toString().isNotEmpty==true?row['note'].toString():row['kind'].toString()),subtitle:Text(row['created_at'].toString()),trailing:Text('${amount>0?'+':''}$amount ريال',style:TextStyle(fontWeight:FontWeight.bold,color:amount>0?Colors.green:Colors.red))));
+        }).toList());
+      }),
+      const SizedBox(height:12),
+      const Text('لا تتوفر تعبئة ذاتية للمحفظة حاليًا؛ تُسجّل الحركات من الإدارة أو عبر استرداد موثق.',style:TextStyle(color:Colors.black54)),
+    ])),
+  );
 }
 
 class SetupRequiredPage extends StatelessWidget {
@@ -271,6 +341,7 @@ class _AuthPageState extends State<AuthPage> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _register = false;
+  String _requestedRole = 'customer';
   bool _busy = false;
   String? _message;
 
@@ -290,8 +361,9 @@ class _AuthPageState extends State<AuthPage> {
           password: _password.text,
           fullName: _name.text,
           phone: _phone.text,
+          requestedRole: _requestedRole,
         );
-        if (mounted) setState(() => _message = 'تم إنشاء الحساب. إذا طُلب منك تأكيد البريد، افتح رسالة التأكيد ثم سجّل الدخول.');
+        if (mounted) setState(() => _message = _requestedRole == 'customer' ? 'تم إنشاء الحساب. إذا طُلب تأكيد البريد، افتح رسالة التأكيد ثم سجّل الدخول.' : 'تم إرسال طلب التسجيل. سيظل الحساب معلقًا حتى اعتماد الإدارة.');
       } else {
         await SareeBackend.signIn(_email.text, _password.text);
       }
@@ -319,6 +391,17 @@ class _AuthPageState extends State<AuthPage> {
           Text(_register ? 'إنشاء حساب جديد' : 'تسجيل الدخول', textAlign: TextAlign.center, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
           const SizedBox(height: 18),
           if (_register) ...[
+            DropdownButtonFormField<String>(
+              value: _requestedRole,
+              decoration: const InputDecoration(labelText: 'نوع الحساب'),
+              items: const [
+                DropdownMenuItem(value: 'customer', child: Text('عميل')),
+                DropdownMenuItem(value: 'courier', child: Text('مندوب توصيل — يتطلب اعتماد الإدارة')),
+                DropdownMenuItem(value: 'restaurant_owner', child: Text('صاحب مطعم — يتطلب اعتماد الإدارة')),
+              ],
+              onChanged: (value) => setState(() => _requestedRole = value ?? 'customer'),
+            ),
+            const SizedBox(height: 12),
             TextFormField(controller: _name, decoration: const InputDecoration(labelText: 'الاسم الكامل'), validator: (v) => (v == null || v.trim().length < 2) ? 'أدخل اسمك' : null),
             const SizedBox(height: 12),
             TextFormField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'رقم الهاتف'), validator: (v) => (v == null || v.trim().length < 7) ? 'أدخل رقم هاتف صحيحاً' : null),
@@ -373,6 +456,7 @@ class CustomerHome extends StatelessWidget {
                 'favorites' => const CustomerFavoritesPage(),
                 'orders' => const CustomerOrdersPage(),
                 'account' => const CustomerAccountPage(),
+                'wallet' => const WalletPage(),
                 'support' => const CustomerSupportPage(),
                 _ => null,
               };
@@ -384,6 +468,7 @@ class CustomerHome extends StatelessWidget {
               PopupMenuItem(value: 'favorites', child: ListTile(dense: true, leading: Icon(Icons.favorite_border), title: Text('المفضلة'))),
               PopupMenuItem(value: 'orders', child: ListTile(dense: true, leading: Icon(Icons.receipt_long), title: Text('طلباتي'))),
               PopupMenuItem(value: 'account', child: ListTile(dense: true, leading: Icon(Icons.person_outline), title: Text('حسابي والعناوين'))),
+              PopupMenuItem(value: 'wallet', child: ListTile(dense: true, leading: Icon(Icons.account_balance_wallet_outlined), title: Text('محفظتي'))),
               PopupMenuItem(value: 'support', child: ListTile(dense: true, leading: Icon(Icons.support_agent), title: Text('الدعم والمساعدة'))),
               PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout), title: Text('تسجيل الخروج'))),
             ],
