@@ -458,23 +458,87 @@ class RestaurantMenuPage extends StatelessWidget {
         if (snapshot.hasError) return Center(child: Text('تعذر تحميل القائمة: ${snapshot.error}'));
         final menu = snapshot.data ?? [];
         if (menu.isEmpty) return const Center(child: Text('لم يضف المطعم وجباته بعد'));
-        return ListView(padding: const EdgeInsets.all(16), children: menu.map((item) => Card(
-          child: ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.fastfood)),
-            title: Text(item['name'].toString()),
-            subtitle: Text('${item['description'] ?? ''}\n${item['price_yer']} ريال يمني'),
-            isThreeLine: true,
-            trailing: IconButton(
-              icon: const Icon(Icons.add_circle, color: const Color(0xFFFF7A1A)),
-              onPressed: () {
-                context.read<CartController>().add(item, restaurant['id'].toString());
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أضيفت الوجبة إلى السلة')));
-              },
-            ),
+        return ListView(padding: const EdgeInsets.all(16), children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: const Color(0xFF14243A), borderRadius: BorderRadius.circular(22)),
+            child: Row(children: [
+              const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFF9A32), size: 32),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(restaurant['name'].toString(), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                const Text('اختر وجبتك المفضلة', style: TextStyle(color: Colors.white70)),
+              ])),
+            ]),
           ),
-        )).toList());
+          const SizedBox(height: 16),
+          ...menu.map((item) => Card(
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(item: item, restaurantId: restaurant['id'].toString()))),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(children: [
+                  Container(width: 76, height: 76, decoration: BoxDecoration(color: const Color(0xFFFFF0E3), borderRadius: BorderRadius.circular(17)), child: const Icon(Icons.lunch_dining_rounded, size: 38, color: Color(0xFFFF7A1A))),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF14243A))),
+                    const SizedBox(height: 4),
+                    Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
+                    const SizedBox(height: 7),
+                    Text('${item['price_yer']} ريال يمني', style: const TextStyle(color: Color(0xFFFF7A1A), fontWeight: FontWeight.w900)),
+                  ])),
+                  const Icon(Icons.chevron_left_rounded, color: Color(0xFF8994A3)),
+                ]),
+              ),
+            ),
+          )),
+        ]);
       },
     ),
+  );
+}
+
+class MealDetailsPage extends StatelessWidget {
+  const MealDetailsPage({super.key, required this.item, required this.restaurantId});
+  final Map<String, dynamic> item;
+  final String restaurantId;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('تفاصيل الوجبة')),
+    body: ListView(padding: const EdgeInsets.all(18), children: [
+      Container(
+        height: 210,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFFFFE7D2), Color(0xFFFFF7EF)]),
+          borderRadius: BorderRadius.circular(26),
+        ),
+        child: const Icon(Icons.lunch_dining_rounded, size: 100, color: Color(0xFFFF7A1A)),
+      ),
+      const SizedBox(height: 20),
+      Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+      const SizedBox(height: 8),
+      Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF748094))),
+      const SizedBox(height: 18),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE7ECF2))),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF748094))),
+          Text('${item['price_yer']} ريال يمني', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFFFF7A1A))),
+        ]),
+      ),
+      const SizedBox(height: 24),
+      FilledButton.icon(
+        onPressed: () {
+          context.read<CartController>().add(item, restaurantId);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أضيفت الوجبة إلى السلة')));
+        },
+        icon: const Icon(Icons.add_shopping_cart_rounded),
+        label: const Text('أضف إلى السلة'),
+      ),
+    ]),
   );
 }
 
