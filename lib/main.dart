@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -747,6 +748,8 @@ class OrderTrackingPage extends StatelessWidget {
             );
           }),
           Card(child: ListTile(leading: const Icon(Icons.location_on_rounded), title: const Text('عنوان التوصيل'), subtitle: Text(current['delivery_address']?.toString() ?? ''))),
+          if (current['courier_id'] != null && (status == 'assigned' || status == 'picked_up'))
+            CourierLiveMap(courierId: current['courier_id'].toString()),
           if (status == 'pending')
             OutlinedButton.icon(
               onPressed: () async {
@@ -761,6 +764,34 @@ class OrderTrackingPage extends StatelessWidget {
         ]);
       },
     ),
+  );
+}
+
+
+class CourierLiveMap extends StatelessWidget {
+  const CourierLiveMap({super.key, required this.courierId});
+  final String courierId;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<List<Map<String,dynamic>>>(
+    stream: SareeBackend.courierLocation(courierId),
+    builder: (context, snap) {
+      if(snap.hasError) return const Card(child: ListTile(title: Text('تعذر تحميل موقع المندوب')));
+      if(snap.data == null || snap.data!.isEmpty) return const Card(child: ListTile(leading: Icon(Icons.location_searching), title: Text('بانتظار مشاركة المندوب لموقعه')));
+      final row = snap.data!.first;
+      final point = LatLng((row['latitude'] as num).toDouble(), (row['longitude'] as num).toDouble());
+      return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const ListTile(leading: Icon(Icons.map_rounded), title: Text('موقع المندوب المباشر'), subtitle: Text('تتحدث الخريطة عند وصول تحديث جديد')),
+        SizedBox(height: 230, child: FlutterMap(
+          options: MapOptions(initialCenter: point, initialZoom: 15),
+          children: [
+            TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
+            MarkerLayer(markers: [Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFFF7A1A), size: 44))]),
+          ],
+        )),
+        Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: ${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF748094)))),
+      ]));
+    },
   );
 }
 
