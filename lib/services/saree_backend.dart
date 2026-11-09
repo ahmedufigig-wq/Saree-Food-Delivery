@@ -186,7 +186,7 @@ class SareeBackend {
   }
 
   static Future<void> setUserRole(String id, String role) async {
-    await client.from('profiles').update({'role': role}).eq('id', id);
+    await client.rpc('admin_set_user_role', params: {'p_user_id': id, 'p_role': role});
   }
 
   static Future<void> addRestaurantMember(String restaurantId, String userId) async {
