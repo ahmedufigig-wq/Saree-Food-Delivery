@@ -27,12 +27,34 @@ jobs:
             flutter create --platforms=android --org com.saree.delivery --project-name saree .
           fi
 
-      - name: Configure Android minimum SDK
+      - name: Force Android minimum SDK 21
         run: |
+          set -euo pipefail
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' android/app/build.gradle.kts
+            cat >> android/app/build.gradle.kts <<'GRADLE'
+          
+          // Explicit compatibility override for older Android devices.
+          android {
+              defaultConfig {
+                  minSdk = 21
+              }
+          }
+          GRADLE
+            grep -q 'minSdk = 21' android/app/build.gradle.kts
           elif [ -f android/app/build.gradle ]; then
-            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
+            cat >> android/app/build.gradle <<'GRADLE'
+          
+          // Explicit compatibility override for older Android devices.
+          android {
+              defaultConfig {
+                  minSdkVersion 21
+              }
+          }
+          GRADLE
+            grep -q 'minSdkVersion 21' android/app/build.gradle
+          else
+            echo "Android Gradle app module not found" >&2
+            exit 1
           fi
 
       - name: Apply Saree launcher icon and native splash artwork
