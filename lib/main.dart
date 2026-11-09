@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'services/saree_backend.dart';
 
@@ -767,37 +770,119 @@ class RestaurantPortal extends StatefulWidget {
 }
 
 class _RestaurantPortalState extends State<RestaurantPortal> {
+  int _tab = 0;
   bool _busy = false;
-  Future<void> _advance(String id, String next) async {
+  Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
-    try { await SareeBackend.transition(id, next); }
-    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
-    finally { if (mounted) setState(() => _busy = false); }
+    try { await action(); if(mounted) setState(() {}); }
+    catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    finally { if(mounted) setState(() => _busy = false); }
+  }
+
+  Future<void> _editMeal(String restaurantId, [Map<String,dynamic>? item]) async {
+    final name = TextEditingController(text: item?['name']?.toString() ?? '');
+    final description = TextEditingController(text: item?['description']?.toString() ?? '');
+    final price = TextEditingController(text: item?['price_yer']?.toString() ?? '');
+    final image = TextEditingController(text: item?['image_url']?.toString() ?? '');
+    bool available = item?['is_available'] != false;
+    final form = GlobalKey<FormState>();
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
+      title: Text(item == null ? 'إضافة وجبة' : 'تعديل الوجبة'),
+      content: Form(key: form, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextFormField(controller: name, decoration: const InputDecoration(labelText: 'اسم الوجبة'), validator: (v) => v == null || v.trim().isEmpty ? 'أدخل اسم الوجبة' : null),
+        const SizedBox(height: 8),
+        TextFormField(controller: description, maxLines: 2, decoration: const InputDecoration(labelText: 'الوصف')),
+        const SizedBox(height: 8),
+        TextFormField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'السعر بالريال'), validator: (v) => (int.tryParse(v ?? '') ?? 0) <= 0 ? 'أدخل سعرًا صحيحًا' : null),
+        const SizedBox(height: 8),
+        TextFormField(controller: image, decoration: const InputDecoration(labelText: 'رابط صورة الوجبة (اختياري)')),
+        SwitchListTile(value: available, onChanged: (v) => setLocal(() => available = v), title: const Text('متاحة للطلب')),
+      ]))),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () { if(form.currentState!.validate()) Navigator.pop(ctx, true); }, child: const Text('حفظ'))],
+    )));
+    if(ok == true) await _run(() => SareeBackend.saveMenuItem(id: item?['id']?.toString(), restaurantId: restaurantId, name: name.text, description: description.text, price: int.parse(price.text), imageUrl: image.text, available: available));
+    name.dispose(); description.dispose(); price.dispose(); image.dispose();
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('طلبات المطعم'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
-    body: FutureBuilder<List<Map<String, dynamic>>>(
-      future: SareeBackend.restaurantOrders(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snapshot.hasError) return Center(child: Text('تعذر تحميل طلبات المطعم: ${snapshot.error}'));
-        final orders = snapshot.data ?? [];
-        if (orders.isEmpty) return const Center(child: Text('لا توجد طلبات. تأكد من ربط حسابك بالمطعم من الإدارة.'));
-        return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) {
-          final status = o['status'].toString();
-          final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
-          final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : next == 'ready_for_pickup' ? 'جاهز للاستلام' : null;
-          return Card(child: ListTile(
-            title: Text('طلب #${o['order_number']} - ${o['customer_name']}'),
-            subtitle: Text('الحالة: $status\n${o['delivery_address']}\n${o['total_yer']} ريال'),
-            isThreeLine: true,
-            trailing: next == null ? null : FilledButton(onPressed: _busy ? null : () => _advance(o['id'].toString(), next), child: Text(label!)),
-          ));
-        }).toList());
+    appBar: AppBar(title: const Text('إدارة المطعم'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
+    body: FutureBuilder<List<Map<String,dynamic>>>(
+      future: SareeBackend.myRestaurants(),
+      builder: (context, rs) {
+        if(rs.connectionState != ConnectionState.done) return const LoadingPage();
+        if(rs.hasError) return Center(child: Text('تعذر تحميل المطعم: ${rs.error}'));
+        final restaurants = rs.data ?? [];
+        if(restaurants.isEmpty) return const Center(child: Text('لم يتم ربط حسابك بمطعم. اطلب من الإدارة ربط الحساب.'));
+        final restaurant = restaurants.first;
+        final rid = restaurant['id'].toString();
+        return Column(children: [
+          Padding(padding: const EdgeInsets.all(12), child: Row(children: [
+            const Icon(Icons.storefront_rounded, color: Color(0xFFFF7A1A)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(restaurant['name'].toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+          ])),
+          Expanded(child: IndexedStack(index: _tab, children: [
+            FutureBuilder<List<Map<String,dynamic>>>(
+              future: SareeBackend.manageMenu(rid),
+              builder: (context, snap) {
+                if(snap.connectionState != ConnectionState.done) return const LoadingPage();
+                if(snap.hasError) return Center(child: Text('تعذر تحميل الوجبات: ${snap.error}'));
+                final items = snap.data ?? [];
+                return ListView(padding: const EdgeInsets.all(12), children: [
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    const Text('قائمة الوجبات', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                    FilledButton.icon(onPressed: () => _editMeal(rid), icon: const Icon(Icons.add), label: const Text('وجبة جديدة')),
+                  ]),
+                  if(items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('لم تضف وجبات بعد. أضف أول وجبة ليراها العملاء.')),
+                  ...items.map((item) => Card(child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.fastfood_rounded)),
+                    title: Text(item['name'].toString()),
+                    subtitle: Text('${item['price_yer']} ريال • ${item['is_available'] == true ? 'متاحة' : 'متوقفة'}'),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (v) {
+                        if(v == 'edit') _editMeal(rid, item);
+                        if(v == 'toggle') _run(() => SareeBackend.saveMenuItem(id: item['id'].toString(), restaurantId: rid, name: item['name'].toString(), description: item['description']?.toString() ?? '', price: (item['price_yer'] as num).toInt(), imageUrl: item['image_url']?.toString(), available: item['is_available'] != true));
+                        if(v == 'delete') _run(() => SareeBackend.deleteMenuItem(item['id'].toString()));
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('تعديل')),
+                        PopupMenuItem(value: 'toggle', child: Text('تغيير التوفر')),
+                        PopupMenuItem(value: 'delete', child: Text('حذف')),
+                      ],
+                    ),
+                  ))),
+                ]);
+              },
+            ),
+            FutureBuilder<List<Map<String,dynamic>>>(
+              future: SareeBackend.restaurantOrders(),
+              builder: (context, snap) {
+                if(snap.connectionState != ConnectionState.done) return const LoadingPage();
+                if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${snap.error}'));
+                final orders = snap.data ?? [];
+                if(orders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
+                return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) {
+                  final status = o['status'].toString();
+                  final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
+                  final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
+                  return Card(child: ListTile(
+                    title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
+                    subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
+                    isThreeLine: true,
+                    trailing: next == null ? null : FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label)),
+                  ));
+                }).toList());
+              },
+            ),
+          ])),
+        ]);
       },
     ),
+    bottomNavigationBar: NavigationBar(selectedIndex: _tab, onDestinationSelected: (v) => setState(() => _tab = v), destinations: const [
+      NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined), label: 'الوجبات'),
+      NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'الطلبات'),
+    ]),
   );
 }
 
@@ -866,7 +951,6 @@ class AdminPortal extends StatefulWidget {
 
 class _AdminPortalState extends State<AdminPortal> {
   int _tab = 0;
-  bool _busy = false;
   Future<void> _refresh() async { if (mounted) setState(() {}); }
 
   Future<void> _createRestaurant() async {
@@ -913,7 +997,7 @@ class _AdminPortalState extends State<AdminPortal> {
     final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
       title: const Text('ربط صاحب المطعم'),
       content: DropdownButtonFormField<String>(
-        value: selected,
+        initialValue: selected,
         isExpanded: true,
         items: candidates.map((p) => DropdownMenuItem(value: p['id'].toString(), child: Text('${p['full_name']} • ${p['phone'] ?? ''}', overflow: TextOverflow.ellipsis))).toList(),
         onChanged: (v) { if (v != null) setLocal(() => selected = v); },
@@ -933,7 +1017,7 @@ class _AdminPortalState extends State<AdminPortal> {
     final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
       title: Text('صلاحيات ${profile['full_name']}'),
       content: DropdownButtonFormField<String>(
-        value: role,
+        initialValue: role,
         items: roles.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
         onChanged: (v) { if(v != null) setLocal(() => role = v); },
       ),
