@@ -16,3 +16,7 @@ dependencies:
   latlong2: ^0.9.1
 flutter:
   uses-material-design: true
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
