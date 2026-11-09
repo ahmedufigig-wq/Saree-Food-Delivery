@@ -802,7 +802,7 @@ class RestaurantMenuPage extends StatelessWidget {
           'الحلويات',
           'أصناف أخرى',
         ];
-        final orderedCategories = categoryOrder.where(grouped.containsKey).toList();
+        final orderedCategories = [...categoryOrder.where(grouped.containsKey), ...grouped.keys.where((name) => !categoryOrder.contains(name))];
         return ListView(padding: const EdgeInsets.all(16), children: [
           Container(
             padding: const EdgeInsets.all(18),
