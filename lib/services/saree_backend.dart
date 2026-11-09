@@ -156,6 +156,51 @@ class SareeBackend {
     });
   }
 
+  static Future<List<Map<String, dynamic>>> adminRestaurants() async {
+    final rows = await client.from('restaurants').select().order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> createRestaurant({
+    required String name,
+    required String address,
+    required String phone,
+    required int deliveryFee,
+  }) async {
+    await client.from('restaurants').insert({
+      'name': name.trim(),
+      'address': address.trim(),
+      'phone': phone.trim().isEmpty ? null : phone.trim(),
+      'delivery_fee_yer': deliveryFee,
+      'is_active': false,
+    });
+  }
+
+  static Future<void> setRestaurantActive(String id, bool active) async {
+    await client.from('restaurants').update({'is_active': active}).eq('id', id);
+  }
+
+  static Future<List<Map<String, dynamic>>> adminProfiles() async {
+    final rows = await client.from('profiles').select('id, full_name, phone, role, created_at').order('created_at', ascending: false).limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> setUserRole(String id, String role) async {
+    await client.from('profiles').update({'role': role}).eq('id', id);
+  }
+
+  static Future<void> addRestaurantMember(String restaurantId, String userId) async {
+    await client.from('restaurant_members').upsert({
+      'restaurant_id': restaurantId,
+      'user_id': userId,
+      'member_role': 'manager',
+    });
+  }
+
+  static Future<void> removeRestaurantMember(String restaurantId, String userId) async {
+    await client.from('restaurant_members').delete().eq('restaurant_id', restaurantId).eq('user_id', userId);
+  }
+
   static Future<void> claimOrder(String orderId) async {
     await client.rpc(
       'claim_delivery_order',
