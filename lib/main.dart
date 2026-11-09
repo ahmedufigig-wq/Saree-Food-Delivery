@@ -153,7 +153,12 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.65, end: 1),
+                    duration: const Duration(milliseconds: 850),
+                    curve: Curves.elasticOut,
+                    builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+                    child: Container(
                     width: 142,
                     height: 142,
                     decoration: BoxDecoration(
@@ -163,6 +168,7 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 28, offset: const Offset(0, 12))],
                     ),
                     child: const BrandMark(size: 112),
+                  ),
                   ),
                   const SizedBox(height: 22),
                   const Text('سريع', style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: 1)),
@@ -430,7 +436,29 @@ class CustomerHome extends StatelessWidget {
                   ]),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
+              FutureBuilder<List<Map<String,dynamic>>>(
+                future: SareeBackend.activePromotions(),
+                builder: (context, promoSnap) {
+                  final promos = promoSnap.data ?? [];
+                  if (promos.isEmpty) return const SizedBox.shrink();
+                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('عروض سريع', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 9),
+                    SizedBox(height: 116, child: ListView(scrollDirection: Axis.horizontal, children: promos.map((promo) => Container(
+                      width: 270, margin: const EdgeInsetsDirectional.only(end: 10), padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: const LinearGradient(colors: [Color(0xFFE50914), Color(0xFF8B0008)])),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(promo['title'].toString(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+                        const SizedBox(height: 5),
+                        Expanded(child: Text(promo['description']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70))),
+                        if ((promo['code']?.toString() ?? '').isNotEmpty) Text('كود العرض: ${promo['code']}', style: const TextStyle(color: Color(0xFFFFC400), fontWeight: FontWeight.w900)),
+                      ]),
+                    )).toList())),
+                    const SizedBox(height: 18),
+                  ]);
+                },
+              ),
               const Text('تصفح حسب القسم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
               const SizedBox(height: 8),
               FutureBuilder<List<Map<String,dynamic>>>(
@@ -850,6 +878,28 @@ class RestaurantMenuPage extends StatelessWidget {
                 const Text('تصفح أقسام المنيو واختر وجبتك', style: TextStyle(color: Colors.white70)),
               ])),
             ]),
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<List<Map<String,dynamic>>>(
+            future: SareeBackend.restaurantReviews(restaurant['id'].toString()),
+            builder: (context, reviewSnap) {
+              final reviews = reviewSnap.data ?? [];
+              if (reviews.isEmpty) return const SizedBox.shrink();
+              final average = reviews.map((r) => (r['rating'] as num).toDouble()).reduce((a,b) => a+b) / reviews.length;
+              return Card(child: ListTile(
+                leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400), size: 30),
+                title: Text(average.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: Text('${reviews.length} تقييم من العملاء'),
+                trailing: TextButton(onPressed: () => showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => SafeArea(child: ListView(padding: const EdgeInsets.all(16), children: [
+                  const Text('تقييمات العملاء', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                  ...reviews.map((r) => ListTile(
+                    leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400)),
+                    title: Text('${r['rating']}/5 • ${(r['profiles'] is Map ? r['profiles']['full_name'] : null) ?? 'عميل'}'),
+                    subtitle: Text(r['comment']?.toString() ?? ''),
+                  )),
+                ]))), child: const Text('عرض التقييمات')),
+              ));
+            },
           ),
           const SizedBox(height: 16),
           ...orderedCategories.expand((category) => [
