@@ -351,21 +351,34 @@ class CustomerHome extends StatelessWidget {
         ]),
         actions: [
           IconButton(tooltip: 'البحث', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSearchPage())), icon: const Icon(Icons.search_rounded)),
-          IconButton(tooltip: 'الإشعارات', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerNotificationsPage())), icon: const Icon(Icons.notifications_none_rounded)),
-          IconButton(tooltip: 'المفضلة', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerFavoritesPage())), icon: const Icon(Icons.favorite_border_rounded)),
-          IconButton(tooltip: 'طلباتي', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerOrdersPage())), icon: const Icon(Icons.receipt_long_rounded)),
-          IconButton(tooltip: 'حسابي والعناوين', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerAccountPage())), icon: const Icon(Icons.person_outline_rounded)),
-          PopupMenuButton<String>(
-            tooltip: 'المزيد',
-            onSelected: (value) => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSupportPage())),
-            itemBuilder: (_) => const [PopupMenuItem(value: 'support', child: Row(children: [Icon(Icons.support_agent_rounded), SizedBox(width: 8), Text('الدعم والمساعدة')]))],
-          ),
           Stack(children: [
             IconButton(tooltip: 'السلة', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage())), icon: const Icon(Icons.shopping_bag_outlined)),
             if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, backgroundColor: const Color(0xFFE50914), child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)))),
           ]),
-          IconButton(tooltip: 'خروج', onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout_rounded)),
-        ],
+          PopupMenuButton<String>(
+            tooltip: 'القائمة',
+            onSelected: (value) {
+              final page = switch (value) {
+                'notifications' => const CustomerNotificationsPage(),
+                'favorites' => const CustomerFavoritesPage(),
+                'orders' => const CustomerOrdersPage(),
+                'account' => const CustomerAccountPage(),
+                'support' => const CustomerSupportPage(),
+                _ => null,
+              };
+              if (page != null) Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+              if (value == 'logout') SareeBackend.signOut();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'notifications', child: ListTile(dense: true, leading: Icon(Icons.notifications_none), title: Text('الإشعارات'))),
+              PopupMenuItem(value: 'favorites', child: ListTile(dense: true, leading: Icon(Icons.favorite_border), title: Text('المفضلة'))),
+              PopupMenuItem(value: 'orders', child: ListTile(dense: true, leading: Icon(Icons.receipt_long), title: Text('طلباتي'))),
+              PopupMenuItem(value: 'account', child: ListTile(dense: true, leading: Icon(Icons.person_outline), title: Text('حسابي والعناوين'))),
+              PopupMenuItem(value: 'support', child: ListTile(dense: true, leading: Icon(Icons.support_agent), title: Text('الدعم والمساعدة'))),
+              PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout), title: Text('تسجيل الخروج'))),
+            ],
+          ),
+        ],,
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: SareeBackend.restaurants(),
@@ -402,7 +415,26 @@ class CustomerHome extends StatelessWidget {
                   ]),
                 ]),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
+              const Text('تصفح حسب القسم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+              const SizedBox(height: 8),
+              FutureBuilder<List<Map<String,dynamic>>>(
+                future: SareeBackend.categories(),
+                builder: (context, categorySnap) {
+                  if (!categorySnap.hasData || categorySnap.data!.isEmpty) return const SizedBox.shrink();
+                  final seen = <String>{};
+                  final unique = categorySnap.data!.where((cat) => seen.add(cat['name'].toString())).toList();
+                  return SizedBox(height: 44, child: ListView(scrollDirection: Axis.horizontal, children: unique.map((cat) => Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 8),
+                    child: ActionChip(
+                      avatar: const Icon(Icons.restaurant_menu_rounded, size: 17),
+                      label: Text(cat['name'].toString()),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CustomerSearchPage(initialQuery: cat['name'].toString()))),
+                    ),
+                  )).toList()));
+                },
+              ),
+              const SizedBox(height: 20),
               const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('المطاعم المتاحة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
                 Icon(Icons.tune_rounded, color: Color(0xFFE50914)),
