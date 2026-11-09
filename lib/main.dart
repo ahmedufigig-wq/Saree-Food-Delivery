@@ -795,14 +795,161 @@ class _CourierPortalState extends State<CourierPortal> {
   );
 }
 
-class AdminPortal extends StatelessWidget {
+class AdminPortal extends StatefulWidget {
   const AdminPortal({super.key});
+  @override State<AdminPortal> createState() => _AdminPortalState();
+}
+
+class _AdminPortalState extends State<AdminPortal> {
+  int _tab = 0;
+  bool _busy = false;
+  Future<void> _refresh() async { if (mounted) setState(() {}); }
+
+  Future<void> _createRestaurant() async {
+    final name = TextEditingController();
+    final address = TextEditingController();
+    final phone = TextEditingController();
+    final fee = TextEditingController(text: '1000');
+    final form = GlobalKey<FormState>();
+    final ok = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
+      title: const Text('إضافة مطعم'),
+      content: Form(key: form, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextFormField(controller: name, decoration: const InputDecoration(labelText: 'اسم المطعم'), validator: (v) => v == null || v.trim().isEmpty ? 'أدخل اسم المطعم' : null),
+        const SizedBox(height: 10),
+        TextFormField(controller: address, decoration: const InputDecoration(labelText: 'العنوان'), validator: (v) => v == null || v.trim().isEmpty ? 'أدخل العنوان' : null),
+        const SizedBox(height: 10),
+        TextFormField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'الهاتف')),
+        const SizedBox(height: 10),
+        TextFormField(controller: fee, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'رسوم التوصيل بالريال'), validator: (v) => int.tryParse(v ?? '') == null ? 'أدخل رقمًا صحيحًا' : null),
+      ]))),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+        FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(dialogContext, true); }, child: const Text('حفظ')),
+      ],
+    ));
+    if (ok == true) {
+      try {
+        await SareeBackend.createRestaurant(name: name.text, address: address.text, phone: phone.text, deliveryFee: int.parse(fee.text));
+        await _refresh();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت إضافة المطعم. يبقى غير منشور حتى تفعيله.')));
+      } catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    }
+    name.dispose(); address.dispose(); phone.dispose(); fee.dispose();
+  }
+
+  Future<void> _assignManager(String restaurantId) async {
+    final profiles = await SareeBackend.adminProfiles();
+    final candidates = profiles.where((p) => p['role'] == 'restaurant_owner').toList();
+    if (!mounted) return;
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا يوجد حساب بدور صاحب مطعم. غيّر دور الحساب أولاً من تبويب الحسابات.')));
+      return;
+    }
+    String selected = candidates.first['id'].toString();
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
+      title: const Text('ربط صاحب المطعم'),
+      content: DropdownButtonFormField<String>(
+        value: selected,
+        isExpanded: true,
+        items: candidates.map((p) => DropdownMenuItem(value: p['id'].toString(), child: Text('${p['full_name']} • ${p['phone'] ?? ''}', overflow: TextOverflow.ellipsis))).toList(),
+        onChanged: (v) { if (v != null) setLocal(() => selected = v); },
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('ربط'))],
+    )));
+    if (ok == true) {
+      await SareeBackend.addRestaurantMember(restaurantId, selected);
+      await _refresh();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم ربط صاحب المطعم')));
+    }
+  }
+
+  Future<void> _changeRole(Map<String, dynamic> profile) async {
+    const roles = {'customer':'عميل','restaurant_owner':'صاحب مطعم','courier':'مندوب','admin':'مدير'};
+    String role = profile['role'].toString();
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
+      title: Text('صلاحيات ${profile['full_name']}'),
+      content: DropdownButtonFormField<String>(
+        value: role,
+        items: roles.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+        onChanged: (v) { if(v != null) setLocal(() => role = v); },
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ الصلاحية'))],
+    )));
+    if (ok == true && role != profile['role']) {
+      await SareeBackend.setUserRole(profile['id'].toString(), role);
+      await _refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('إدارة سريع'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
-    body: const Center(child: Padding(
-      padding: EdgeInsets.all(24),
-      child: Text('تم تسجيل الدخول كمدير. إدارة المطاعم والحسابات تحتاج استكمال لوحة الإدارة وربط إجراءات اعتماد المطاعم وتعيين الأدوار.', textAlign: TextAlign.center),
-    )),
+    appBar: AppBar(
+      title: const Text('لوحة إدارة سريع'),
+      actions: [IconButton(tooltip: 'تحديث', onPressed: _refresh, icon: const Icon(Icons.refresh_rounded)), IconButton(tooltip: 'خروج', onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout_rounded))],
+    ),
+    body: IndexedStack(index: _tab, children: [
+      FutureBuilder<List<Map<String, dynamic>>>(
+        future: SareeBackend.adminRestaurants(),
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+          if (snap.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${snap.error}'));
+          final rows = snap.data ?? [];
+          return ListView(padding: const EdgeInsets.all(14), children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text('إدارة المطاعم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+              FilledButton.icon(onPressed: _createRestaurant, icon: const Icon(Icons.add), label: const Text('إضافة')),
+            ]),
+            const SizedBox(height: 8),
+            if (rows.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('لم تتم إضافة مطاعم بعد. أضف مطعمًا للبدء.'))),
+            ...rows.map((r) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const CircleAvatar(backgroundColor: Color(0xFFFFE7D2), child: Icon(Icons.restaurant_rounded)),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(r['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+                  Text(r['address']?.toString() ?? '', style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
+                ])),
+                Switch(value: r['is_active'] == true, onChanged: (v) async {
+                  try { await SareeBackend.setRestaurantActive(r['id'].toString(), v); await _refresh(); }
+                  catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+                }),
+              ]),
+              const Divider(),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('التوصيل: ${r['delivery_fee_yer']} ريال', style: const TextStyle(fontWeight: FontWeight.w700)),
+                TextButton.icon(onPressed: () => _assignManager(r['id'].toString()), icon: const Icon(Icons.person_add_alt_1), label: const Text('ربط مدير')),
+              ]),
+            ])))),
+          ]);
+        },
+      ),
+      FutureBuilder<List<Map<String, dynamic>>>(
+        future: SareeBackend.adminProfiles(),
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+          if (snap.hasError) return Center(child: Text('تعذر تحميل الحسابات: ${snap.error}'));
+          final profiles = snap.data ?? [];
+          const labels = {'customer':'عميل','restaurant_owner':'صاحب مطعم','courier':'مندوب','admin':'مدير'};
+          return ListView(padding: const EdgeInsets.all(14), children: [
+            const Text('الحسابات والصلاحيات', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF14243A))),
+            const SizedBox(height: 8),
+            ...profiles.map((p) => Card(child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.person_rounded)),
+              title: Text(p['full_name']?.toString().isNotEmpty == true ? p['full_name'].toString() : 'مستخدم'),
+              subtitle: Text('${p['phone'] ?? 'لا يوجد هاتف'} • ${labels[p['role']] ?? p['role']}'),
+              trailing: IconButton(tooltip: 'تعديل الصلاحية', onPressed: () => _changeRole(p), icon: const Icon(Icons.manage_accounts_rounded)),
+            ))),
+          ]);
+        },
+      ),
+    ]),
+    bottomNavigationBar: NavigationBar(
+      selectedIndex: _tab,
+      onDestinationSelected: (v) => setState(() => _tab = v),
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'المطاعم'),
+        NavigationDestination(icon: Icon(Icons.people_alt_outlined), selectedIcon: Icon(Icons.people_alt), label: 'الحسابات'),
+      ],
+    ),
   );
 }
