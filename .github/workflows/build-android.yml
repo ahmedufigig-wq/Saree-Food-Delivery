@@ -32,31 +32,29 @@ jobs:
             flutter create --platforms=android --org com.saree.delivery --project-name saree .
           fi
 
-      - name: Force Android minimum SDK 21
+      - name: Set Android minimum SDK to 21 (Android 5.0+)
         run: |
           set -euo pipefail
-          if [ -f android/app/build.gradle.kts ]; then
-            cat >> android/app/build.gradle.kts <<'GRADLE'
-          
-          // Explicit compatibility override for older Android devices.
-          android {
-              defaultConfig {
-                  minSdk = 21
-              }
-          }
-          GRADLE
-            grep -q 'minSdk = 21' android/app/build.gradle.kts
-          elif [ -f android/app/build.gradle ]; then
-            cat >> android/app/build.gradle <<'GRADLE'
-          
-          // Explicit compatibility override for older Android devices.
-          android {
-              defaultConfig {
-                  minSdkVersion 21
-              }
-          }
-          GRADLE
-            grep -q 'minSdkVersion 21' android/app/build.gradle
+          KTS=android/app/build.gradle.kts
+          GROOVY=android/app/build.gradle
+          if [ -f "$KTS" ]; then
+            if grep -q 'minSdk = flutter.minSdkVersion' "$KTS"; then
+              sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' "$KTS"
+            elif ! grep -q 'minSdk = 21' "$KTS"; then
+              echo "Could not locate Kotlin DSL minSdk setting" >&2
+              exit 1
+            fi
+            grep -n 'minSdk' "$KTS"
+            grep -q 'minSdk = 21' "$KTS"
+          elif [ -f "$GROOVY" ]; then
+            if grep -q 'minSdkVersion flutter.minSdkVersion' "$GROOVY"; then
+              sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' "$GROOVY"
+            elif ! grep -q 'minSdkVersion 21' "$GROOVY"; then
+              echo "Could not locate Groovy DSL minSdk setting" >&2
+              exit 1
+            fi
+            grep -n 'minSdk' "$GROOVY"
+            grep -q 'minSdkVersion 21' "$GROOVY"
           else
             echo "Android Gradle app module not found" >&2
             exit 1
