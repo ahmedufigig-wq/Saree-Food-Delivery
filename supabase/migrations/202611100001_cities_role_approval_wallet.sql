@@ -89,5 +89,28 @@ create policy "restaurant and courier update assigned orders" on public.orders f
 using(public.is_admin() or (public.is_restaurant_member(restaurant_id) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.approval_status='approved')) or (courier_id=(select auth.uid()) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='courier' and p.approval_status='approved')))
 with check(public.is_admin() or (public.is_restaurant_member(restaurant_id) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.approval_status='approved')) or (courier_id=(select auth.uid()) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='courier' and p.approval_status='approved')));
 
+
+create or replace function public.transition_order(p_order_id uuid,p_next_status public.order_status,p_cancellation_reason text default null)
+returns void language plpgsql security definer set search_path=public,pg_temp as $
+declare v_order public.orders%rowtype; v_uid uuid:=auth.uid(); v_allowed boolean:=false; v_role public.app_role; v_approval text;
+begin
+ if v_uid is null then raise exception 'يرجى تسجيل الدخول'; end if;
+ select role,approval_status into v_role,v_approval from public.profiles where id=v_uid;
+ select * into v_order from public.orders where id=p_order_id for update;
+ if not found then raise exception 'الطلب غير موجود'; end if;
+ if v_order.customer_id=v_uid then v_allowed:=v_order.status='pending' and p_next_status='cancelled';
+ elsif public.is_admin() then
+   v_allowed:=(v_order.status='pending' and p_next_status in('accepted','cancelled')) or (v_order.status='accepted' and p_next_status='preparing') or (v_order.status='preparing' and p_next_status='ready_for_pickup');
+ elsif public.is_restaurant_member(v_order.restaurant_id) and v_approval='approved' then
+   v_allowed:=(v_order.status='pending' and p_next_status in('accepted','cancelled')) or (v_order.status='accepted' and p_next_status='preparing') or (v_order.status='preparing' and p_next_status='ready_for_pickup');
+ elsif v_order.courier_id=v_uid and v_role='courier' and v_approval='approved' then
+   v_allowed:=(v_order.status='assigned' and p_next_status='picked_up') or (v_order.status='picked_up' and p_next_status='delivered');
+ end if;
+ if not v_allowed then raise exception 'لا يمكن تغيير حالة الطلب بهذه الصلاحية أو من هذه الحالة'; end if;
+ update public.orders set status=p_next_status,cancellation_reason=case when p_next_status='cancelled' then coalesce(nullif(trim(p_cancellation_reason),''),'تم إلغاء الطلب') else cancellation_reason end,updated_at=now() where id=p_order_id;
+end $;
+revoke all on function public.transition_order(uuid,public.order_status,text) from public,anon;
+grant execute on function public.transition_order(uuid,public.order_status,text) to authenticated;
+
 notify pgrst,'reload schema';
 commit;
