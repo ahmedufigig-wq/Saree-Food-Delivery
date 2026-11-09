@@ -107,6 +107,11 @@ class SareeBackend {
         .order('created_at', ascending: false);
   }
 
+
+  static Stream<List<Map<String, dynamic>>> trackOrder(String orderId) {
+    return client.from('orders').stream(primaryKey: ['id']).eq('id', orderId);
+  }
+
   static Future<List<Map<String, dynamic>>> restaurantOrders() async {
     final id = user!.id;
     final memberships = await client
