@@ -9,12 +9,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: saree-android-${{ github.ref }}
+  group: saree-android-final-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
