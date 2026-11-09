@@ -893,45 +893,75 @@ class CourierPortal extends StatefulWidget {
 
 class _CourierPortalState extends State<CourierPortal> {
   bool _busy = false;
+  bool _sharing = false;
+  StreamSubscription<Position>? _positionSub;
+
+  Future<void> _startSharing() async {
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if(!enabled) throw Exception('فعّل خدمة الموقع GPS أولاً');
+    var permission = await Geolocator.checkPermission();
+    if(permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+    if(permission == LocationPermission.denied || permission == LocationPermission.deniedForever) throw Exception('اسمح للتطبيق بالوصول إلى الموقع من إعدادات الهاتف');
+    await _positionSub?.cancel();
+    const settings = LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 15);
+    _positionSub = Geolocator.getPositionStream(locationSettings: settings).listen((p) async {
+      try { await SareeBackend.updateCourierLocation(p.latitude, p.longitude); }
+      catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث الموقع: $e'))); }
+    });
+    final now = await Geolocator.getCurrentPosition();
+    await SareeBackend.updateCourierLocation(now.latitude, now.longitude);
+    if(mounted) setState(() => _sharing = true);
+  }
+
+  Future<void> _stopSharing() async {
+    await _positionSub?.cancel();
+    _positionSub = null;
+    if(mounted) setState(() => _sharing = false);
+  }
+
+  @override
+  void dispose() { _positionSub?.cancel(); super.dispose(); }
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
-    try {
-      await action();
-      if (mounted) setState(() {});
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    try { await action(); if(mounted) setState(() {}); }
+    catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    finally { if(mounted) setState(() => _busy = false); }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('طلبات المندوب'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
-    body: FutureBuilder<List<List<Map<String, dynamic>>>>(
+    body: FutureBuilder<List<List<Map<String,dynamic>>>>(
       future: Future.wait([SareeBackend.availableCourierOrders(), SareeBackend.courierOrders()]),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snapshot.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${snapshot.error}'));
-        final available = snapshot.data![0];
-        final active = snapshot.data![1].where((o) => o['status'] == 'assigned' || o['status'] == 'picked_up').toList();
+      builder: (context, snap) {
+        if(snap.connectionState != ConnectionState.done) return const LoadingPage();
+        if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${snap.error}'));
+        final available = snap.data![0];
+        final active = snap.data![1].where((o) => o['status'] == 'assigned' || o['status'] == 'picked_up').toList();
         return ListView(padding: const EdgeInsets.all(12), children: [
+          Card(child: SwitchListTile(
+            value: _sharing,
+            onChanged: (v) => _run(() => v ? _startSharing() : _stopSharing()),
+            title: const Text('مشاركة موقعي مع العميل'),
+            subtitle: Text(_sharing ? 'الموقع يتحدث أثناء فتح التطبيق' : 'فعّلها بعد استلام الطلب ليتمكن العميل من رؤية موقعك'),
+            secondary: const Icon(Icons.my_location_rounded),
+          )),
           const Padding(padding: EdgeInsets.all(8), child: Text('مهامك الحالية', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
-          if (active.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد لديك توصيلات نشطة')),
+          if(active.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد لديك توصيلات نشطة')),
           ...active.map((o) {
             final status = o['status'].toString();
             final next = status == 'assigned' ? 'picked_up' : 'delivered';
             final label = status == 'assigned' ? 'تأكيد استلام الطلب' : 'تأكيد التسليم';
             return Card(child: ListTile(
               title: Text('طلب #${o['order_number']}'),
-              subtitle: Text('${o['delivery_address']}\nالحالة: $status'),
+              subtitle: Text('${o['customer_name']} • ${o['customer_phone']}\n${o['delivery_address']}\nالحالة: $status'),
               isThreeLine: true,
               trailing: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label)),
             ));
           }),
           const Padding(padding: EdgeInsets.all(8), child: Text('طلبات جاهزة للاستلام', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
-          if (available.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد طلبات جاهزة حاليًا')),
+          if(available.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد طلبات جاهزة حاليًا')),
           ...available.map((o) => Card(child: ListTile(
             title: Text('طلب #${o['order_number']}'),
             subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال'),
