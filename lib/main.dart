@@ -70,19 +70,19 @@ class SareeApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE94B2C), brightness: Brightness.light, secondary: const Color(0xFFFFA62B)),
-      scaffoldBackgroundColor: const Color(0xFFFFF9F5),
-      iconTheme: const IconThemeData(color: Color(0xFFE94B2C), size: 23),
-      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 1, backgroundColor: Color(0xFFFFF9F5), foregroundColor: Color(0xFF20232B), titleTextStyle: TextStyle(color: Color(0xFF20232B), fontSize: 19, fontWeight: FontWeight.w800)),
-      cardTheme: CardThemeData(color: Colors.white, elevation: 1, shadowColor: Color(0x1420232B), margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFF1E9E4)))),
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF7A1A), brightness: Brightness.light, secondary: const Color(0xFF14243A)),
+      scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+      iconTheme: const IconThemeData(color: Color(0xFFFF7A1A), size: 23),
+      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 1, backgroundColor: Color(0xFFF5F7FA), foregroundColor: Color(0xFF14243A), titleTextStyle: TextStyle(color: Color(0xFF14243A), fontSize: 19, fontWeight: FontWeight.w800)),
+      cardTheme: CardThemeData(color: Colors.white, elevation: 1, shadowColor: Color(0x1420232B), margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE7ECF2)))),
       inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFE9DED7))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFE9DED7))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFE94B2C), width: 1.6)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFDCE3EC))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFDCE3EC))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFFF7A1A), width: 1.6)),
         filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       ),
-      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE94B2C), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: Color(0xFFFFE5DA), labelTextStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF7A1A), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
+      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: Color(0xFFFFE7D2), labelTextStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
     ),
     builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink()),
     home: const BrandSplashGate(),
@@ -96,7 +96,7 @@ class BrandMark extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: size, height: size,
     decoration: BoxDecoration(
-      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFA52E), Color(0xFFE9432D), Color(0xFFB91F2B)]),
+      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFF9A32), Color(0xFFFF7A1A), Color(0xFF14243A)]),
       borderRadius: BorderRadius.circular(size * .30),
       border: Border.all(color: Colors.white, width: 2),
       boxShadow: const [BoxShadow(color: Color(0x30B91F2B), blurRadius: 20, offset: Offset(0, 8))],
@@ -141,7 +141,7 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [Color(0xFFFF8A36), Color(0xFFFF642D), Color(0xFF20232B)],
+                colors: [Color(0xFFFF8A36), Color(0xFFFF642D), Color(0xFF14243A)],
                 stops: [0, .58, 1],
               ),
             ),
@@ -153,7 +153,7 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
                     width: 142,
                     height: 142,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF20232B),
+                      color: const Color(0xFF14243A),
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(color: Colors.white.withValues(alpha: .85), width: 3),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 28, offset: const Offset(0, 12))],
@@ -210,7 +210,7 @@ class SetupRequiredPage extends StatelessWidget {
     body: Center(child: Padding(
       padding: EdgeInsets.all(28),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.cloud_off, size: 64, color: Colors.deepOrange),
+        Icon(Icons.cloud_off, size: 64, color: const Color(0xFFFF7A1A)),
         SizedBox(height: 16),
         Text('سريع يحتاج إلى ربط الخادم', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
@@ -400,7 +400,7 @@ class RestaurantMenuPage extends StatelessWidget {
             subtitle: Text('${item['description'] ?? ''}\n${item['price_yer']} ريال يمني'),
             isThreeLine: true,
             trailing: IconButton(
-              icon: const Icon(Icons.add_circle, color: Colors.deepOrange),
+              icon: const Icon(Icons.add_circle, color: const Color(0xFFFF7A1A)),
               onPressed: () {
                 context.read<CartController>().add(item, restaurant['id'].toString());
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أضيفت الوجبة إلى السلة')));
