@@ -350,8 +350,16 @@ class CustomerHome extends StatelessWidget {
           Text('سريع', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF171717))),
         ]),
         actions: [
+          IconButton(tooltip: 'البحث', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSearchPage())), icon: const Icon(Icons.search_rounded)),
+          IconButton(tooltip: 'الإشعارات', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerNotificationsPage())), icon: const Icon(Icons.notifications_none_rounded)),
+          IconButton(tooltip: 'المفضلة', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerFavoritesPage())), icon: const Icon(Icons.favorite_border_rounded)),
           IconButton(tooltip: 'طلباتي', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerOrdersPage())), icon: const Icon(Icons.receipt_long_rounded)),
           IconButton(tooltip: 'حسابي والعناوين', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerAccountPage())), icon: const Icon(Icons.person_outline_rounded)),
+          PopupMenuButton<String>(
+            tooltip: 'المزيد',
+            onSelected: (value) => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSupportPage())),
+            itemBuilder: (_) => const [PopupMenuItem(value: 'support', child: Row(children: [Icon(Icons.support_agent_rounded), SizedBox(width: 8), Text('الدعم والمساعدة')]))],
+          ),
           Stack(children: [
             IconButton(tooltip: 'السلة', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage())), icon: const Icon(Icons.shopping_bag_outlined)),
             if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, backgroundColor: const Color(0xFFE50914), child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)))),
@@ -1059,6 +1067,7 @@ class CustomerOrdersPage extends StatelessWidget {
             title: Text('طلب #${order['order_number']}'),
             subtitle: Text('${statusLabel(order['status'].toString())}\nالإجمالي: ${order['total_yer']} ريال'),
             isThreeLine: true,
+            trailing: order['status'] == 'delivered' ? IconButton(tooltip: 'قيّم المطعم', onPressed: () => _showSareeReviewDialog(context, order), icon: const Icon(Icons.star_rate_rounded, color: Color(0xFFFFB300))) : null,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderTrackingPage(order: order))),
           ),
         )).toList());
@@ -1502,6 +1511,7 @@ class _AdminPortalState extends State<AdminPortal> {
           ]);
         },
       ),
+      AdminReportsPage(),
       FutureBuilder<List<Map<String, dynamic>>>(
         future: SareeBackend.adminProfiles(),
         builder: (context, snap) {
@@ -1528,7 +1538,342 @@ class _AdminPortalState extends State<AdminPortal> {
       destinations: const [
         NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'المطاعم'),
         NavigationDestination(icon: Icon(Icons.people_alt_outlined), selectedIcon: Icon(Icons.people_alt), label: 'الحسابات'),
+        NavigationDestination(icon: Icon(Icons.analytics_outlined), selectedIcon: Icon(Icons.analytics_rounded), label: 'التقارير'),
       ],
     ),
+  );
+}
+
+
+Future<void> _showSareeReviewDialog(BuildContext context, Map<String, dynamic> order) async {
+  int rating = 5;
+  final comment = TextEditingController();
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
+      title: const Text('قيّم تجربتك'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('كيف كانت تجربتك مع المطعم؟'),
+        const SizedBox(height: 12),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) => IconButton(
+          onPressed: () => setLocal(() => rating = i + 1),
+          icon: Icon(i < rating ? Icons.star_rounded : Icons.star_border_rounded, color: const Color(0xFFFFB300), size: 32),
+        ))),
+        TextField(controller: comment, maxLines: 3, decoration: const InputDecoration(labelText: 'اكتب تعليقك (اختياري)')),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('إرسال التقييم')),
+      ],
+    )),
+  );
+  if (ok == true) {
+    try {
+      await SareeBackend.submitReview(
+        orderId: order['id'].toString(),
+        restaurantId: order['restaurant_id'].toString(),
+        rating: rating,
+        comment: comment.text,
+      );
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('شكراً لك، تم إرسال تقييمك')));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إرسال التقييم: $e')));
+    }
+  }
+  comment.dispose();
+}
+
+class CustomerSearchPage extends StatefulWidget {
+  const CustomerSearchPage({super.key, this.initialQuery = ''});
+  final String initialQuery;
+  @override State<CustomerSearchPage> createState() => _CustomerSearchPageState();
+}
+class _CustomerSearchPageState extends State<CustomerSearchPage> {
+  late final TextEditingController _query;
+  Future<List<Map<String,dynamic>>>? _results;
+  Future<List<Map<String,dynamic>>>? _categories;
+  @override void initState() {
+    super.initState();
+    _query = TextEditingController(text: widget.initialQuery);
+    _categories = SareeBackend.categories();
+    if (_query.text.trim().isNotEmpty) _search();
+  }
+  @override void dispose() { _query.dispose(); super.dispose(); }
+  void _search() => setState(() => _results = SareeBackend.searchCatalog(_query.text));
+  @override Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('ابحث عن وجبتك')),
+    body: Column(children: [
+      Padding(padding: const EdgeInsets.all(14), child: TextField(
+        controller: _query,
+        textInputAction: TextInputAction.search,
+        onSubmitted: (_) => _search(),
+        decoration: InputDecoration(
+          hintText: 'ابحث عن مطعم أو وجبة...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: IconButton(onPressed: _search, icon: const Icon(Icons.arrow_forward_rounded)),
+        ),
+      )),
+      SizedBox(height: 48, child: FutureBuilder<List<Map<String,dynamic>>>(
+        future: _categories,
+        builder: (context,snap) => ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
+          if (snap.hasData) ...snap.data!.map((cat) => Padding(
+            padding: const EdgeInsetsDirectional.only(end: 7),
+            child: ActionChip(label: Text(cat['name'].toString()), onPressed: () {
+              _query.text = cat['name'].toString();
+              _search();
+            }),
+          )),
+        ]),
+      )),
+      Expanded(child: _results == null
+        ? const Center(child: Text('اكتب اسم مطعم أو وجبة لبدء البحث'))
+        : FutureBuilder<List<Map<String,dynamic>>>(
+          future: _results,
+          builder: (context,snap) {
+            if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+            if (snap.hasError) return Center(child: Text('تعذر البحث: ${snap.error}'));
+            final rows = snap.data ?? [];
+            if (rows.isEmpty) return const Center(child: Text('لا توجد نتائج مطابقة'));
+            return ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: rows.length,
+              itemBuilder: (context,index) {
+                final row = rows[index];
+                final isRestaurant = row['_kind'] == 'restaurant';
+                final restaurant = isRestaurant ? row : Map<String,dynamic>.from(row['restaurants'] as Map);
+                return Card(child: ListTile(
+                  leading: CircleAvatar(backgroundColor: const Color(0xFFFFE6E6), child: Icon(isRestaurant ? Icons.restaurant_rounded : Icons.fastfood_rounded)),
+                  title: Text(isRestaurant ? row['name'].toString() : row['name'].toString()),
+                  subtitle: Text(isRestaurant ? (row['description'] ?? 'مطعم') .toString() : '${row['price_yer']} ريال • ${restaurant['name']}'),
+                  trailing: const Icon(Icons.chevron_left_rounded),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantMenuPage(restaurant: restaurant))),
+                ));
+              },
+            );
+          },
+        ),
+      ),
+    ]),
+  );
+}
+
+class CustomerFavoritesPage extends StatefulWidget {
+  const CustomerFavoritesPage({super.key});
+  @override State<CustomerFavoritesPage> createState() => _CustomerFavoritesPageState();
+}
+class _CustomerFavoritesPageState extends State<CustomerFavoritesPage> {
+  late Future<List<Map<String,dynamic>>> _future;
+  @override void initState() { super.initState(); _future = SareeBackend.favoriteRestaurants(); }
+  Future<void> _refresh() async { setState(() => _future = SareeBackend.favoriteRestaurants()); await _future; }
+  @override Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('مطاعمي المفضلة'), actions: [IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh))]),
+    body: FutureBuilder<List<Map<String,dynamic>>>(
+      future: _future,
+      builder: (context,snap) {
+        if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+        if (snap.hasError) return Center(child: Text('تعذر تحميل المفضلة: ${snap.error}'));
+        final rows = snap.data ?? [];
+        if (rows.isEmpty) return const Center(child: Text('لم تضف مطاعم إلى المفضلة بعد'));
+        return ListView(children: rows.map((r) => Card(child: ListTile(
+          leading: const Icon(Icons.favorite_rounded, color: Color(0xFFE50914)),
+          title: Text(r['name'].toString()),
+          subtitle: Text(r['address']?.toString() ?? ''),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantMenuPage(restaurant: r))),
+          trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () async {
+            await SareeBackend.toggleFavorite(r['id'].toString());
+            await _refresh();
+          }),
+        ))).toList());
+      },
+    ),
+  );
+}
+
+class CustomerNotificationsPage extends StatefulWidget {
+  const CustomerNotificationsPage({super.key});
+  @override State<CustomerNotificationsPage> createState() => _CustomerNotificationsPageState();
+}
+class _CustomerNotificationsPageState extends State<CustomerNotificationsPage> {
+  late Future<List<Map<String,dynamic>>> _future;
+  @override void initState() { super.initState(); _future = SareeBackend.myNotifications(); }
+  Future<void> _refresh() async { setState(() => _future = SareeBackend.myNotifications()); await _future; }
+  @override Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('الإشعارات'), actions: [IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh))]),
+    body: FutureBuilder<List<Map<String,dynamic>>>(
+      future: _future,
+      builder: (context,snap) {
+        if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+        if (snap.hasError) return Center(child: Text('تعذر تحميل الإشعارات: ${snap.error}'));
+        final rows = snap.data ?? [];
+        if (rows.isEmpty) return const Center(child: Text('لا توجد إشعارات حالياً'));
+        return ListView(children: rows.map((n) => Card(child: ListTile(
+          leading: CircleAvatar(backgroundColor: n['read_at'] == null ? const Color(0xFFFFE6E6) : Colors.grey.shade200, child: const Icon(Icons.notifications_active_outlined)),
+          title: Text(n['title'].toString(), style: const TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: Text('${n['body']}\n${n['created_at']}'),
+          isThreeLine: true,
+          onTap: () async {
+            if (n['read_at'] == null) await SareeBackend.markNotificationRead(n['id'].toString());
+            await _refresh();
+          },
+        ))).toList());
+      },
+    ),
+  );
+}
+
+class CustomerSupportPage extends StatefulWidget {
+  const CustomerSupportPage({super.key});
+  @override State<CustomerSupportPage> createState() => _CustomerSupportPageState();
+}
+class _CustomerSupportPageState extends State<CustomerSupportPage> {
+  late Future<List<Map<String,dynamic>>> _future;
+  @override void initState() { super.initState(); _future = SareeBackend.mySupportTickets(); }
+  Future<void> _refresh() async { setState(() => _future = SareeBackend.mySupportTickets()); await _future; }
+  Future<void> _newTicket() async {
+    final subject = TextEditingController();
+    final message = TextEditingController();
+    final form = GlobalKey<FormState>();
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('إرسال طلب مساعدة'),
+      content: Form(key: form, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextFormField(controller: subject, decoration: const InputDecoration(labelText: 'موضوع المشكلة'), validator: (v) => v == null || v.trim().length < 3 ? 'اكتب موضوعاً واضحاً' : null),
+        const SizedBox(height: 10),
+        TextFormField(controller: message, minLines: 3, maxLines: 5, decoration: const InputDecoration(labelText: 'اشرح المشكلة'), validator: (v) => v == null || v.trim().length < 5 ? 'اكتب تفاصيل أكثر' : null),
+      ]))),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx,false), child: const Text('إلغاء')), FilledButton(onPressed: () { if(form.currentState!.validate()) Navigator.pop(ctx,true); }, child: const Text('إرسال'))],
+    ));
+    if (ok == true) {
+      try {
+        await SareeBackend.createSupportTicket(subject: subject.text, message: message.text);
+        await _refresh();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال طلبك للدعم')));
+      } catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إرسال الطلب: $e'))); }
+    }
+    subject.dispose(); message.dispose();
+  }
+  @override Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('الدعم والمساعدة'), actions: [IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh))]),
+    floatingActionButton: FloatingActionButton.extended(onPressed: _newTicket, icon: const Icon(Icons.add_comment_outlined), label: const Text('طلب مساعدة')),
+    body: ListView(padding: const EdgeInsets.all(12), children: [
+      const Card(child: Padding(padding: EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('كيف نساعدك؟', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+        SizedBox(height: 8),
+        Text('أرسل تفاصيل المشكلة أو استفسارك، وسيتابع فريق الدعم طلبك من لوحة الإدارة.'),
+        Divider(),
+        Text('الأسئلة الشائعة', style: TextStyle(fontWeight: FontWeight.w800)),
+        ExpansionTile(title: Text('كيف أطلب وجبة؟'), children: [Padding(padding: EdgeInsets.all(12), child: Text('اختر المطعم والوجبات، أضفها إلى السلة، ثم أكد عنوانك. الدفع نقداً عند الاستلام.'))]),
+        ExpansionTile(title: Text('كيف أتابع طلبي؟'), children: [Padding(padding: EdgeInsets.all(12), child: Text('افتح صفحة طلباتي ثم اختر الطلب لمشاهدة آخر تحديث لحالته.'))]),
+        ExpansionTile(title: Text('كيف أغيّر عنوان التوصيل؟'), children: [Padding(padding: EdgeInsets.all(12), child: Text('من حسابي أضف عنواناً أو اختر عنواناً افتراضياً قبل الطلب.'))]),
+      ]))),
+      FutureBuilder<List<Map<String,dynamic>>>(
+        future: _future,
+        builder: (context,snap) {
+          if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+          if (snap.hasError) return Text('تعذر تحميل طلبات الدعم: ${snap.error}');
+          final rows = snap.data ?? [];
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Padding(padding: EdgeInsets.all(8), child: Text('طلبات المساعدة السابقة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+            if (rows.isEmpty) const Text('لم ترسل أي طلب مساعدة بعد'),
+            ...rows.map((t) => Card(child: ListTile(
+              leading: const Icon(Icons.support_agent_rounded),
+              title: Text(t['subject'].toString()),
+              subtitle: Text('${t['message']}\nالحالة: ${t['status']}\nرد الدعم: ${t['admin_reply']?.toString().isEmpty == true ? 'بانتظار الرد' : t['admin_reply']}'),
+              isThreeLine: true,
+            ))),
+          ]);
+        },
+      ),
+    ]),
+  );
+}
+
+class AdminReportsPage extends StatelessWidget {
+  const AdminReportsPage({super.key});
+  @override Widget build(BuildContext context) => FutureBuilder<List<Map<String,dynamic>>>(
+    future: SareeBackend.adminOrders(),
+    builder: (context,snap) {
+      if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+      if (snap.hasError) return Center(child: Text('تعذر تحميل التقارير: ${snap.error}'));
+      final orders = snap.data ?? [];
+      final delivered = orders.where((o) => o['status'] == 'delivered').toList();
+      final pending = orders.where((o) => o['status'] == 'pending').length;
+      final cancelled = orders.where((o) => o['status'] == 'cancelled').length;
+      final revenue = delivered.fold<int>(0, (sum,o) => sum + ((o['total_yer'] as num?)?.toInt() ?? 0));
+      return ListView(padding: const EdgeInsets.all(14), children: [
+        const Text('تقارير الأداء', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 10),
+        GridView.count(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisCount: 2, childAspectRatio: 1.45, children: [
+          _reportCard('إجمالي الطلبات', orders.length.toString(), Icons.receipt_long_rounded),
+          _reportCard('طلبات قيد الانتظار', pending.toString(), Icons.hourglass_top_rounded),
+          _reportCard('طلبات مكتملة', delivered.length.toString(), Icons.check_circle_outline_rounded),
+          _reportCard('طلبات ملغاة', cancelled.toString(), Icons.cancel_outlined),
+          _reportCard('قيمة الطلبات المكتملة', '$revenue ريال', Icons.payments_outlined),
+        ]),
+        const SizedBox(height: 18),
+        const Text('أحدث الطلبات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        ...orders.take(40).map((o) => Card(child: ListTile(
+          title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
+          subtitle: Text('${(o['restaurants'] as Map?)?['name'] ?? 'مطعم'} • ${o['status']} • ${o['total_yer']} ريال'),
+        ))),
+        const SizedBox(height: 18),
+        const AdminSupportInbox(),
+      ]);
+    },
+  );
+  Widget _reportCard(String label, String value, IconData icon) => Card(child: Padding(padding: const EdgeInsets.all(13), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+    Icon(icon, color: const Color(0xFFE50914)),
+    Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+    Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF748094))),
+  ])));
+}
+
+class AdminSupportInbox extends StatefulWidget {
+  const AdminSupportInbox({super.key});
+  @override State<AdminSupportInbox> createState() => _AdminSupportInboxState();
+}
+class _AdminSupportInboxState extends State<AdminSupportInbox> {
+  late Future<List<Map<String,dynamic>>> _future;
+  @override void initState() { super.initState(); _future = SareeBackend.adminSupportTickets(); }
+  Future<void> _refresh() async { setState(() => _future = SareeBackend.adminSupportTickets()); await _future; }
+  Future<void> _reply(Map<String,dynamic> ticket) async {
+    final reply = TextEditingController(text: ticket['admin_reply']?.toString() ?? '');
+    String status = ticket['status'].toString();
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx,setLocal) => AlertDialog(
+      title: Text('طلب: ${ticket['subject']}'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(ticket['message'].toString()),
+        const SizedBox(height: 12),
+        TextField(controller: reply, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'رد الإدارة')),
+        DropdownButtonFormField<String>(initialValue: status, decoration: const InputDecoration(labelText: 'حالة الطلب'), items: const [
+          DropdownMenuItem(value: 'open', child: Text('مفتوح')),
+          DropdownMenuItem(value: 'in_progress', child: Text('قيد المعالجة')),
+          DropdownMenuItem(value: 'resolved', child: Text('تم الحل')),
+          DropdownMenuItem(value: 'closed', child: Text('مغلق')),
+        ], onChanged: (v) { if(v != null) setLocal(() => status = v); }),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx,false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(ctx,true), child: const Text('حفظ الرد'))],
+    )));
+    if (ok == true) {
+      try { await SareeBackend.replySupportTicket(ticket['id'].toString(), reply.text, status); await _refresh(); }
+      catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر حفظ الرد: $e'))); }
+    }
+    reply.dispose();
+  }
+  @override Widget build(BuildContext context) => FutureBuilder<List<Map<String,dynamic>>>(
+    future: _future,
+    builder: (context,snap) {
+      if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+      if (snap.hasError) return Text('تعذر تحميل طلبات الدعم: ${snap.error}');
+      final rows = snap.data ?? [];
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('صندوق الدعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        if (rows.isEmpty) const Text('لا توجد طلبات دعم حالياً'),
+        ...rows.map((t) => Card(child: ListTile(
+          title: Text(t['subject'].toString()),
+          subtitle: Text('${(t['profiles'] as Map?)?['full_name'] ?? 'عميل'} • ${t['status']}'),
+          trailing: IconButton(icon: const Icon(Icons.reply_rounded), onPressed: () => _reply(t)),
+        ))),
+      ]);
+    },
   );
 }
