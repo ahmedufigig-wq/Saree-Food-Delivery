@@ -897,6 +897,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _notes = TextEditingController();
   bool _busy = false;
   String? _error;
+  List<Map<String, dynamic>> _savedAddresses = [];
+  String? _selectedAddressId;
+  bool _loadingAddresses = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomerDetails();
+  }
+
+  Future<void> _loadCustomerDetails() async {
+    try {
+      final results = await Future.wait([
+        SareeBackend.profile(),
+        SareeBackend.myAddresses(),
+      ]);
+      final profile = results[0] as Map<String, dynamic>;
+      final addresses = results[1] as List<Map<String, dynamic>>;
+      if (!mounted) return;
+      _name.text = profile['full_name']?.toString() ?? '';
+      _phone.text = profile['phone']?.toString() ?? '';
+      setState(() {
+        _savedAddresses = addresses;
+        final preferred = addresses.where((a) => a['is_default'] == true);
+        if (preferred.isNotEmpty) {
+          _selectedAddressId = preferred.first['id'].toString();
+          final a = preferred.first;
+          _address.text = '${a['area'] ?? ''} ${a['address_text'] ?? ''}'.trim();
+        }
+        _loadingAddresses = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingAddresses = false);
+    }
+  }
 
   @override
   void dispose() { _name.dispose(); _phone.dispose(); _address.dispose(); _notes.dispose(); super.dispose(); }
@@ -936,6 +971,30 @@ class _CheckoutPageState extends State<CheckoutPage> {
       const SizedBox(height: 12),
       TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'رقم الهاتف')),
       const SizedBox(height: 12),
+      if (_loadingAddresses)
+        const LinearProgressIndicator()
+      else if (_savedAddresses.isNotEmpty) ...[
+        DropdownButtonFormField<String>(
+          value: _selectedAddressId,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'اختر عنواناً محفوظاً', prefixIcon: Icon(Icons.location_on_outlined)),
+          items: _savedAddresses.map((a) => DropdownMenuItem(
+            value: a['id'].toString(),
+            child: Text('${a['label']} • ${a['area'] ?? ''}', overflow: TextOverflow.ellipsis),
+          )).toList(),
+          onChanged: (id) {
+            final selected = _savedAddresses.where((a) => a['id'].toString() == id);
+            if (selected.isNotEmpty) {
+              final a = selected.first;
+              setState(() {
+                _selectedAddressId = id;
+                _address.text = '${a['area'] ?? ''} ${a['address_text'] ?? ''}'.trim();
+              });
+            }
+          },
+        ),
+        const SizedBox(height: 12),
+      ],
       TextField(controller: _address, maxLines: 2, decoration: const InputDecoration(labelText: 'عنوان التوصيل بالتفصيل')),
       const SizedBox(height: 12),
       TextField(controller: _notes, maxLines: 2, decoration: const InputDecoration(labelText: 'ملاحظات للمطعم (اختياري)')),
