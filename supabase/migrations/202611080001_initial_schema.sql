@@ -3,7 +3,7 @@
 create extension if not exists pgcrypto;
 
 create type public.app_role as enum ('customer', 'restaurant_owner', 'courier', 'admin');
-create type public.order_status as enum ('pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up', 'delivered', 'cancelled');
+create type public.order_status as enum ('pending', 'accepted', 'preparing', 'ready_for_pickup', 'assigned', 'picked_up', 'delivered', 'cancelled');
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
