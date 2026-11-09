@@ -727,7 +727,26 @@ class RestaurantMenuPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(restaurant['name'].toString())),
+    appBar: AppBar(
+      title: Text(restaurant['name'].toString()),
+      actions: [
+        FutureBuilder<bool>(
+          future: SareeBackend.isFavorite(restaurant['id'].toString()),
+          builder: (context, snap) => IconButton(
+            tooltip: 'إضافة إلى المفضلة',
+            onPressed: () async {
+              try {
+                await SareeBackend.toggleFavorite(restaurant['id'].toString());
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث المفضلة')));
+              } catch (e) {
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث المفضلة: $e')));
+              }
+            },
+            icon: Icon(snap.data == true ? Icons.favorite : Icons.favorite_border, color: const Color(0xFFE50914)),
+          ),
+        ),
+      ],
+    ),
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: SareeBackend.menu(restaurant['id'].toString()),
       builder: (context, snapshot) {
@@ -1511,7 +1530,6 @@ class _AdminPortalState extends State<AdminPortal> {
           ]);
         },
       ),
-      AdminReportsPage(),
       FutureBuilder<List<Map<String, dynamic>>>(
         future: SareeBackend.adminProfiles(),
         builder: (context, snap) {
@@ -1531,6 +1549,7 @@ class _AdminPortalState extends State<AdminPortal> {
           ]);
         },
       ),
+      AdminReportsPage(),
     ]),
     bottomNavigationBar: NavigationBar(
       selectedIndex: _tab,
