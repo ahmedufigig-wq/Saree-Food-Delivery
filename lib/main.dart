@@ -415,6 +415,21 @@ class CustomerHome extends StatelessWidget {
                   ]),
                 ]),
               ),
+              const SizedBox(height: 16),
+              InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSearchPage())),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE7ECF2))),
+                  child: const Row(children: [
+                    Icon(Icons.search_rounded, color: Color(0xFFE50914)),
+                    SizedBox(width: 10),
+                    Expanded(child: Text('ابحث عن مطعمك أو وجبتك المفضلة', style: TextStyle(color: Color(0xFF8994A3)))),
+                    Icon(Icons.tune_rounded, color: Color(0xFF8994A3), size: 20),
+                  ]),
+                ),
+              ),
               const SizedBox(height: 20),
               const Text('تصفح حسب القسم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
               const SizedBox(height: 8),
@@ -484,6 +499,26 @@ class CustomerHome extends StatelessWidget {
             ],
           );
         },
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 0,
+        onDestinationSelected: (index) {
+          final page = switch (index) {
+            1 => const CustomerSearchPage(),
+            2 => const CartPage(),
+            3 => const CustomerOrdersPage(),
+            4 => const CustomerAccountPage(),
+            _ => null,
+          };
+          if (page != null) Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'الرئيسية'),
+          NavigationDestination(icon: Icon(Icons.search_rounded), label: 'بحث'),
+          NavigationDestination(icon: Icon(Icons.shopping_bag_outlined), label: 'السلة'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'طلباتي'),
+          NavigationDestination(icon: Icon(Icons.person_outline_rounded), label: 'حسابي'),
+        ],
       ),
     );
   }
