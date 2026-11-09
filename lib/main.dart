@@ -351,6 +351,7 @@ class CustomerHome extends StatelessWidget {
         ]),
         actions: [
           IconButton(tooltip: 'طلباتي', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerOrdersPage())), icon: const Icon(Icons.receipt_long_rounded)),
+          IconButton(tooltip: 'حسابي والعناوين', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerAccountPage())), icon: const Icon(Icons.person_outline_rounded)),
           Stack(children: [
             IconButton(tooltip: 'السلة', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage())), icon: const Icon(Icons.shopping_bag_outlined)),
             if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, backgroundColor: const Color(0xFFE50914), child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)))),
@@ -446,6 +447,270 @@ class CustomerHome extends StatelessWidget {
       ),
     );
   }
+}
+
+
+class CustomerAccountPage extends StatefulWidget {
+  const CustomerAccountPage({super.key});
+  @override
+  State<CustomerAccountPage> createState() => _CustomerAccountPageState();
+}
+
+class _CustomerAccountPageState extends State<CustomerAccountPage> {
+  final _formKey = GlobalKey<FormState>();
+  String _fullName = '';
+  String _phone = '';
+  bool _saving = false;
+  late Future<Map<String, dynamic>> _profileFuture;
+  late Future<List<Map<String, dynamic>>> _addressesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _profileFuture = SareeBackend.profile();
+    _addressesFuture = SareeBackend.myAddresses();
+  }
+
+  Future<void> _refresh() async {
+    setState(_load);
+    await Future.wait([_profileFuture, _addressesFuture]);
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+    setState(() => _saving = true);
+    try {
+      await SareeBackend.updateMyProfile(fullName: _fullName, phone: _phone);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تحديث بيانات حسابك')),
+      );
+      await _refresh();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر حفظ البيانات: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _addAddress() async {
+    final label = TextEditingController(text: 'المنزل');
+    final area = TextEditingController();
+    final address = TextEditingController();
+    bool makeDefault = false;
+    final form = GlobalKey<FormState>();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setLocal) => AlertDialog(
+          title: const Text('إضافة عنوان توصيل'),
+          content: Form(
+            key: form,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextFormField(
+                  controller: label,
+                  decoration: const InputDecoration(labelText: 'اسم العنوان (المنزل، العمل...)'),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'اكتب اسم العنوان' : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: area,
+                  decoration: const InputDecoration(labelText: 'المنطقة أو الحي'),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: address,
+                  minLines: 2,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'وصف العنوان بالتفصيل'),
+                  validator: (v) => v == null || v.trim().length < 5 ? 'اكتب عنواناً أوضح' : null,
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: makeDefault,
+                  onChanged: (v) => setLocal(() => makeDefault = v ?? false),
+                  title: const Text('اجعله عنواني الافتراضي'),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+            FilledButton(onPressed: () {
+              if (form.currentState!.validate()) Navigator.pop(dialogContext, true);
+            }, child: const Text('حفظ العنوان')),
+          ],
+        ),
+      ),
+    );
+    if (saved == true) {
+      try {
+        await SareeBackend.saveAddress(
+          label: label.text,
+          addressText: address.text,
+          area: area.text,
+          isDefault: makeDefault,
+        );
+        await _refresh();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حفظ عنوان التوصيل')),
+        );
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر حفظ العنوان: $e')),
+        );
+      }
+    }
+    label.dispose();
+    area.dispose();
+    address.dispose();
+  }
+
+  Future<void> _addressAction(Map<String, dynamic> row, String action) async {
+    try {
+      if (action == 'default') {
+        await SareeBackend.setDefaultAddress(row['id'].toString());
+      } else {
+        await SareeBackend.deleteAddress(row['id'].toString());
+      }
+      await _refresh();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تنفيذ العملية: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('حسابي'),
+      actions: [IconButton(tooltip: 'تحديث', onPressed: _refresh, icon: const Icon(Icons.refresh_rounded))],
+    ),
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        FutureBuilder<Map<String, dynamic>>(
+          future: _profileFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Card(child: Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())));
+            }
+            if (snapshot.hasError) return Card(child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('تعذر تحميل بيانات الحساب: ${snapshot.error}'),
+            ));
+            final profile = snapshot.data!;
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    const Row(children: [
+                      CircleAvatar(radius: 25, backgroundColor: Color(0xFFFFE6E6), child: Icon(Icons.person_rounded, color: Color(0xFFE50914), size: 28)),
+                      SizedBox(width: 12),
+                      Expanded(child: Text('البيانات الشخصية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+                    ]),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      initialValue: profile['full_name']?.toString() ?? '',
+                      decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline)),
+                      validator: (v) => v == null || v.trim().length < 2 ? 'أدخل الاسم' : null,
+                      onSaved: (v) => _fullName = v!.trim(),
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      initialValue: profile['phone']?.toString() ?? '',
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined)),
+                      validator: (v) => v != null && v.trim().isNotEmpty && v.trim().length < 7 ? 'رقم الهاتف غير مكتمل' : null,
+                      onSaved: (v) => _phone = v?.trim() ?? '',
+                    ),
+                    const SizedBox(height: 8),
+                    Text('البريد الإلكتروني: ${SareeBackend.user?.email ?? '—'}', style: const TextStyle(color: Color(0xFF748094))),
+                    const SizedBox(height: 14),
+                    FilledButton(
+                      onPressed: _saving ? null : _saveProfile,
+                      child: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('حفظ بياناتي'),
+                    ),
+                  ]),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('عناوين التوصيل', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+          FilledButton.tonalIcon(onPressed: _addAddress, icon: const Icon(Icons.add_location_alt_outlined), label: const Text('إضافة عنوان')),
+        ]),
+        const SizedBox(height: 8),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: _addressesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Card(child: Padding(padding: EdgeInsets.all(22), child: Center(child: CircularProgressIndicator())));
+            }
+            if (snapshot.hasError) return Card(child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('تعذر تحميل العناوين: ${snapshot.error}'),
+            ));
+            final rows = snapshot.data ?? [];
+            if (rows.isEmpty) return const Card(child: Padding(
+              padding: EdgeInsets.all(22),
+              child: Column(children: [
+                Icon(Icons.location_off_outlined, size: 38, color: Color(0xFFE50914)),
+                SizedBox(height: 8),
+                Text('لم تحفظ عنوان توصيل بعد', style: TextStyle(fontWeight: FontWeight.w800)),
+                Text('أضف عنوان المنزل أو العمل لتسهيل طلباتك القادمة.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF748094))),
+              ]),
+            ));
+            return Column(children: rows.map((row) => Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFFFFE6E6),
+                  child: Icon(row['label'] == 'العمل' ? Icons.work_outline : Icons.home_outlined, color: const Color(0xFFE50914)),
+                ),
+                title: Row(children: [
+                  Flexible(child: Text(row['label']?.toString() ?? 'عنوان', style: const TextStyle(fontWeight: FontWeight.w800))),
+                  if (row['is_default'] == true) ...[
+                    const SizedBox(width: 7),
+                    const Chip(label: Text('افتراضي'), visualDensity: VisualDensity.compact, padding: EdgeInsets.zero),
+                  ],
+                ]),
+                subtitle: Text('${row['area'] ?? ''} • ${row['address_text'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                trailing: PopupMenuButton<String>(
+                  onSelected: (v) => _addressAction(row, v),
+                  itemBuilder: (_) => [
+                    if (row['is_default'] != true) const PopupMenuItem(value: 'default', child: Text('جعله افتراضياً')),
+                    const PopupMenuItem(value: 'delete', child: Text('حذف العنوان')),
+                  ],
+                ),
+              ),
+            )).toList());
+          },
+        ),
+        const SizedBox(height: 18),
+        OutlinedButton.icon(
+          onPressed: () async {
+            await SareeBackend.signOut();
+            if (context.mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+          },
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('تسجيل الخروج'),
+        ),
+      ],
+    ),
+  );
 }
 
 class RestaurantMenuPage extends StatelessWidget {
