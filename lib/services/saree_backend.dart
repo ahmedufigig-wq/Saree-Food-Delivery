@@ -70,11 +70,12 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> menu(String restaurantId) async {
+    // Return all listed dishes so customers can browse the restaurant's full menu.
+    // Availability is checked separately before allowing an order.
     final rows = await client
         .from('menu_items')
-        .select()
+        .select('*, menu_categories(name, sort_order)')
         .eq('restaurant_id', restaurantId)
-        .eq('is_available', true)
         .order('name');
     return List<Map<String, dynamic>>.from(rows);
   }
