@@ -78,5 +78,16 @@ drop policy if exists "restaurant members manage categories" on public.menu_cate
 create policy "restaurant members manage categories" on public.menu_categories for all to authenticated using(public.is_admin() or (public.is_restaurant_member(restaurant_id) and exists(select 1 from public.profiles p where p.id=auth.uid() and p.approval_status='approved'))) with check(public.is_admin() or (public.is_restaurant_member(restaurant_id) and exists(select 1 from public.profiles p where p.id=auth.uid() and p.approval_status='approved')));
 drop policy if exists "restaurant members manage menu" on public.menu_items;
 create policy "restaurant members manage menu" on public.menu_items for all to authenticated using(public.is_admin() or (public.is_restaurant_member(restaurant_id) and exists(select 1 from public.profiles p where p.id=auth.uid() and p.approval_status='approved'))) with check(public.is_admin() or (public.is_restaurant_member(restaurant_id) and exists(select 1 from public.profiles p where p.id=auth.uid() and p.approval_status='approved')));
+
+-- Enforce approval in direct table updates as well as in RPC workflows.
+drop policy if exists "restaurant managers update" on public.restaurants;
+create policy "restaurant managers update" on public.restaurants for update to authenticated
+using(public.is_admin() or (public.is_restaurant_member(id) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.approval_status='approved')))
+with check(public.is_admin() or (public.is_restaurant_member(id) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.approval_status='approved')));
+drop policy if exists "restaurant and courier update assigned orders" on public.orders;
+create policy "restaurant and courier update assigned orders" on public.orders for update to authenticated
+using(public.is_admin() or (public.is_restaurant_member(restaurant_id) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.approval_status='approved')) or (courier_id=(select auth.uid()) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='courier' and p.approval_status='approved')))
+with check(public.is_admin() or (public.is_restaurant_member(restaurant_id) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.approval_status='approved')) or (courier_id=(select auth.uid()) and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='courier' and p.approval_status='approved')));
+
 notify pgrst,'reload schema';
 commit;
