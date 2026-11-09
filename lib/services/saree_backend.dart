@@ -316,6 +316,101 @@ class SareeBackend {
     return client.from('courier_locations').stream(primaryKey: ['courier_id']).eq('courier_id', courierId);
   }
 
+  static Future<List<Map<String, dynamic>>> searchCatalog(String query) async {
+    final term = query.trim();
+    if (term.isEmpty) return [];
+    final safe = term.replaceAll('%', r'\%').replaceAll('_', r'\_');
+    final results = await Future.wait([
+      client.from('restaurants').select().eq('is_active', true).ilike('name', '%$safe%').limit(20),
+      client.from('menu_items').select('*, restaurants!inner(id,name,is_active)').eq('is_available', true).eq('restaurants.is_active', true).ilike('name', '%$safe%').limit(30),
+    ]);
+    final rows = <Map<String, dynamic>>[];
+    for (final row in List<Map<String, dynamic>>.from(results[0])) {
+      rows.add({...row, '_kind': 'restaurant'});
+    }
+    for (final row in List<Map<String, dynamic>>.from(results[1])) {
+      rows.add({...row, '_kind': 'meal'});
+    }
+    return rows;
+  }
+
+  static Future<List<Map<String, dynamic>>> categories() async {
+    final rows = await client.from('menu_categories').select('id,name,sort_order,restaurant_id').eq('is_active', true).order('sort_order').limit(40);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<List<Map<String, dynamic>>> favoriteRestaurants() async {
+    final rows = await client.from('favorites').select('restaurant_id, restaurants(*)').eq('customer_id', user!.id).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows).map((row) {
+      final restaurant = row['restaurants'];
+      return restaurant is Map<String, dynamic> ? restaurant : Map<String, dynamic>.from(restaurant as Map);
+    }).toList();
+  }
+
+  static Future<bool> isFavorite(String restaurantId) async {
+    final rows = await client.from('favorites').select('restaurant_id').eq('customer_id', user!.id).eq('restaurant_id', restaurantId).limit(1);
+    return rows.isNotEmpty;
+  }
+
+  static Future<void> toggleFavorite(String restaurantId) async {
+    final rows = await client.from('favorites').select('restaurant_id').eq('customer_id', user!.id).eq('restaurant_id', restaurantId).limit(1);
+    if (rows.isNotEmpty) {
+      await client.from('favorites').delete().eq('customer_id', user!.id).eq('restaurant_id', restaurantId);
+    } else {
+      await client.from('favorites').insert({'customer_id': user!.id, 'restaurant_id': restaurantId});
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> myNotifications() async {
+    final rows = await client.from('notifications').select().eq('user_id', user!.id).order('created_at', ascending: false).limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> markNotificationRead(String id) async {
+    await client.from('notifications').update({'read_at': DateTime.now().toUtc().toIso8601String()}).eq('id', id).eq('user_id', user!.id);
+  }
+
+  static Future<void> submitReview({required String orderId, required String restaurantId, required int rating, required String comment}) async {
+    await client.from('reviews').upsert({
+      'order_id': orderId,
+      'customer_id': user!.id,
+      'restaurant_id': restaurantId,
+      'rating': rating,
+      'comment': comment.trim(),
+    }, onConflict: 'order_id');
+  }
+
+  static Future<List<Map<String, dynamic>>> mySupportTickets() async {
+    final rows = await client.from('support_tickets').select().eq('user_id', user!.id).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> createSupportTicket({required String subject, required String message}) async {
+    await client.from('support_tickets').insert({
+      'user_id': user!.id,
+      'subject': subject.trim(),
+      'message': message.trim(),
+    });
+  }
+
+  static Future<List<Map<String, dynamic>>> adminOrders() async {
+    final rows = await client.from('orders').select('*, restaurants(name)').order('created_at', ascending: false).limit(500);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<List<Map<String, dynamic>>> adminSupportTickets() async {
+    final rows = await client.from('support_tickets').select('*, profiles(full_name,phone)').order('created_at', ascending: false).limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> replySupportTicket(String id, String reply, String status) async {
+    await client.from('support_tickets').update({
+      'admin_reply': reply.trim(),
+      'status': status,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', id);
+  }
+
   static Future<void> claimOrder(String orderId) async {
     await client.rpc(
       'claim_delivery_order',
