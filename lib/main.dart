@@ -204,7 +204,7 @@ class SareeGate extends StatelessWidget {
             if (profile.connectionState != ConnectionState.done) {
               return const LoadingPage();
             }
-            if (profile.hasError) return ErrorPage(message: profile.error.toString());
+            if (profile.hasError) return ErrorPage(message: SareeBackend.arabicError(profile.error));
             final role = profile.data?['role']?.toString() ?? 'customer';
             final approval = profile.data?['approval_status']?.toString() ?? 'approved';
             if (approval != 'approved' && role != 'admin') return PendingApprovalPage(status: approval, note: profile.data?['approval_note']?.toString());
@@ -259,7 +259,7 @@ class _WalletPageState extends State<WalletPage> {
     appBar: AppBar(title: const Text('محفظتي'), actions: [IconButton(onPressed: () => setState(_load), icon: const Icon(Icons.refresh))]),
     body: RefreshIndicator(onRefresh: () async => setState(_load), child: ListView(padding: const EdgeInsets.all(16), children: [
       FutureBuilder<Map<String,dynamic>>(future:_balance,builder:(context,snap) {
-        if(snap.hasError) return Text('تعذر تحميل الرصيد: ${snap.error}');
+        if(snap.hasError) return Text('تعذر تحميل الرصيد: ${SareeBackend.arabicError(snap.error)}');
         if(!snap.hasData) return const LinearProgressIndicator();
         final amount=(snap.data!['balance_yer'] as num?)?.toInt() ?? 0;
         return Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFFE50914),Color(0xFFFF8A00)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -272,7 +272,7 @@ class _WalletPageState extends State<WalletPage> {
       }),
       const Padding(padding:EdgeInsets.symmetric(vertical:18),child:Text('سجل العمليات',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900))),
       FutureBuilder<List<Map<String,dynamic>>>(future:_transactions,builder:(context,snap) {
-        if(snap.hasError) return Text('تعذر تحميل العمليات: ${snap.error}');
+        if(snap.hasError) return Text('تعذر تحميل العمليات: ${SareeBackend.arabicError(snap.error)}');
         if(!snap.hasData) return const Center(child:CircularProgressIndicator());
         final rows=snap.data!;
         if(rows.isEmpty) return const Padding(padding:EdgeInsets.all(20),child:Text('لا توجد عمليات مالية مسجلة حتى الآن.'));
@@ -368,9 +368,9 @@ class _AuthPageState extends State<AuthPage> {
         await SareeBackend.signIn(_email.text, _password.text);
       }
     } on AuthException catch (e) {
-      if (mounted) setState(() => _message = e.message);
+      if (mounted) setState(() => _message = SareeBackend.arabicError(e));
     } catch (e) {
-      if (mounted) setState(() => _message = e.toString());
+      if (mounted) setState(() => _message = SareeBackend.arabicError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -479,7 +479,7 @@ class CustomerHome extends StatelessWidget {
         future: SareeBackend.restaurants(),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
-          if (snapshot.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${snapshot.error}'));
+          if (snapshot.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${SareeBackend.arabicError(snapshot.error)}'));
           final restaurants = snapshot.data ?? [];
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
@@ -798,7 +798,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
             }
             if (snapshot.hasError) return Card(child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('تعذر تحميل بيانات الحساب: ${snapshot.error}'),
+              child: Text('تعذر تحميل بيانات الحساب: ${SareeBackend.arabicError(snapshot.error)}'),
             ));
             final profile = snapshot.data!;
             return Card(
@@ -854,7 +854,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
             }
             if (snapshot.hasError) return Card(child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('تعذر تحميل العناوين: ${snapshot.error}'),
+              child: Text('تعذر تحميل العناوين: ${SareeBackend.arabicError(snapshot.error)}'),
             ));
             final rows = snapshot.data ?? [];
             if (rows.isEmpty) return const Card(child: Padding(
@@ -935,7 +935,7 @@ class RestaurantMenuPage extends StatelessWidget {
       future: SareeBackend.menu(restaurant['id'].toString()),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snapshot.hasError) return Center(child: Text('تعذر تحميل القائمة: ${snapshot.error}'));
+        if (snapshot.hasError) return Center(child: Text('تعذر تحميل القائمة: ${SareeBackend.arabicError(snapshot.error)}'));
         final menu = snapshot.data ?? [];
         if (menu.isEmpty) return const Center(child: Text('لم يضف المطعم وجباته بعد'));
         final grouped = <String, List<Map<String, dynamic>>>{};
@@ -1190,7 +1190,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => OrderCreatedPage(orderId: id)), (route) => route.isFirst);
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = SareeBackend.arabicError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1283,7 +1283,7 @@ class CustomerOrdersPage extends StatelessWidget {
       stream: SareeBackend.customerOrders(),
       builder: (context, snapshot) {
         if (!snapshot.hasData && snapshot.connectionState == ConnectionState.waiting) return const LoadingPage();
-        if (snapshot.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${snapshot.error}'));
+        if (snapshot.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snapshot.error)}'));
         final orders = snapshot.data ?? [];
         if (orders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
         return ListView(padding: const EdgeInsets.all(16), children: orders.map((order) => Card(
@@ -1360,7 +1360,7 @@ class OrderTrackingPage extends StatelessWidget {
                 try {
                   await SareeBackend.transition(current['id'].toString(), 'cancelled', reason: 'طلب العميل');
                   if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء الطلب')));
-                } catch(e) { if(context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+                } catch(e) { if(context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e)))); }
               },
               icon: const Icon(Icons.cancel_outlined), label: const Text('إلغاء الطلب'),
             ),
@@ -1410,7 +1410,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
     try { await action(); if(mounted) setState(() {}); }
-    catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e)))); }
     finally { if(mounted) setState(() => _busy = false); }
   }
 
@@ -1446,7 +1446,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       future: SareeBackend.myRestaurants(),
       builder: (context, rs) {
         if(rs.connectionState != ConnectionState.done) return const LoadingPage();
-        if(rs.hasError) return Center(child: Text('تعذر تحميل المطعم: ${rs.error}'));
+        if(rs.hasError) return Center(child: Text('تعذر تحميل المطعم: ${SareeBackend.arabicError(rs.error)}'));
         final restaurants = rs.data ?? [];
         if(restaurants.isEmpty) return const Center(child: Text('لم يتم ربط حسابك بمطعم. اطلب من الإدارة ربط الحساب.'));
         final restaurant = restaurants.first;
@@ -1462,7 +1462,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               future: SareeBackend.manageMenu(rid),
               builder: (context, snap) {
                 if(snap.connectionState != ConnectionState.done) return const LoadingPage();
-                if(snap.hasError) return Center(child: Text('تعذر تحميل الوجبات: ${snap.error}'));
+                if(snap.hasError) return Center(child: Text('تعذر تحميل الوجبات: ${SareeBackend.arabicError(snap.error)}'));
                 final items = snap.data ?? [];
                 return ListView(padding: const EdgeInsets.all(12), children: [
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -1494,7 +1494,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               future: SareeBackend.restaurantOrders(),
               builder: (context, snap) {
                 if(snap.connectionState != ConnectionState.done) return const LoadingPage();
-                if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${snap.error}'));
+                if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
                 final orders = snap.data ?? [];
                 if(orders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
                 return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) {
@@ -1560,7 +1560,7 @@ class _CourierPortalState extends State<CourierPortal> {
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
     try { await action(); if(mounted) setState(() {}); }
-    catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e)))); }
     finally { if(mounted) setState(() => _busy = false); }
   }
 
@@ -1571,7 +1571,7 @@ class _CourierPortalState extends State<CourierPortal> {
       future: Future.wait([SareeBackend.availableCourierOrders(), SareeBackend.courierOrders()]),
       builder: (context, snap) {
         if(snap.connectionState != ConnectionState.done) return const LoadingPage();
-        if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${snap.error}'));
+        if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
         final available = snap.data![0];
         final active = snap.data![1].where((o) => o['status'] == 'assigned' || o['status'] == 'picked_up').toList();
         return ListView(padding: const EdgeInsets.all(12), children: [
@@ -1645,7 +1645,7 @@ class _AdminPortalState extends State<AdminPortal> {
         await SareeBackend.createRestaurant(name: name.text, address: address.text, phone: phone.text, deliveryFee: int.parse(fee.text));
         await _refresh();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت إضافة المطعم. يبقى غير منشور حتى تفعيله.')));
-      } catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+      } catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e)))); }
     }
     name.dispose(); address.dispose(); phone.dispose(); fee.dispose();
   }
@@ -1705,7 +1705,7 @@ class _AdminPortalState extends State<AdminPortal> {
         future: SareeBackend.adminRestaurants(),
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-          if (snap.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${snap.error}'));
+          if (snap.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${SareeBackend.arabicError(snap.error)}'));
           final rows = snap.data ?? [];
           return ListView(padding: const EdgeInsets.all(14), children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -1724,7 +1724,7 @@ class _AdminPortalState extends State<AdminPortal> {
                 ])),
                 Switch(value: r['is_active'] == true, onChanged: (v) async {
                   try { await SareeBackend.setRestaurantActive(r['id'].toString(), v); await _refresh(); }
-                  catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+                  catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e)))); }
                 }),
               ]),
               const Divider(),
@@ -1740,7 +1740,7 @@ class _AdminPortalState extends State<AdminPortal> {
         future: SareeBackend.adminProfiles(),
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-          if (snap.hasError) return Center(child: Text('تعذر تحميل الحسابات: ${snap.error}'));
+          if (snap.hasError) return Center(child: Text('تعذر تحميل الحسابات: ${SareeBackend.arabicError(snap.error)}'));
           final profiles = snap.data ?? [];
           const labels = {'customer':'عميل','restaurant_owner':'صاحب مطعم','courier':'مندوب','admin':'مدير'};
           return ListView(padding: const EdgeInsets.all(14), children: [
@@ -1858,7 +1858,7 @@ class _CustomerSearchPageState extends State<CustomerSearchPage> {
           future: _results,
           builder: (context,snap) {
             if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-            if (snap.hasError) return Center(child: Text('تعذر البحث: ${snap.error}'));
+            if (snap.hasError) return Center(child: Text('تعذر البحث: ${SareeBackend.arabicError(snap.error)}'));
             final rows = snap.data ?? [];
             if (rows.isEmpty) return const Center(child: Text('لا توجد نتائج مطابقة'));
             return ListView.builder(
@@ -1898,7 +1898,7 @@ class _CustomerFavoritesPageState extends State<CustomerFavoritesPage> {
       future: _future,
       builder: (context,snap) {
         if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snap.hasError) return Center(child: Text('تعذر تحميل المفضلة: ${snap.error}'));
+        if (snap.hasError) return Center(child: Text('تعذر تحميل المفضلة: ${SareeBackend.arabicError(snap.error)}'));
         final rows = snap.data ?? [];
         if (rows.isEmpty) return const Center(child: Text('لم تضف مطاعم إلى المفضلة بعد'));
         return ListView(children: rows.map((r) => Card(child: ListTile(
@@ -1930,7 +1930,7 @@ class _CustomerNotificationsPageState extends State<CustomerNotificationsPage> {
       future: _future,
       builder: (context,snap) {
         if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snap.hasError) return Center(child: Text('تعذر تحميل الإشعارات: ${snap.error}'));
+        if (snap.hasError) return Center(child: Text('تعذر تحميل الإشعارات: ${SareeBackend.arabicError(snap.error)}'));
         final rows = snap.data ?? [];
         if (rows.isEmpty) return const Center(child: Text('لا توجد إشعارات حالياً'));
         return ListView(children: rows.map((n) => Card(child: ListTile(
@@ -1996,7 +1996,7 @@ class _CustomerSupportPageState extends State<CustomerSupportPage> {
         future: _future,
         builder: (context,snap) {
           if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-          if (snap.hasError) return Text('تعذر تحميل طلبات الدعم: ${snap.error}');
+          if (snap.hasError) return Text('تعذر تحميل طلبات الدعم: ${SareeBackend.arabicError(snap.error)}');
           final rows = snap.data ?? [];
           return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Padding(padding: EdgeInsets.all(8), child: Text('طلبات المساعدة السابقة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
@@ -2020,7 +2020,7 @@ class AdminReportsPage extends StatelessWidget {
     future: SareeBackend.adminOrders(),
     builder: (context,snap) {
       if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-      if (snap.hasError) return Center(child: Text('تعذر تحميل التقارير: ${snap.error}'));
+      if (snap.hasError) return Center(child: Text('تعذر تحميل التقارير: ${SareeBackend.arabicError(snap.error)}'));
       final orders = snap.data ?? [];
       final delivered = orders.where((o) => o['status'] == 'delivered').toList();
       final pending = orders.where((o) => o['status'] == 'pending').length;
@@ -2090,7 +2090,7 @@ class _AdminSupportInboxState extends State<AdminSupportInbox> {
     future: _future,
     builder: (context,snap) {
       if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-      if (snap.hasError) return Text('تعذر تحميل طلبات الدعم: ${snap.error}');
+      if (snap.hasError) return Text('تعذر تحميل طلبات الدعم: ${SareeBackend.arabicError(snap.error)}');
       final rows = snap.data ?? [];
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('صندوق الدعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
@@ -2167,7 +2167,7 @@ class _AdminMenuManagementPageState extends State<AdminMenuManagementPage> {
     future: _restaurants,
     builder: (context,rs) {
       if (rs.connectionState != ConnectionState.done) return const LoadingPage();
-      if (rs.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${rs.error}'));
+      if (rs.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${SareeBackend.arabicError(rs.error)}'));
       final restaurants = rs.data ?? [];
       if (restaurants.isEmpty) return const Center(child: Text('أضف مطعماً أولاً من تبويب المطاعم'));
       _restaurantId ??= restaurants.first['id'].toString();
@@ -2187,7 +2187,7 @@ class _AdminMenuManagementPageState extends State<AdminMenuManagementPage> {
           future: _menu,
           builder: (context,snap) {
             if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-            if (snap.hasError) return Center(child: Text('تعذر تحميل الوجبات: ${snap.error}'));
+            if (snap.hasError) return Center(child: Text('تعذر تحميل الوجبات: ${SareeBackend.arabicError(snap.error)}'));
             final items = snap.data ?? [];
             return ListView(padding: const EdgeInsets.all(12), children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
