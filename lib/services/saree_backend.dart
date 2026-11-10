@@ -18,7 +18,20 @@ class SareeBackend {
     final value = raw.toLowerCase();
     if (value.contains('email rate limit exceeded') ||
         value.contains('over_email_send_rate_limit')) {
-      return 'تم تجاوز الحد المسموح لإرسال رسائل التحقق مؤقتًا. انتظر قليلًا ثم حاول مرة واحدة، أو تواصل مع الإدارة لتفعيل التسجيل.';
+      return 'خدمة إرسال رسائل التحقق وصلت إلى حدها المؤقت. لا تكرر المحاولة الآن؛ انتظر حتى يتجدد الحد أو استخدم الإدارة لإكمال التسجيل. يحتاج التطبيق إلى خدمة بريد مخصصة لإتاحة التسجيل للجميع.';
+    }
+    if (value.contains('too many requests') || value.contains('rate limit') ||
+        value.contains('statuscode: 429')) {
+      return 'عدد المحاولات كبير خلال وقت قصير. انتظر قليلًا ثم حاول مرة واحدة.';
+    }
+    if (value.contains('otp_expired') || value.contains('token has expired')) {
+      return 'انتهت صلاحية رمز التحقق. اطلب رمزًا جديدًا ثم حاول مرة أخرى.';
+    }
+    if (value.contains('user not found') || value.contains('no rows')) {
+      return 'لم نعثر على الحساب أو البيانات المطلوبة.';
+    }
+    if (value.contains('violates foreign key') || value.contains('foreign key')) {
+      return 'تعذر إكمال العملية لارتباط البيانات بسجل آخر. حدّث الصفحة وحاول مجددًا.';
     }
     if (value.contains('email_address_not_authorized')) {
       return 'هذا البريد غير مسموح له باستقبال رسائل التسجيل حاليًا. يلزم إعداد خدمة بريد موثوقة للتطبيق.';
@@ -241,6 +254,23 @@ class SareeBackend {
         .inFilter('restaurant_id', ids)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<List<Map<String, dynamic>>> availableCouriersForRestaurant(String restaurantId) async {
+    final rows = await client.rpc('available_couriers_for_restaurant', params: {
+      'p_restaurant_id': restaurantId,
+    });
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  static Future<void> assignCourierToOrder({
+    required String orderId,
+    required String courierId,
+  }) async {
+    await client.rpc('assign_order_courier', params: {
+      'p_order_id': orderId,
+      'p_courier_id': courierId,
+    });
   }
 
   static Future<List<Map<String, dynamic>>> courierOrders() async {
