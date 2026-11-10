@@ -1414,6 +1414,60 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     finally { if(mounted) setState(() => _busy = false); }
   }
 
+  Future<void> _assignCourier(String restaurantId, Map<String, dynamic> order) async {
+    List<Map<String, dynamic>> candidates;
+    try {
+      candidates = await SareeBackend.availableCouriersForRestaurant(restaurantId);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(SareeBackend.arabicError(e))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('لا يوجد مندوب متاح الآن. سيظهر هنا كل مندوب معتمد يفتح التطبيق ويشارك موقعه.'),
+      ));
+      return;
+    }
+
+    String selected = candidates.first['courier_id'].toString();
+    final courierId = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text('اختيار مندوب للطلب #${order['order_number']}'),
+          content: DropdownButtonFormField<String>(
+            initialValue: selected,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'المندوبون المتاحون الآن'),
+            items: candidates.map((courier) => DropdownMenuItem(
+              value: courier['courier_id'].toString(),
+              child: Text(
+                '${courier['full_name'] ?? 'مندوب'} • ${courier['phone'] ?? 'بدون هاتف'}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            )).toList(),
+            onChanged: (value) {
+              if (value != null) setLocal(() => selected = value);
+            },
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, selected), child: const Text('تعيين المندوب')),
+          ],
+        ),
+      ),
+    );
+    if (courierId != null) {
+      await _run(() => SareeBackend.assignCourierToOrder(
+        orderId: order['id'].toString(),
+        courierId: courierId,
+      ));
+    }
+  }
+
   Future<void> _editMeal(String restaurantId, [Map<String,dynamic>? item]) async {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final description = TextEditingController(text: item?['description']?.toString() ?? '');
@@ -1505,7 +1559,18 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                     title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
                     subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
                     isThreeLine: true,
-                    trailing: next == null ? null : FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label)),
+                    trailing: next != null
+                        ? FilledButton(
+                            onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
+                            child: Text(label),
+                          )
+                        : status == 'ready_for_pickup' && o['courier_id'] == null
+                            ? FilledButton.icon(
+                                onPressed: _busy ? null : () => _assignCourier(rid, o),
+                                icon: const Icon(Icons.delivery_dining_rounded),
+                                label: const Text('اختيار مندوب'),
+                              )
+                            : null,
                   ));
                 }).toList());
               },
@@ -1541,7 +1606,7 @@ class _CourierPortalState extends State<CourierPortal> {
     const settings = LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 15);
     _positionSub = Geolocator.getPositionStream(locationSettings: settings).listen((p) async {
       try { await SareeBackend.updateCourierLocation(p.latitude, p.longitude); }
-      catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث الموقع: $e'))); }
+      catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث الموقع: ${SareeBackend.arabicError(e)}'))); }
     });
     final now = await Geolocator.getCurrentPosition();
     await SareeBackend.updateCourierLocation(now.latitude, now.longitude);
