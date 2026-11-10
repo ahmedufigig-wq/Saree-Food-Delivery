@@ -1185,7 +1185,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final lat = (saved['latitude'] as num?)?.toDouble();
         final lng = (saved['longitude'] as num?)?.toDouble();
         if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180) {
-          deliveryAddress = '$deliveryAddress\\nالموقع: $lat,$lng';
+          deliveryAddress = '$deliveryAddress\nالموقع: $lat,$lng';
         }
       }
       final id = await SareeBackend.createOrder(
