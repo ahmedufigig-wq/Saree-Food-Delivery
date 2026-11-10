@@ -1675,8 +1675,8 @@ class _CourierPortalState extends State<CourierPortal> {
 
     final address = (order['delivery_address'] ?? '').toString();
     final patterns = [
-      RegExp(r'[?&]q=(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)', caseSensitive: false),
-      RegExp(r'(-?\\d{1,2}\\.\\d+)\\s*[,،]\\s*(-?\\d{1,3}\\.\\d+)'),
+      RegExp(r'[?&]q=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)', caseSensitive: false),
+      RegExp(r'(-?\d{1,2}\.\d+)\s*[,،]\s*(-?\d{1,3}\.\d+)'),
     ];
     for (final pattern in patterns) {
       final match = pattern.firstMatch(address);
