@@ -1552,7 +1552,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                 final orders = snap.data ?? [];
                 if(orders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
                 return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) {
-                  final status = o['status'].toString();
+                  final status = (o['status'] ?? '').toString().trim().toLowerCase();
+                  final courierValue = o['courier_id'];
+                  final hasCourier = courierValue != null && courierValue.toString().trim().isNotEmpty;
+                  final isReadyForPickup = status == 'ready_for_pickup';
                   final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
                   final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
                   return Card(child: ListTile(
@@ -1564,7 +1567,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                             onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
                             child: Text(label),
                           )
-                        : status == 'ready_for_pickup' && o['courier_id'] == null
+                        : isReadyForPickup && !hasCourier
                             ? FilledButton.icon(
                                 onPressed: _busy ? null : () => _assignCourier(rid, o),
                                 icon: const Icon(Icons.delivery_dining_rounded),
