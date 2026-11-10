@@ -1632,6 +1632,44 @@ class _CourierPortalState extends State<CourierPortal> {
     finally { if(mounted) setState(() => _busy = false); }
   }
 
+  Widget _courierOrderDetails(Map<String, dynamic> order) {
+    final lat = (order['delivery_latitude'] as num?)?.toDouble();
+    final lng = (order['delivery_longitude'] as num?)?.toDouble();
+    final hasLocation = lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ListTile(dense: true, leading: const Icon(Icons.person_outline), title: Text(order['customer_name']?.toString().trim().isNotEmpty == true ? order['customer_name'].toString() : 'العميل'), subtitle: Text(order['customer_phone']?.toString() ?? 'لا يوجد رقم هاتف')),
+      ListTile(dense: true, leading: const Icon(Icons.location_on_outlined), title: const Text('عنوان التوصيل'), subtitle: Text(order['delivery_address']?.toString().trim().isNotEmpty == true ? order['delivery_address'].toString() : 'لم يحدد العميل عنوان التوصيل')),
+      if ((order['notes'] ?? '').toString().trim().isNotEmpty) ListTile(dense: true, leading: const Icon(Icons.notes_rounded), title: const Text('ملاحظات العميل'), subtitle: Text(order['notes'].toString())),
+      ListTile(dense: true, leading: const Icon(Icons.payments_outlined), title: Text('الإجمالي: ${order['total_yer'] ?? 0} ريال'), subtitle: Text('طريقة الدفع: ${order['payment_method'] ?? 'نقدًا عند الاستلام'}')),
+      FutureBuilder<List<Map<String, dynamic>>>(
+        future: SareeBackend.courierOrderItems(order['id'].toString()),
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator());
+          if (snap.hasError) return Padding(padding: const EdgeInsets.all(12), child: Text('تعذر تحميل أصناف الطلب: ${SareeBackend.arabicError(snap.error)}'));
+          final items = snap.data ?? [];
+          return Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('تفاصيل الأصناف', style: TextStyle(fontWeight: FontWeight.w900)),
+            if (items.isEmpty) const Padding(padding: EdgeInsets.only(top: 6), child: Text('لا توجد تفاصيل أصناف مسجلة لهذا الطلب')),
+            ...items.map((item) => Padding(padding: const EdgeInsets.only(top: 6), child: Row(children: [
+              Expanded(child: Text('${item['item_name']} × ${item['quantity']}')),
+              Text('${item['line_total_yer']} ريال', style: const TextStyle(fontWeight: FontWeight.w700)),
+            ]))),
+          ]));
+        },
+      ),
+      if (hasLocation) Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.map_outlined), title: Text('موقع العميل على الخريطة')),
+        SizedBox(height: 210, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FlutterMap(
+          options: MapOptions(initialCenter: LatLng(lat, lng), initialZoom: 15),
+          children: [
+            TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
+            MarkerLayer(markers: [Marker(point: LatLng(lat, lng), width: 48, height: 48, child: const Icon(Icons.location_pin, color: Color(0xFFE50914), size: 44))]),
+          ],
+        ))),
+      ])) else const Padding(padding: EdgeInsets.all(12), child: Text('لم يرسل العميل موقعًا جغرافيًا؛ استخدم عنوان التوصيل ورقم الهاتف للتواصل معه.')),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('طلبات المندوب'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
@@ -1653,24 +1691,30 @@ class _CourierPortalState extends State<CourierPortal> {
           const Padding(padding: EdgeInsets.all(8), child: Text('مهامك الحالية', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
           if(active.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد لديك توصيلات نشطة')),
           ...active.map((o) {
-            final status = o['status'].toString();
+            final status = (o['status'] ?? '').toString();
             final next = status == 'assigned' ? 'picked_up' : 'delivered';
             final label = status == 'assigned' ? 'تأكيد استلام الطلب' : 'تأكيد التسليم';
-            return Card(child: ListTile(
-              title: Text('طلب #${o['order_number']}'),
-              subtitle: Text('${o['customer_name']} • ${o['customer_phone']}\n${o['delivery_address']}\nالحالة: $status'),
-              isThreeLine: true,
-              trailing: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label)),
-            ));
+            return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              ListTile(title: Text('طلب #${o['order_number']}'), subtitle: Text(status == 'assigned' ? 'تم إسناده إليك - بانتظار الاستلام' : 'تم استلام الطلب')),
+              _courierOrderDetails(o),
+              Padding(padding: const EdgeInsets.all(12), child: FilledButton.icon(
+                onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
+                icon: Icon(status == 'assigned' ? Icons.inventory_2_rounded : Icons.check_circle_outline),
+                label: Text(label),
+              )),
+            ]));
           }),
           const Padding(padding: EdgeInsets.all(8), child: Text('طلبات جاهزة للاستلام', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
           if(available.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد طلبات جاهزة حاليًا')),
-          ...available.map((o) => Card(child: ListTile(
-            title: Text('طلب #${o['order_number']}'),
-            subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال'),
-            isThreeLine: true,
-            trailing: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.claimOrder(o['id'].toString())), child: const Text('استلام')),
-          ))),
+          ...available.map((o) => Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            ListTile(title: Text('طلب #${o['order_number']}'), subtitle: const Text('طلب متاح للاستلام')),
+            _courierOrderDetails(o),
+            Padding(padding: const EdgeInsets.all(12), child: FilledButton.icon(
+              onPressed: _busy ? null : () => _run(() => SareeBackend.claimOrder(o['id'].toString())),
+              icon: const Icon(Icons.delivery_dining_rounded),
+              label: const Text('استلام الطلب'),
+            )),
+          ]))),
         ]);
       },
     ),
