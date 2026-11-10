@@ -12,6 +12,52 @@ class SareeBackend {
   static SupabaseClient get client => Supabase.instance.client;
   static User? get user => isConfigured ? client.auth.currentUser : null;
 
+  // Convert backend and network errors to clear Arabic messages.
+  static String arabicError(Object? error) {
+    final raw = error?.toString() ?? '';
+    final value = raw.toLowerCase();
+    if (value.contains('email rate limit exceeded') ||
+        value.contains('over_email_send_rate_limit')) {
+      return 'تم تجاوز الحد المسموح لإرسال رسائل التحقق مؤقتًا. انتظر قليلًا ثم حاول مرة واحدة، أو تواصل مع الإدارة لتفعيل التسجيل.';
+    }
+    if (value.contains('email_address_not_authorized')) {
+      return 'هذا البريد غير مسموح له باستقبال رسائل التسجيل حاليًا. يلزم إعداد خدمة بريد موثوقة للتطبيق.';
+    }
+    if (value.contains('user already registered') ||
+        value.contains('already been registered') ||
+        value.contains('user_already_exists')) {
+      return 'هذا البريد مسجل بالفعل. سجّل الدخول بدل إنشاء حساب جديد.';
+    }
+    if (value.contains('invalid login credentials')) {
+      return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+    }
+    if (value.contains('email not confirmed')) {
+      return 'لم يتم تأكيد البريد الإلكتروني بعد. افتح رسالة التأكيد ثم حاول تسجيل الدخول.';
+    }
+    if (value.contains('password should be') || value.contains('weak_password')) {
+      return 'كلمة المرور ضعيفة. استخدم كلمة مرور أقوى لا تقل عن 8 أحرف.';
+    }
+    if (value.contains('invalid email') || value.contains('email_address_invalid')) {
+      return 'صيغة البريد الإلكتروني غير صحيحة.';
+    }
+    if (value.contains('network') || value.contains('socketexception') ||
+        value.contains('failed host lookup') || value.contains('connection')) {
+      return 'تعذر الاتصال بالإنترنت أو بالخادم. تحقق من اتصالك ثم أعد المحاولة.';
+    }
+    if (value.contains('jwt') || value.contains('not authenticated') ||
+        value.contains('unauthorized')) {
+      return 'انتهت جلسة الدخول. سجّل الدخول مرة أخرى.';
+    }
+    if (value.contains('permission denied') || value.contains('row-level security') ||
+        value.contains('rls')) {
+      return 'ليست لديك صلاحية لتنفيذ هذا الإجراء. تحقق من نوع حسابك واعتماده.';
+    }
+    if (value.contains('duplicate key') || value.contains('already exists')) {
+      return 'هذه البيانات مسجلة من قبل.';
+    }
+    return 'حدث خطأ غير متوقع. حاول مرة أخرى، وإذا تكرر تواصل مع الدعم.';
+  }
+
   static Future<void> initialize() async {
     if (isConfigured) {
       await Supabase.initialize(
