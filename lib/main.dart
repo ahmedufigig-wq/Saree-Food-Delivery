@@ -1660,10 +1660,10 @@ class _CourierPortalState extends State<CourierPortal> {
       if (hasLocation) Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.map_outlined), title: Text('موقع العميل على الخريطة')),
         SizedBox(height: 210, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FlutterMap(
-          options: MapOptions(initialCenter: LatLng(lat, lng), initialZoom: 15),
+          options: MapOptions(initialCenter: LatLng(lat!, lng!), initialZoom: 15),
           children: [
             TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
-            MarkerLayer(markers: [Marker(point: LatLng(lat, lng), width: 48, height: 48, child: const Icon(Icons.location_pin, color: Color(0xFFE50914), size: 44))]),
+            MarkerLayer(markers: [Marker(point: LatLng(lat!, lng!), width: 48, height: 48, child: const Icon(Icons.location_pin, color: Color(0xFFE50914), size: 44))]),
           ],
         ))),
       ])) else const Padding(padding: EdgeInsets.all(12), child: Text('لم يرسل العميل موقعًا جغرافيًا؛ استخدم عنوان التوصيل ورقم الهاتف للتواصل معه.')),
