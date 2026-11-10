@@ -273,6 +273,15 @@ class SareeBackend {
     });
   }
 
+  static Future<List<Map<String, dynamic>>> courierOrderItems(String orderId) async {
+    final rows = await client
+        .from('order_items')
+        .select('item_name, quantity, unit_price_yer, line_total_yer')
+        .eq('order_id', orderId)
+        .order('item_name');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   static Future<List<Map<String, dynamic>>> courierOrders() async {
     final rows = await client
         .from('orders')
