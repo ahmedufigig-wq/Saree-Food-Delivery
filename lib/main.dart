@@ -1178,11 +1178,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (cart.items.isEmpty || cart.restaurantId == null) return;
     setState(() { _busy = true; _error = null; });
     try {
+      var deliveryAddress = _address.text.trim();
+      final selectedAddresses = _savedAddresses.where((a) => a['id']?.toString() == _selectedAddressId);
+      if (selectedAddresses.isNotEmpty) {
+        final saved = selectedAddresses.first;
+        final lat = (saved['latitude'] as num?)?.toDouble();
+        final lng = (saved['longitude'] as num?)?.toDouble();
+        if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180) {
+          deliveryAddress = '$deliveryAddress\\nالموقع: $lat,$lng';
+        }
+      }
       final id = await SareeBackend.createOrder(
         restaurantId: cart.restaurantId!,
         customerName: _name.text,
         customerPhone: _phone.text,
-        address: _address.text,
+        address: deliveryAddress,
         notes: _notes.text,
         items: cart.items.map((line) => {'menu_item_id': line.id, 'quantity': line.quantity}).toList(),
       );
@@ -1597,7 +1607,25 @@ class CourierPortal extends StatefulWidget {
 class _CourierPortalState extends State<CourierPortal> {
   bool _busy = false;
   bool _sharing = false;
+  late Future<List<List<Map<String, dynamic>>>> _ordersFuture;
   StreamSubscription<Position>? _positionSub;
+
+  Future<List<List<Map<String, dynamic>>>> _loadOrders() => Future.wait([
+    SareeBackend.availableCourierOrders(),
+    SareeBackend.courierOrders(),
+  ]);
+
+  @override
+  void initState() {
+    super.initState();
+    _ordersFuture = _loadOrders();
+  }
+
+  Future<void> _refreshOrders() async {
+    final future = _loadOrders();
+    if (mounted) setState(() => _ordersFuture = future);
+    await future;
+  }
 
   Future<void> _startSharing() async {
     final enabled = await Geolocator.isLocationServiceEnabled();
@@ -1626,16 +1654,47 @@ class _CourierPortalState extends State<CourierPortal> {
   void dispose() { _positionSub?.cancel(); super.dispose(); }
 
   Future<void> _run(Future<void> Function() action) async {
+    if (_busy) return;
     setState(() => _busy = true);
-    try { await action(); if(mounted) setState(() {}); }
-    catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e)))); }
-    finally { if(mounted) setState(() => _busy = false); }
+    try {
+      await action();
+      if (mounted) setState(() => _ordersFuture = _loadOrders());
+    } catch(e) {
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e))));
+    } finally {
+      if(mounted) setState(() => _busy = false);
+    }
+  }
+
+  List<double>? _deliveryCoordinates(Map<String, dynamic> order) {
+    final rawLat = order['delivery_latitude'];
+    final rawLng = order['delivery_longitude'];
+    final lat = rawLat is num ? rawLat.toDouble() : double.tryParse(rawLat?.toString() ?? '');
+    final lng = rawLng is num ? rawLng.toDouble() : double.tryParse(rawLng?.toString() ?? '');
+    if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180) return [lat, lng];
+
+    final address = (order['delivery_address'] ?? '').toString();
+    final patterns = [
+      RegExp(r'[?&]q=(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)', caseSensitive: false),
+      RegExp(r'(-?\\d{1,2}\\.\\d+)\\s*[,،]\\s*(-?\\d{1,3}\\.\\d+)'),
+    ];
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(address);
+      if (match == null) continue;
+      final parsedLat = double.tryParse(match.group(1)!);
+      final parsedLng = double.tryParse(match.group(2)!);
+      if (parsedLat != null && parsedLng != null && parsedLat.abs() <= 90 && parsedLng.abs() <= 180) {
+        return [parsedLat, parsedLng];
+      }
+    }
+    return null;
   }
 
   Widget _courierOrderDetails(Map<String, dynamic> order) {
-    final lat = (order['delivery_latitude'] as num?)?.toDouble();
-    final lng = (order['delivery_longitude'] as num?)?.toDouble();
-    final hasLocation = lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180;
+    final coordinates = _deliveryCoordinates(order);
+    final lat = coordinates?[0];
+    final lng = coordinates?[1];
+    final hasLocation = lat != null && lng != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       ListTile(dense: true, leading: const Icon(Icons.person_outline), title: Text(order['customer_name']?.toString().trim().isNotEmpty == true ? order['customer_name'].toString() : 'العميل'), subtitle: Text(order['customer_phone']?.toString() ?? 'لا يوجد رقم هاتف')),
       ListTile(dense: true, leading: const Icon(Icons.location_on_outlined), title: const Text('عنوان التوصيل'), subtitle: Text(order['delivery_address']?.toString().trim().isNotEmpty == true ? order['delivery_address'].toString() : 'لم يحدد العميل عنوان التوصيل')),
@@ -1672,14 +1731,20 @@ class _CourierPortalState extends State<CourierPortal> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('طلبات المندوب'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
+    appBar: AppBar(title: const Text('طلبات المندوب'), actions: [
+      IconButton(tooltip: 'تحديث الطلبات', onPressed: _busy ? null : _refreshOrders, icon: const Icon(Icons.refresh_rounded)),
+      IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout)),
+    ]),
     body: FutureBuilder<List<List<Map<String,dynamic>>>>(
-      future: Future.wait([SareeBackend.availableCourierOrders(), SareeBackend.courierOrders()]),
+      future: _ordersFuture,
       builder: (context, snap) {
         if(snap.connectionState != ConnectionState.done) return const LoadingPage();
         if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
         final available = snap.data![0];
-        final active = snap.data![1].where((o) => o['status'] == 'assigned' || o['status'] == 'picked_up').toList();
+        final active = snap.data![1].where((o) {
+          final status = (o['status'] ?? '').toString().trim().toLowerCase();
+          return status == 'assigned' || status == 'picked_up';
+        }).toList();
         return ListView(padding: const EdgeInsets.all(12), children: [
           Card(child: SwitchListTile(
             value: _sharing,
@@ -1691,7 +1756,7 @@ class _CourierPortalState extends State<CourierPortal> {
           const Padding(padding: EdgeInsets.all(8), child: Text('مهامك الحالية', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
           if(active.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد لديك توصيلات نشطة')),
           ...active.map((o) {
-            final status = (o['status'] ?? '').toString();
+            final status = (o['status'] ?? '').toString().trim().toLowerCase();
             final next = status == 'assigned' ? 'picked_up' : 'delivered';
             final label = status == 'assigned' ? 'تأكيد استلام الطلب' : 'تأكيد التسليم';
             return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
