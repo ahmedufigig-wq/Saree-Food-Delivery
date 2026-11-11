@@ -1653,8 +1653,8 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
                   final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
                   return Card(clipBehavior: Clip.antiAlias, child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Text('طلب #\${o['order_number']} • \${o['customer_name']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-                    Text('الإجمالي: \${o['total_yer']} ريال • الحالة: $status'),
+                    Text('طلب #${o['order_number']} • ${o['customer_name']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                    Text('الإجمالي: ${o['total_yer']} ريال • الحالة: $status'),
                     const Divider(),
                     const Text('بيانات العميل', style: TextStyle(fontWeight: FontWeight.w900)),
                     ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.person_outline), title: Text(o['customer_name']?.toString() ?? 'العميل'), subtitle: Text(o['customer_phone']?.toString() ?? 'لا يوجد رقم هاتف')),
@@ -1664,10 +1664,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                     const Text('الأصناف والكميات', style: TextStyle(fontWeight: FontWeight.w900)),
                     FutureBuilder<List<Map<String, dynamic>>>(future: SareeBackend.courierOrderItems(o['id'].toString()), builder: (context, itemSnap) {
                       if (itemSnap.connectionState != ConnectionState.done) return const LinearProgressIndicator();
-                      if (itemSnap.hasError) return Text('تعذر تحميل الأصناف: \${SareeBackend.arabicError(itemSnap.error)}');
+                      if (itemSnap.hasError) return Text('تعذر تحميل الأصناف: ${SareeBackend.arabicError(itemSnap.error)}');
                       final items = itemSnap.data ?? [];
                       if (items.isEmpty) return const Text('لا توجد أصناف مسجلة');
-                      return Column(children: items.map((item) => ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('\${item['item_name']} × \${item['quantity']}'), subtitle: Text('سعر الوحدة: \${item['unit_price_yer']} ريال'), trailing: Text('\${item['line_total_yer']} ريال'))).toList());
+                      return Column(children: items.map((item) => ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('${item['item_name']} × ${item['quantity']}'), subtitle: Text('سعر الوحدة: ${item['unit_price_yer']} ريال'), trailing: Text('${item['line_total_yer']} ريال'))).toList());
                     }),
                     const Divider(),
                     if (status == 'pending') Row(children: [
