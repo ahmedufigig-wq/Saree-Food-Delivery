@@ -212,6 +212,8 @@ class SareeBackend {
     required String address,
     required List<Map<String, dynamic>> items,
     String notes = '',
+    double? deliveryLatitude,
+    double? deliveryLongitude,
   }) async {
     final result = await client.rpc('create_order', params: {
       'p_restaurant_id': restaurantId,
@@ -220,6 +222,8 @@ class SareeBackend {
       'p_delivery_address': address,
       'p_items': items,
       'p_notes': notes,
+      'p_delivery_latitude': deliveryLatitude,
+      'p_delivery_longitude': deliveryLongitude,
     });
     return result.toString();
   }
@@ -250,7 +254,7 @@ class SareeBackend {
     if (ids.isEmpty) return [];
     final rows = await client
         .from('orders')
-        .select()
+        .select('*, restaurants(name, address, latitude, longitude)')
         .inFilter('restaurant_id', ids)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
@@ -285,7 +289,7 @@ class SareeBackend {
   static Future<List<Map<String, dynamic>>> courierOrders() async {
     final rows = await client
         .from('orders')
-        .select()
+        .select('*, restaurants(name, address, latitude, longitude)')
         .eq('courier_id', user!.id)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
@@ -294,7 +298,7 @@ class SareeBackend {
   static Future<List<Map<String, dynamic>>> availableCourierOrders() async {
     final rows = await client
         .from('orders')
-        .select()
+        .select('*, restaurants(name, address, latitude, longitude)')
         .eq('status', 'ready_for_pickup')
         .isFilter('courier_id', null)
         .order('created_at');

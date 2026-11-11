@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1129,6 +1131,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _address = TextEditingController();
   final _notes = TextEditingController();
   bool _busy = false;
+  bool _shareDeliveryLocation = false;
+  bool _locationBusy = false;
+  double? _deliveryLatitude;
+  double? _deliveryLongitude;
   String? _error;
   List<Map<String, dynamic>> _savedAddresses = [];
   String? _selectedAddressId;
@@ -1169,6 +1175,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void dispose() { _name.dispose(); _phone.dispose(); _address.dispose(); _notes.dispose(); super.dispose(); }
 
+  Future<void> _captureDeliveryLocation() async {
+    setState(() => _locationBusy = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) throw Exception('فعّل خدمة GPS أولاً');
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) throw Exception('اسمح للتطبيق بالوصول إلى موقعك لتحديد نقطة التسليم');
+      final position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
+      if (!mounted) return;
+      setState(() { _deliveryLatitude = position.latitude; _deliveryLongitude = position.longitude; _shareDeliveryLocation = true; });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديد موقع التسليم بدقة')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e))));
+    } finally { if (mounted) setState(() => _locationBusy = false); }
+  }
+
   Future<void> _send() async {
     if (_name.text.trim().length < 2 || _phone.text.trim().length < 7 || _address.text.trim().length < 5) {
       setState(() => _error = 'أكمل الاسم ورقم الهاتف والعنوان بالتفصيل');
@@ -1194,6 +1216,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         customerPhone: _phone.text,
         address: deliveryAddress,
         notes: _notes.text,
+        deliveryLatitude: _shareDeliveryLocation ? _deliveryLatitude : null,
+        deliveryLongitude: _shareDeliveryLocation ? _deliveryLongitude : null,
         items: cart.items.map((line) => {'menu_item_id': line.id, 'quantity': line.quantity}).toList(),
       );
       cart.clear();
@@ -1239,6 +1263,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         const SizedBox(height: 12),
       ],
       TextField(controller: _address, maxLines: 2, decoration: const InputDecoration(labelText: 'عنوان التوصيل بالتفصيل')),
+      Card(child: SwitchListTile(value: _shareDeliveryLocation, onChanged: _locationBusy ? null : (v) async { if (v) await _captureDeliveryLocation(); else setState(() { _shareDeliveryLocation = false; _deliveryLatitude = null; _deliveryLongitude = null; }); }, secondary: const Icon(Icons.my_location_rounded), title: const Text('مشاركة موقع التسليم مع المندوب'), subtitle: Text(_locationBusy ? 'جارٍ تحديد الموقع…' : _shareDeliveryLocation ? 'تم تحديد الموقع وسيظهر للمندوب' : 'اختياري: يحدد موقع التسليم بدقة'))),
       const SizedBox(height: 12),
       TextField(controller: _notes, maxLines: 2, decoration: const InputDecoration(labelText: 'ملاحظات للمطعم (اختياري)')),
       const SizedBox(height: 12),
@@ -1312,6 +1337,13 @@ class CustomerOrdersPage extends StatelessWidget {
 }
 
 
+LatLng? _orderDeliveryPoint(Map<String, dynamic> order) {
+  final lat = (order['delivery_latitude'] as num?)?.toDouble();
+  final lng = (order['delivery_longitude'] as num?)?.toDouble();
+  if (lat == null || lng == null || lat.abs() > 90 || lng.abs() > 180) return null;
+  return LatLng(lat, lng);
+}
+
 class OrderTrackingPage extends StatelessWidget {
   const OrderTrackingPage({super.key, required this.order});
   final Map<String, dynamic> order;
@@ -1363,7 +1395,7 @@ class OrderTrackingPage extends StatelessWidget {
           }),
           Card(child: ListTile(leading: const Icon(Icons.location_on_rounded), title: const Text('عنوان التوصيل'), subtitle: Text(current['delivery_address']?.toString() ?? ''))),
           if (current['courier_id'] != null && (status == 'assigned' || status == 'picked_up'))
-            CourierLiveMap(courierId: current['courier_id'].toString()),
+            CourierLiveMap(courierId: current['courier_id'].toString(), destination: _orderDeliveryPoint(current)),
           if (status == 'pending')
             OutlinedButton.icon(
               onPressed: () async {
@@ -1382,9 +1414,66 @@ class OrderTrackingPage extends StatelessWidget {
 }
 
 
+class DeliveryRouteMap extends StatefulWidget {
+  const DeliveryRouteMap({super.key, required this.from, required this.to, required this.fromLabel, required this.toLabel});
+  final LatLng? from;
+  final LatLng? to;
+  final String fromLabel;
+  final String toLabel;
+  @override State<DeliveryRouteMap> createState() => _DeliveryRouteMapState();
+}
+
+class _DeliveryRouteMapState extends State<DeliveryRouteMap> {
+  Future<List<LatLng>>? _route;
+  @override void initState() { super.initState(); _loadRoute(); }
+  @override void didUpdateWidget(covariant DeliveryRouteMap oldWidget) { super.didUpdateWidget(oldWidget); if (oldWidget.from != widget.from || oldWidget.to != widget.to) _loadRoute(); }
+  void _loadRoute() { _route = _fetchRoute(); }
+  Future<List<LatLng>> _fetchRoute() async {
+    final start = widget.from; final end = widget.to;
+    if (start == null || end == null) return [];
+    final direct = [start, end];
+    final httpClient = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+    try {
+      final path = start.longitude.toString() + ',' + start.latitude.toString() + ';' + end.longitude.toString() + ',' + end.latitude.toString();
+      final uri = Uri.parse('https://router.project-osrm.org/route/v1/driving/' + path + '?overview=full&geometries=geojson');
+      final request = await httpClient.getUrl(uri).timeout(const Duration(seconds: 10));
+      final response = await request.close().timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return direct;
+      final body = await response.transform(utf8.decoder).join().timeout(const Duration(seconds: 10));
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      final routes = data['routes'] as List?;
+      if (routes == null || routes.isEmpty) return direct;
+      final geometry = (routes.first as Map)['geometry'] as Map;
+      final coords = geometry['coordinates'] as List;
+      final points = coords.map((v) => LatLng((v[1] as num).toDouble(), (v[0] as num).toDouble())).toList();
+      return points.length >= 2 ? points : direct;
+    } catch (_) { return direct; }
+    finally { httpClient.close(force: true); }
+  }
+  @override Widget build(BuildContext context) {
+    final start = widget.from; final end = widget.to;
+    if (start == null || end == null) return const Center(child: Text('لا تتوفر إحداثيات كافية لعرض المسار'));
+    final center = LatLng((start.latitude + end.latitude) / 2, (start.longitude + end.longitude) / 2);
+    return FutureBuilder<List<LatLng>>(future: _route, builder: (context, snap) {
+      final points = snap.data ?? [start, end];
+      return FlutterMap(options: MapOptions(initialCenter: center, initialZoom: 13), children: [
+        TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
+        if (points.length >= 2) PolylineLayer(polylines: [Polyline(points: points, strokeWidth: 5, color: const Color(0xFFE50914))]),
+        MarkerLayer(markers: [
+          Marker(point: start, width: 52, height: 52, child: Tooltip(message: widget.fromLabel, child: const Icon(Icons.my_location_rounded, color: Color(0xFF1565C0), size: 38))),
+          Marker(point: end, width: 52, height: 52, child: Tooltip(message: widget.toLabel, child: const Icon(Icons.location_pin, color: Color(0xFFE50914), size: 44))),
+        ]),
+        RichAttributionWidget(attributions: [TextSourceAttribution('OpenStreetMap contributors')]),
+      ]);
+    });
+  }
+}
+
+
 class CourierLiveMap extends StatelessWidget {
-  const CourierLiveMap({super.key, required this.courierId});
+  const CourierLiveMap({super.key, required this.courierId, this.destination});
   final String courierId;
+  final LatLng? destination;
 
   @override
   Widget build(BuildContext context) => StreamBuilder<List<Map<String,dynamic>>>(
@@ -1396,13 +1485,8 @@ class CourierLiveMap extends StatelessWidget {
       final point = LatLng((row['latitude'] as num).toDouble(), (row['longitude'] as num).toDouble());
       return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const ListTile(leading: Icon(Icons.map_rounded), title: Text('موقع المندوب المباشر'), subtitle: Text('تتحدث الخريطة عند وصول تحديث جديد')),
-        SizedBox(height: 230, child: FlutterMap(
-          options: MapOptions(initialCenter: point, initialZoom: 15),
-          children: [
-            TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
-            MarkerLayer(markers: [Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFE50914), size: 44))]),
-          ],
-        )),
+        SizedBox(height: 250, child: DeliveryRouteMap(from: point, to: destination, fromLabel: 'المندوب', toLabel: 'عنوانك')),
+        if (destination == null) const Padding(padding: EdgeInsets.all(10), child: Text('لم يتم مشاركة إحداثيات عنوان التسليم مع المندوب.'))
         Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: ${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF748094)))),
       ]));
     },
@@ -1568,23 +1652,32 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   final isReadyForPickup = status == 'ready_for_pickup';
                   final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
                   final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
-                  return Card(child: ListTile(
-                    title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
-                    subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
-                    isThreeLine: true,
-                    trailing: next != null
-                        ? FilledButton(
-                            onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
-                            child: Text(label),
-                          )
-                        : isReadyForPickup && !hasCourier
-                            ? FilledButton.icon(
-                                onPressed: _busy ? null : () => _assignCourier(rid, o),
-                                icon: const Icon(Icons.delivery_dining_rounded),
-                                label: const Text('اختيار مندوب'),
-                              )
-                            : null,
-                  ));
+                  return Card(clipBehavior: Clip.antiAlias, child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text('طلب #${o['order_number']} • ${o['customer_name']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                    Text('الإجمالي: ${o['total_yer']} ريال • الحالة: $status'),
+                    const Divider(),
+                    const Text('بيانات العميل', style: TextStyle(fontWeight: FontWeight.w900)),
+                    ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.person_outline), title: Text(o['customer_name']?.toString() ?? 'العميل'), subtitle: Text(o['customer_phone']?.toString() ?? 'لا يوجد رقم هاتف')),
+                    ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.location_on_outlined), title: const Text('عنوان التوصيل'), subtitle: Text(o['delivery_address']?.toString() ?? 'غير محدد')),
+                    if ((o['notes'] ?? '').toString().trim().isNotEmpty) ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.notes), title: const Text('ملاحظات'), subtitle: Text(o['notes'].toString())),
+                    const Divider(),
+                    const Text('الأصناف والكميات', style: TextStyle(fontWeight: FontWeight.w900)),
+                    FutureBuilder<List<Map<String, dynamic>>>(future: SareeBackend.courierOrderItems(o['id'].toString()), builder: (context, itemSnap) {
+                      if (itemSnap.connectionState != ConnectionState.done) return const LinearProgressIndicator();
+                      if (itemSnap.hasError) return Text('تعذر تحميل الأصناف: ${SareeBackend.arabicError(itemSnap.error)}');
+                      final items = itemSnap.data ?? [];
+                      if (items.isEmpty) return const Text('لا توجد أصناف مسجلة');
+                      return Column(children: items.map((item) => ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('${item['item_name']} × ${item['quantity']}'), subtitle: Text('سعر الوحدة: ${item['unit_price_yer']} ريال'), trailing: Text('${item['line_total_yer']} ريال'))).toList());
+                    }),
+                    const Divider(),
+                    if (status == 'pending') Row(children: [
+                      Expanded(child: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), 'accepted')), child: const Text('قبول الطلب'))),
+                      const SizedBox(width: 8),
+                      Expanded(child: OutlinedButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), 'cancelled', reason: 'رفض المطعم لعدم توفر الطلب أو أحد أصنافه')), child: const Text('رفض الطلب'))),
+                    ]) else if (next != null) FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label))
+                    else if (isReadyForPickup && !hasCourier) FilledButton.icon(onPressed: _busy ? null : () => _assignCourier(rid, o), icon: const Icon(Icons.delivery_dining_rounded), label: const Text('اختيار مندوب'))
+                    else if (hasCourier) const Text('تم تعيين مندوب لهذا الطلب'),
+                  ])));
                 }).toList());
               },
             ),
@@ -1636,10 +1729,12 @@ class _CourierPortalState extends State<CourierPortal> {
     await _positionSub?.cancel();
     const settings = LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 15);
     _positionSub = Geolocator.getPositionStream(locationSettings: settings).listen((p) async {
+      if (mounted) setState(() => _lastPosition = p);
       try { await SareeBackend.updateCourierLocation(p.latitude, p.longitude); }
       catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث الموقع: ${SareeBackend.arabicError(e)}'))); }
     });
-    final now = await Geolocator.getCurrentPosition();
+    final now = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
+    if (mounted) setState(() => _lastPosition = now);
     await SareeBackend.updateCourierLocation(now.latitude, now.longitude);
     if(mounted) setState(() => _sharing = true);
   }
@@ -1665,6 +1760,8 @@ class _CourierPortalState extends State<CourierPortal> {
       if(mounted) setState(() => _busy = false);
     }
   }
+
+  Position? _lastPosition;
 
   List<double>? _deliveryCoordinates(Map<String, dynamic> order) {
     final rawLat = order['delivery_latitude'];
@@ -1695,7 +1792,9 @@ class _CourierPortalState extends State<CourierPortal> {
     final lat = coordinates?[0];
     final lng = coordinates?[1];
     final hasLocation = lat != null && lng != null;
+    final restaurant = order['restaurants'] is Map ? Map<String, dynamic>.from(order['restaurants'] as Map) : <String, dynamic>{};
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ListTile(dense: true, leading: const Icon(Icons.storefront_rounded), title: Text(restaurant['name']?.toString() ?? 'المطعم'), subtitle: Text(restaurant['address']?.toString() ?? 'عنوان المطعم غير متوفر')),
       ListTile(dense: true, leading: const Icon(Icons.person_outline), title: Text(order['customer_name']?.toString().trim().isNotEmpty == true ? order['customer_name'].toString() : 'العميل'), subtitle: Text(order['customer_phone']?.toString() ?? 'لا يوجد رقم هاتف')),
       ListTile(dense: true, leading: const Icon(Icons.location_on_outlined), title: const Text('عنوان التوصيل'), subtitle: Text(order['delivery_address']?.toString().trim().isNotEmpty == true ? order['delivery_address'].toString() : 'لم يحدد العميل عنوان التوصيل')),
       if ((order['notes'] ?? '').toString().trim().isNotEmpty) ListTile(dense: true, leading: const Icon(Icons.notes_rounded), title: const Text('ملاحظات العميل'), subtitle: Text(order['notes'].toString())),
@@ -1718,12 +1817,11 @@ class _CourierPortalState extends State<CourierPortal> {
       ),
       if (hasLocation) Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.map_outlined), title: Text('موقع العميل على الخريطة')),
-        SizedBox(height: 210, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FlutterMap(
-          options: MapOptions(initialCenter: LatLng(lat, lng), initialZoom: 15),
-          children: [
-            TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
-            MarkerLayer(markers: [Marker(point: LatLng(lat, lng), width: 48, height: 48, child: const Icon(Icons.location_pin, color: Color(0xFFE50914), size: 44))]),
-          ],
+        SizedBox(height: 230, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: DeliveryRouteMap(
+          from: _lastPosition == null ? null : LatLng(_lastPosition!.latitude, _lastPosition!.longitude),
+          to: LatLng(lat, lng),
+          fromLabel: 'المندوب',
+          toLabel: 'موقع العميل',
         ))),
       ])) else const Padding(padding: EdgeInsets.all(12), child: Text('لم يرسل العميل موقعًا جغرافيًا؛ استخدم عنوان التوصيل ورقم الهاتف للتواصل معه.')),
     ]);
