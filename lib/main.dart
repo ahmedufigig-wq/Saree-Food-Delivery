@@ -1568,23 +1568,32 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   final isReadyForPickup = status == 'ready_for_pickup';
                   final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
                   final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
-                  return Card(child: ListTile(
-                    title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
-                    subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
-                    isThreeLine: true,
-                    trailing: next != null
-                        ? FilledButton(
-                            onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
-                            child: Text(label),
-                          )
-                        : isReadyForPickup && !hasCourier
-                            ? FilledButton.icon(
-                                onPressed: _busy ? null : () => _assignCourier(rid, o),
-                                icon: const Icon(Icons.delivery_dining_rounded),
-                                label: const Text('اختيار مندوب'),
-                              )
-                            : null,
-                  ));
+                  return Card(clipBehavior: Clip.antiAlias, child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text('طلب #\${o['order_number']} • \${o['customer_name']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                    Text('الإجمالي: \${o['total_yer']} ريال • الحالة: $status'),
+                    const Divider(),
+                    const Text('بيانات العميل', style: TextStyle(fontWeight: FontWeight.w900)),
+                    ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.person_outline), title: Text(o['customer_name']?.toString() ?? 'العميل'), subtitle: Text(o['customer_phone']?.toString() ?? 'لا يوجد رقم هاتف')),
+                    ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.location_on_outlined), title: const Text('عنوان التوصيل'), subtitle: Text(o['delivery_address']?.toString() ?? 'غير محدد')),
+                    if ((o['notes'] ?? '').toString().trim().isNotEmpty) ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.notes), title: const Text('ملاحظات'), subtitle: Text(o['notes'].toString())),
+                    const Divider(),
+                    const Text('الأصناف والكميات', style: TextStyle(fontWeight: FontWeight.w900)),
+                    FutureBuilder<List<Map<String, dynamic>>>(future: SareeBackend.courierOrderItems(o['id'].toString()), builder: (context, itemSnap) {
+                      if (itemSnap.connectionState != ConnectionState.done) return const LinearProgressIndicator();
+                      if (itemSnap.hasError) return Text('تعذر تحميل الأصناف: \${SareeBackend.arabicError(itemSnap.error)}');
+                      final items = itemSnap.data ?? [];
+                      if (items.isEmpty) return const Text('لا توجد أصناف مسجلة');
+                      return Column(children: items.map((item) => ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('\${item['item_name']} × \${item['quantity']}'), subtitle: Text('سعر الوحدة: \${item['unit_price_yer']} ريال'), trailing: Text('\${item['line_total_yer']} ريال'))).toList());
+                    }),
+                    const Divider(),
+                    if (status == 'pending') Row(children: [
+                      Expanded(child: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), 'accepted')), child: const Text('قبول الطلب'))),
+                      const SizedBox(width: 8),
+                      Expanded(child: OutlinedButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), 'cancelled', reason: 'رفض المطعم لعدم توفر الطلب أو أحد أصنافه')), child: const Text('رفض الطلب'))),
+                    ]) else if (next != null) FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label))
+                    else if (isReadyForPickup && !hasCourier) FilledButton.icon(onPressed: _busy ? null : () => _assignCourier(rid, o), icon: const Icon(Icons.delivery_dining_rounded), label: const Text('اختيار مندوب'))
+                    else if (hasCourier) const Text('تم تعيين مندوب لهذا الطلب'),
+                  ])));
                 }).toList());
               },
             ),
