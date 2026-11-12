@@ -150,9 +150,9 @@ jobs:
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/zipalign" -c -v 4 build/app/outputs/flutter-apk/app-release.apk
           BADGING="$("$BUILD_TOOLS/aapt" dump badging build/app/outputs/flutter-apk/app-release.apk)"
-          printf '%s\\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
+          printf '%s\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
           # Fail the release if Flutter/plugin tooling silently raises the minimum Android version.
-          printf '%s\\n' "$BADGING" | grep -q "^sdkVersion:'21'$" || {
+          printf '%s\n' "$BADGING" | grep -q "^sdkVersion:'21'$" || {
             echo "APK minimum SDK is not 21; refusing to publish an incompatible package." >&2
             exit 1
           }
