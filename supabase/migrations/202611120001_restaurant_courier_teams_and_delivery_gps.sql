@@ -250,6 +250,36 @@ end;
 $function$
 
 
+create or replace function public.create_order_with_gps(
+  p_restaurant_id uuid,
+  p_customer_name text,
+  p_customer_phone text,
+  p_delivery_address text,
+  p_items jsonb,
+  p_delivery_latitude double precision,
+  p_delivery_longitude double precision,
+  p_notes text default ''
+)
+returns uuid
+language sql
+security invoker
+set search_path = public
+as $function$
+  select public.create_order(
+    p_restaurant_id,
+    p_customer_name,
+    p_customer_phone,
+    p_delivery_address,
+    p_items,
+    p_delivery_latitude,
+    p_delivery_longitude,
+    p_notes
+  );
+$function$;
+
+revoke execute on function public.create_order_with_gps(uuid, text, text, text, jsonb, double precision, double precision, text) from public, anon;
+grant execute on function public.create_order_with_gps(uuid, text, text, text, jsonb, double precision, double precision, text) to authenticated;
+
 revoke execute on function public.restaurant_courier_team(uuid) from public, anon;
 
 revoke execute on function public.restaurant_add_courier(uuid, text) from public, anon;
