@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'services/saree_backend.dart';
 
@@ -111,7 +112,8 @@ class BrandMark extends StatelessWidget {
         SizedBox(height: size * .055),
         Container(width: size * .20, height: size * .035, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8))),
       ])),
-      Icon(Icons.two_wheeler_rounded, color: Colors.white, size: size * .70),
+      Icon(Icons.location_on_rounded, color: Colors.white, size: size * .76),
+      Positioned(top: size * .30, child: Icon(Icons.restaurant_rounded, color: const Color(0xFFE50914), size: size * .29)),
       Positioned(top: size * .10, right: size * .13, child: Icon(Icons.bolt_rounded, color: const Color(0xFFFFC400), size: size * .23)),
     ]),
   );
@@ -1129,6 +1131,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _address = TextEditingController();
   final _notes = TextEditingController();
   bool _busy = false;
+  bool _locating = false;
+  double? _deliveryLatitude;
+  double? _deliveryLongitude;
   String? _error;
   List<Map<String, dynamic>> _savedAddresses = [];
   String? _selectedAddressId;
@@ -1158,6 +1163,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           _selectedAddressId = preferred.first['id'].toString();
           final a = preferred.first;
           _address.text = '${a['area'] ?? ''} ${a['address_text'] ?? ''}'.trim();
+          _deliveryLatitude = (a['latitude'] as num?)?.toDouble();
+          _deliveryLongitude = (a['longitude'] as num?)?.toDouble();
         }
         _loadingAddresses = false;
       });
@@ -1169,6 +1176,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void dispose() { _name.dispose(); _phone.dispose(); _address.dispose(); _notes.dispose(); super.dispose(); }
 
+  Future<void> _captureDeliveryLocation() async {
+    if (_locating) return;
+    setState(() { _locating = true; _error = null; });
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) throw Exception('فعّل خدمة الموقع GPS أولاً');
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) throw Exception('اسمح للتطبيق بالوصول إلى الموقع من إعدادات الهاتف');
+      final position = await Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      setState(() { _deliveryLatitude = position.latitude; _deliveryLongitude = position.longitude; });
+    } catch (e) {
+      if (mounted) setState(() => _error = SareeBackend.arabicError(e));
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
   Future<void> _send() async {
     if (_name.text.trim().length < 2 || _phone.text.trim().length < 7 || _address.text.trim().length < 5) {
       setState(() => _error = 'أكمل الاسم ورقم الهاتف والعنوان بالتفصيل');
@@ -1179,20 +1204,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(() { _busy = true; _error = null; });
     try {
       var deliveryAddress = _address.text.trim();
+      double? deliveryLatitude = _deliveryLatitude;
+      double? deliveryLongitude = _deliveryLongitude;
       final selectedAddresses = _savedAddresses.where((a) => a['id']?.toString() == _selectedAddressId);
       if (selectedAddresses.isNotEmpty) {
         final saved = selectedAddresses.first;
-        final lat = (saved['latitude'] as num?)?.toDouble();
-        final lng = (saved['longitude'] as num?)?.toDouble();
-        if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180) {
-          deliveryAddress = '$deliveryAddress\nالموقع: $lat,$lng';
-        }
+        deliveryLatitude ??= (saved['latitude'] as num?)?.toDouble();
+        deliveryLongitude ??= (saved['longitude'] as num?)?.toDouble();
+      }
+      if (deliveryLatitude != null && deliveryLongitude != null && deliveryLatitude.abs() <= 90 && deliveryLongitude.abs() <= 180) {
+        deliveryAddress = '$deliveryAddress\\nالموقع: $deliveryLatitude,$deliveryLongitude';
+      } else {
+        deliveryLatitude = null;
+        deliveryLongitude = null;
       }
       final id = await SareeBackend.createOrder(
         restaurantId: cart.restaurantId!,
         customerName: _name.text,
         customerPhone: _phone.text,
         address: deliveryAddress,
+        deliveryLatitude: deliveryLatitude,
+        deliveryLongitude: deliveryLongitude,
         notes: _notes.text,
         items: cart.items.map((line) => {'menu_item_id': line.id, 'quantity': line.quantity}).toList(),
       );
@@ -1232,6 +1264,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
               setState(() {
                 _selectedAddressId = id;
                 _address.text = '${a['area'] ?? ''} ${a['address_text'] ?? ''}'.trim();
+                _deliveryLatitude = (a['latitude'] as num?)?.toDouble();
+                _deliveryLongitude = (a['longitude'] as num?)?.toDouble();
               });
             }
           },
@@ -1239,7 +1273,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
         const SizedBox(height: 12),
       ],
       TextField(controller: _address, maxLines: 2, decoration: const InputDecoration(labelText: 'عنوان التوصيل بالتفصيل')),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(onPressed: _locating ? null : _captureDeliveryLocation, icon: _locating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.my_location_rounded), label: Text(_locating ? 'جارٍ تحديد موقعك...' : 'تحديد موقعي بدقة GPS')),
+      if (_deliveryLatitude != null && _deliveryLongitude != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('تم حفظ الموقع: ${_deliveryLatitude!.toStringAsFixed(6)}, ${_deliveryLongitude!.toStringAsFixed(6)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w700))),
+      const SizedBox(height: 8),
       TextField(controller: _notes, maxLines: 2, decoration: const InputDecoration(labelText: 'ملاحظات للمطعم (اختياري)')),
       const SizedBox(height: 12),
       const Card(child: ListTile(leading: Icon(Icons.payments), title: Text('الدفع نقدًا عند الاستلام'))),
@@ -1478,6 +1515,70 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     }
   }
 
+  Future<void> _addCourier(String restaurantId) async {
+    final phone = TextEditingController();
+    final form = GlobalKey<FormState>();
+    final accepted = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('إضافة مندوب إلى فريق المطعم'),
+      content: Form(key: form, child: TextFormField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'رقم هاتف المندوب المسجل', prefixIcon: Icon(Icons.phone_android_rounded)), validator: (v) => (v ?? '').trim().length < 7 ? 'أدخل رقم هاتف صحيحًا' : null)),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(ctx, true); }, child: const Text('إضافة إلى الفريق'))],
+    ));
+    if (accepted == true) await _run(() => SareeBackend.addRestaurantCourier(restaurantId, phone.text));
+    phone.dispose();
+  }
+
+  Future<void> _removeCourier(String restaurantId, Map<String, dynamic> courier) async {
+    final accepted = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('إزالة المندوب من الفريق؟'),
+      content: Text('سيتم إيقاف ربط ' + (courier['full_name'] ?? 'المندوب').toString() + ' بهذا المطعم. لن تتأثر حساباته أو طلباته السابقة.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('إزالة'))],
+    ));
+    if (accepted == true) await _run(() => SareeBackend.removeRestaurantCourier(restaurantId, courier['courier_id'].toString()));
+  }
+
+  Widget _courierTeamTab(String restaurantId) {
+    return FutureBuilder<List<Map<String, dynamic>>>(future: SareeBackend.restaurantCourierTeam(restaurantId), builder: (context, snap) {
+      if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+      if (snap.hasError) return Center(child: Text('تعذر تحميل فريق المندوبين: ' + SareeBackend.arabicError(snap.error)));
+      final couriers = snap.data ?? [];
+      return ListView(padding: const EdgeInsets.all(14), children: [
+        Row(children: [const Expanded(child: Text('مندوبو المطعم', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))), FilledButton.icon(onPressed: _busy ? null : () => _addCourier(restaurantId), icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('إضافة مندوب'))]),
+        const SizedBox(height: 8),
+        const Text('أضف مندوبًا لديه حساب معتمد في سريع باستخدام رقم هاتفه. سيظهر ضمن خيارات الإسناد لهذا المطعم فقط.', style: TextStyle(color: Color(0xFF748094), height: 1.5)),
+        const SizedBox(height: 12),
+        if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Column(children: [Icon(Icons.delivery_dining_rounded, size: 42, color: Color(0xFF8994A3)), SizedBox(height: 8), Text('لم تضف أي مندوب إلى فريق المطعم بعد', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700))]))),
+        ...couriers.map((courier) {
+          final active = courier['is_active'] == true;
+          final available = courier['is_available'] == true;
+          final name = courier['full_name']?.toString().trim().isNotEmpty == true ? courier['full_name'].toString() : 'مندوب توصيل';
+          final phone = courier['phone']?.toString() ?? 'بدون رقم هاتف';
+          final status = !active ? 'موقوف من فريق المطعم' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
+          return Card(child: ListTile(leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))), title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('$phone • $status'), trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3))));
+        }),
+      ]);
+    });
+  }
+
+  Widget _restaurantOrderDetails(Map<String, dynamic> order) {
+    final lat = (order['delivery_latitude'] as num?)?.toDouble();
+    final lng = (order['delivery_longitude'] as num?)?.toDouble();
+    final validLocation = lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ListTile(dense: true, leading: const Icon(Icons.phone_outlined), title: const Text('هاتف العميل'), subtitle: Text(order['customer_phone']?.toString() ?? 'غير مسجل')),
+      if ((order['notes'] ?? '').toString().trim().isNotEmpty) ListTile(dense: true, leading: const Icon(Icons.notes_rounded), title: const Text('ملاحظات العميل'), subtitle: Text(order['notes'].toString())),
+      FutureBuilder<List<Map<String, dynamic>>>(future: SareeBackend.courierOrderItems(order['id'].toString()), builder: (context, itemsSnap) {
+        if (itemsSnap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator());
+        if (itemsSnap.hasError) return Padding(padding: const EdgeInsets.all(12), child: Text('تعذر تحميل الأصناف: ' + SareeBackend.arabicError(itemsSnap.error)));
+        final items = itemsSnap.data ?? [];
+        return Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('الأصناف المطلوبة', style: TextStyle(fontWeight: FontWeight.w900)),
+          if (items.isEmpty) const Padding(padding: EdgeInsets.only(top: 6), child: Text('لا توجد أصناف مسجلة')),
+          ...items.map((item) => Padding(padding: const EdgeInsets.only(top: 7), child: Row(children: [Expanded(child: Text('${item['item_name']} × ${item['quantity']}')), Text('${item['line_total_yer']} ريال', style: const TextStyle(fontWeight: FontWeight.w800))]))),
+        ]));
+      }),
+      if (validLocation) Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: OutlinedButton.icon(onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.map_outlined), label: const Text('فتح موقع العميل على الخريطة'))),
+    ]);
+  }
   Future<void> _editMeal(String restaurantId, [Map<String,dynamic>? item]) async {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final description = TextEditingController(text: item?['description']?.toString() ?? '');
@@ -1568,26 +1669,23 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   final isReadyForPickup = status == 'ready_for_pickup';
                   final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
                   final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
-                  return Card(child: ListTile(
-                    title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
-                    subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
-                    isThreeLine: true,
-                    trailing: next != null
-                        ? FilledButton(
-                            onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
-                            child: Text(label),
-                          )
-                        : isReadyForPickup && !hasCourier
-                            ? FilledButton.icon(
-                                onPressed: _busy ? null : () => _assignCourier(rid, o),
-                                icon: const Icon(Icons.delivery_dining_rounded),
-                                label: const Text('اختيار مندوب'),
-                              )
-                            : null,
-                  ));
+                  return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    ListTile(
+                      title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
+                      subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
+                      isThreeLine: true,
+                      trailing: next != null
+                          ? FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label))
+                          : isReadyForPickup && !hasCourier
+                              ? FilledButton.icon(onPressed: _busy ? null : () => _assignCourier(rid, o), icon: const Icon(Icons.delivery_dining_rounded), label: const Text('اختيار مندوب'))
+                              : hasCourier ? const Chip(label: Text('تم تعيين مندوب')) : null,
+                    ),
+                    _restaurantOrderDetails(o),
+                  ]));
                 }).toList());
               },
             ),
+            _courierTeamTab(rid),
           ])),
         ]);
       },
@@ -1595,6 +1693,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     bottomNavigationBar: NavigationBar(selectedIndex: _tab, onDestinationSelected: (v) => setState(() => _tab = v), destinations: const [
       NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined), label: 'الوجبات'),
       NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'الطلبات'),
+      NavigationDestination(icon: Icon(Icons.delivery_dining_outlined), label: 'المندوبون'),
     ]),
   );
 }
@@ -1718,6 +1817,8 @@ class _CourierPortalState extends State<CourierPortal> {
       ),
       if (hasLocation) Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.map_outlined), title: Text('موقع العميل على الخريطة')),
+        SelectableText('الإحداثيات: ${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}'),
+        TextButton.icon(onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new_rounded), label: const Text('فتح الاتجاهات في خرائط Google')),
         SizedBox(height: 210, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FlutterMap(
           options: MapOptions(initialCenter: LatLng(lat, lng), initialZoom: 15),
           children: [
