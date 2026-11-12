@@ -1656,7 +1656,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               },
             ),
             FutureBuilder<List<Map<String,dynamic>>>(
-              future: SareeBackend.restaurantOrders(),
+              stream: SareeBackend.restaurantOrdersStream(rid),
               builder: (context, snap) {
                 if(snap.connectionState != ConnectionState.done) return const LoadingPage();
                 if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
@@ -1708,6 +1708,9 @@ class _CourierPortalState extends State<CourierPortal> {
   bool _sharing = false;
   late Future<List<List<Map<String, dynamic>>>> _ordersFuture;
   StreamSubscription<Position>? _positionSub;
+  StreamSubscription<List<Map<String, dynamic>>>? _assignedOrdersSubscription;
+  bool _ordersStreamReady = false;
+  final Set<String> _knownAssignedOrders = {};
 
   Future<List<List<Map<String, dynamic>>>> _loadOrders() => Future.wait([
     SareeBackend.availableCourierOrders(),
@@ -1718,6 +1721,22 @@ class _CourierPortalState extends State<CourierPortal> {
   void initState() {
     super.initState();
     _ordersFuture = _loadOrders();
+    _assignedOrdersSubscription = SareeBackend.courierOrdersStream().listen((rows) {
+      final assigned = rows.where((row) => (row['status'] ?? '').toString().trim().toLowerCase() == 'assigned').toList();
+      final newAssignments = _ordersStreamReady
+          ? assigned.where((row) => !_knownAssignedOrders.contains(row['id'].toString())).toList()
+          : <Map<String, dynamic>>[];
+      _knownAssignedOrders.addAll(assigned.map((row) => row['id'].toString()));
+      _ordersStreamReady = true;
+      if (!mounted) return;
+      if (newAssignments.isNotEmpty) {
+        final number = newAssignments.first['order_number']?.toString() ?? '';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم إسناد طلب جديد${number.isEmpty ? '' : ' رقم #$number'} إليك. العنوان والموقع داخل تفاصيل المهمة.')));
+      }
+      _refreshOrders();
+    }, onError: (Object error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث مهامك تلقائيًا: ${SareeBackend.arabicError(error)}')));
+    });
   }
 
   Future<void> _refreshOrders() async {
@@ -1750,7 +1769,7 @@ class _CourierPortalState extends State<CourierPortal> {
   }
 
   @override
-  void dispose() { _positionSub?.cancel(); super.dispose(); }
+  void dispose() { _positionSub?.cancel(); _assignedOrdersSubscription?.cancel(); super.dispose(); }
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
@@ -1870,17 +1889,7 @@ class _CourierPortalState extends State<CourierPortal> {
               )),
             ]));
           }),
-          const Padding(padding: EdgeInsets.all(8), child: Text('طلبات جاهزة للاستلام', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
-          if(available.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد طلبات جاهزة حاليًا')),
-          ...available.map((o) => Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            ListTile(title: Text('طلب #${o['order_number']}'), subtitle: const Text('طلب متاح للاستلام')),
-            _courierOrderDetails(o),
-            Padding(padding: const EdgeInsets.all(12), child: FilledButton.icon(
-              onPressed: _busy ? null : () => _run(() => SareeBackend.claimOrder(o['id'].toString())),
-              icon: const Icon(Icons.delivery_dining_rounded),
-              label: const Text('استلام الطلب'),
-            )),
-          ]))),
+
         ]);
       },
     ),
