@@ -277,6 +277,79 @@ as $function$
   );
 $function$;
 
+-- Let owners assign to an approved member even if the courier is currently offline.
+create or replace function public.available_couriers_for_restaurant(p_restaurant_id uuid)
+returns table(courier_id uuid, full_name text, phone text, last_seen timestamptz)
+language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'يرجى تسجيل الدخول'; end if;
+  if not exists (select 1 from public.profiles p where p.id = v_uid and p.role = 'restaurant_owner' and p.approval_status = 'approved' and p.is_blocked = false)
+     or not public.is_restaurant_member(p_restaurant_id) then
+    raise exception 'ليس لديك صلاحية إدارة مندوبي هذا المطعم';
+  end if;
+  return query
+  select p.id, p.full_name, p.phone,
+         case when cl.is_available and cl.updated_at >= now() - interval '15 minutes' then cl.updated_at else null end
+  from public.restaurant_couriers rc
+  join public.profiles p on p.id = rc.courier_id
+  left join public.courier_locations cl on cl.courier_id = p.id
+  where rc.restaurant_id = p_restaurant_id and rc.is_active = true
+    and p.role = 'courier' and p.approval_status = 'approved' and p.is_blocked = false
+  order by (cl.is_available and cl.updated_at >= now() - interval '15 minutes') desc, p.full_name;
+end;
+$function$;
+
+create or replace function public.assign_order_courier(p_order_id uuid, p_courier_id uuid)
+returns void
+language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_restaurant_id uuid;
+  v_order_number bigint;
+  v_address text;
+  v_lat double precision;
+  v_lng double precision;
+  v_restaurant_name text;
+begin
+  if v_uid is null then raise exception 'يرجى تسجيل الدخول'; end if;
+  if not exists (select 1 from public.profiles p where p.id = v_uid and p.role = 'restaurant_owner' and p.approval_status = 'approved' and p.is_blocked = false) then
+    raise exception 'حساب المطعم غير معتمد';
+  end if;
+  select o.restaurant_id, o.order_number, o.delivery_address, o.delivery_latitude, o.delivery_longitude
+    into v_restaurant_id, v_order_number, v_address, v_lat, v_lng
+  from public.orders o
+  where o.id = p_order_id and o.status = 'ready_for_pickup' and o.courier_id is null
+  for update;
+  if v_restaurant_id is null then raise exception 'الطلب غير جاهز أو تم تعيين مندوب له بالفعل'; end if;
+  if not public.is_restaurant_member(v_restaurant_id) then raise exception 'ليس لديك صلاحية إدارة هذا الطلب'; end if;
+  if not exists (
+    select 1 from public.restaurant_couriers rc
+    join public.profiles p on p.id = rc.courier_id
+    where rc.restaurant_id = v_restaurant_id and rc.courier_id = p_courier_id
+      and rc.is_active = true and p.role = 'courier'
+      and p.approval_status = 'approved' and p.is_blocked = false
+  ) then raise exception 'هذا المندوب ليس ضمن فريق المطعم أو حسابه غير معتمد'; end if;
+  update public.orders set courier_id = p_courier_id, status = 'assigned', updated_at = now()
+  where id = p_order_id and restaurant_id = v_restaurant_id and status = 'ready_for_pickup' and courier_id is null;
+  if not found then raise exception 'تعذر تعيين المندوب؛ ربما تم تحديث الطلب من جهاز آخر'; end if;
+  select name into v_restaurant_name from public.restaurants where id = v_restaurant_id;
+  insert into public.notifications(user_id,title,body,kind,related_order_id)
+  values(
+    p_courier_id,
+    'طلب توصيل جديد من ' || coalesce(v_restaurant_name,'المطعم'),
+    'تم إسناد الطلب #' || v_order_number || ' إليك. عنوان العميل: ' || coalesce(v_address,'') ||
+      case when v_lat is not null and v_lng is not null
+        then ' | موقع العميل: https://www.google.com/maps/search/?api=1&query=' || v_lat::text || ',' || v_lng::text ||
+             ' | الإحداثيات: ' || v_lat::text || ',' || v_lng::text
+        else ' | لم يحدد العميل إحداثيات GPS؛ يرجى التواصل معه لتأكيد الموقع.' end,
+    'delivery_assignment', p_order_id
+  );
+end;
+$function$;
+
 revoke execute on function public.create_order_with_gps(uuid, text, text, text, jsonb, double precision, double precision, text) from public, anon;
 grant execute on function public.create_order_with_gps(uuid, text, text, text, jsonb, double precision, double precision, text) to authenticated;
 
