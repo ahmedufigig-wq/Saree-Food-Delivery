@@ -1706,16 +1706,13 @@ class CourierPortal extends StatefulWidget {
 class _CourierPortalState extends State<CourierPortal> {
   bool _busy = false;
   bool _sharing = false;
-  late Future<List<List<Map<String, dynamic>>>> _ordersFuture;
+  late Future<List<Map<String, dynamic>>> _ordersFuture;
   StreamSubscription<Position>? _positionSub;
   StreamSubscription<List<Map<String, dynamic>>>? _assignedOrdersSubscription;
   bool _ordersStreamReady = false;
   final Set<String> _knownAssignedOrders = {};
 
-  Future<List<List<Map<String, dynamic>>>> _loadOrders() => Future.wait([
-    SareeBackend.availableCourierOrders(),
-    SareeBackend.courierOrders(),
-  ]);
+  Future<List<Map<String, dynamic>>> _loadOrders() => SareeBackend.courierOrders();
 
   @override
   void initState() {
@@ -1860,8 +1857,7 @@ class _CourierPortalState extends State<CourierPortal> {
       builder: (context, snap) {
         if(snap.connectionState != ConnectionState.done) return const LoadingPage();
         if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
-        final available = snap.data![0];
-        final active = snap.data![1].where((o) {
+        final active = (snap.data ?? []).where((o) {
           final status = (o['status'] ?? '').toString().trim().toLowerCase();
           return status == 'assigned' || status == 'picked_up';
         }).toList();
