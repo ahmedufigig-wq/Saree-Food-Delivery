@@ -138,6 +138,8 @@ class SareeBackend {
     required String addressText,
     required String area,
     required bool isDefault,
+    double? latitude,
+    double? longitude,
   }) async {
     final values = {
       'customer_id': user!.id,
@@ -145,6 +147,8 @@ class SareeBackend {
       'address_text': addressText.trim(),
       'area': area.trim(),
       'is_default': isDefault,
+      'latitude': latitude,
+      'longitude': longitude,
     };
     if (isDefault) {
       await client.from('customer_addresses')
@@ -211,6 +215,8 @@ class SareeBackend {
     required String customerPhone,
     required String address,
     required List<Map<String, dynamic>> items,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
     String notes = '',
   }) async {
     final result = await client.rpc('create_order', params: {
@@ -219,6 +225,8 @@ class SareeBackend {
       'p_customer_phone': customerPhone,
       'p_delivery_address': address,
       'p_items': items,
+      'p_delivery_latitude': deliveryLatitude,
+      'p_delivery_longitude': deliveryLongitude,
       'p_notes': notes,
     });
     return result.toString();
@@ -263,6 +271,27 @@ class SareeBackend {
     return List<Map<String, dynamic>>.from(rows as List);
   }
 
+  static Future<List<Map<String, dynamic>>> restaurantCourierTeam(String restaurantId) async {
+    final rows = await client.rpc('restaurant_courier_team', params: {
+      'p_restaurant_id': restaurantId,
+    });
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  static Future<void> addRestaurantCourier(String restaurantId, String phone) async {
+    await client.rpc('restaurant_add_courier', params: {
+      'p_restaurant_id': restaurantId,
+      'p_phone': phone.trim(),
+    });
+  }
+
+  static Future<void> removeRestaurantCourier(String restaurantId, String courierId) async {
+    await client.rpc('restaurant_remove_courier', params: {
+      'p_restaurant_id': restaurantId,
+      'p_courier_id': courierId,
+    });
+  }
+
   static Future<void> assignCourierToOrder({
     required String orderId,
     required String courierId,
@@ -291,15 +320,9 @@ class SareeBackend {
     return List<Map<String, dynamic>>.from(rows);
   }
 
-  static Future<List<Map<String, dynamic>>> availableCourierOrders() async {
-    final rows = await client
-        .from('orders')
-        .select()
-        .eq('status', 'ready_for_pickup')
-        .isFilter('courier_id', null)
-        .order('created_at');
-    return List<Map<String, dynamic>>.from(rows);
-  }
+  // Orders are assigned by each restaurant to one of its own couriers.
+  // Couriers no longer browse or claim a global pool of unassigned orders.
+  static Future<List<Map<String, dynamic>>> availableCourierOrders() async => [];
 
   static Future<void> transition(
     String orderId,
