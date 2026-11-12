@@ -1213,7 +1213,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         deliveryLongitude ??= (saved['longitude'] as num?)?.toDouble();
       }
       if (deliveryLatitude != null && deliveryLongitude != null && deliveryLatitude.abs() <= 90 && deliveryLongitude.abs() <= 180) {
-        deliveryAddress = '$deliveryAddress\\nالموقع: $deliveryLatitude,$deliveryLongitude';
+        deliveryAddress = '$deliveryAddress\nالموقع: $deliveryLatitude,$deliveryLongitude';
       } else {
         deliveryLatitude = null;
         deliveryLongitude = null;
@@ -1852,7 +1852,7 @@ class _CourierPortalState extends State<CourierPortal> {
       IconButton(tooltip: 'تحديث الطلبات', onPressed: _busy ? null : _refreshOrders, icon: const Icon(Icons.refresh_rounded)),
       IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout)),
     ]),
-    body: FutureBuilder<List<List<Map<String,dynamic>>>>(
+    body: FutureBuilder<List<Map<String,dynamic>>>(
       future: _ordersFuture,
       builder: (context, snap) {
         if(snap.connectionState != ConnectionState.done) return const LoadingPage();
