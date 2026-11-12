@@ -1474,7 +1474,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     if (!mounted) return;
     if (candidates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('لا يوجد مندوب متاح الآن. سيظهر هنا كل مندوب معتمد يفتح التطبيق ويشارك موقعه.'),
+        content: Text('لا يوجد مندوب نشط ضمن فريق هذا المطعم. أضف مندوبًا معتمدًا من تبويب المندوبون.'),
       ));
       return;
     }
@@ -1488,11 +1488,11 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
           content: DropdownButtonFormField<String>(
             initialValue: selected,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'المندوبون المتاحون الآن'),
+            decoration: const InputDecoration(labelText: 'مندوبو فريق المطعم'),
             items: candidates.map((courier) => DropdownMenuItem(
               value: courier['courier_id'].toString(),
               child: Text(
-                '${courier['full_name'] ?? 'مندوب'} • ${courier['phone'] ?? 'بدون هاتف'}',
+                '${courier['full_name'] ?? 'مندوب'} • ${courier['phone'] ?? 'بدون هاتف'} • ${courier['last_seen'] == null ? 'غير متصل' : 'متصل الآن'}',
                 overflow: TextOverflow.ellipsis,
               ),
             )).toList(),
