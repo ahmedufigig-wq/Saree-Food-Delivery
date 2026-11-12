@@ -1617,11 +1617,24 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         final restaurant = restaurants.first;
         final rid = restaurant['id'].toString();
         return Column(children: [
-          Padding(padding: const EdgeInsets.all(12), child: Row(children: [
-            const Icon(Icons.storefront_rounded, color: Color(0xFFE50914)),
-            const SizedBox(width: 8),
-            Expanded(child: Text(restaurant['name'].toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
-          ])),
+          Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 4), child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF650008)]),
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: const [BoxShadow(color: Color(0x1F171717), blurRadius: 16, offset: Offset(0, 7))],
+            ),
+            child: Row(children: [
+              Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFFFFC400), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.storefront_rounded, color: Color(0xFF171717), size: 27)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(restaurant['name'].toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+                const SizedBox(height: 3),
+                const Text('إدارة الطلبات والوجبات وفريق التوصيل', style: TextStyle(fontSize: 11, color: Colors.white70)),
+              ])),
+              const Icon(Icons.verified_rounded, color: Color(0xFFFFC400), size: 22),
+            ]),
+          )),
           Expanded(child: IndexedStack(index: _tab, children: [
             FutureBuilder<List<Map<String,dynamic>>>(
               future: SareeBackend.manageMenu(rid),
