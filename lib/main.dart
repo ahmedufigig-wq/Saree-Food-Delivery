@@ -1655,10 +1655,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                 ]);
               },
             ),
-            FutureBuilder<List<Map<String,dynamic>>>(
+            StreamBuilder<List<Map<String,dynamic>>>(
               stream: SareeBackend.restaurantOrdersStream(rid),
               builder: (context, snap) {
-                if(snap.connectionState != ConnectionState.done) return const LoadingPage();
+                if (!snap.hasData && snap.connectionState == ConnectionState.waiting) return const LoadingPage();
                 if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
                 final orders = snap.data ?? [];
                 if(orders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
