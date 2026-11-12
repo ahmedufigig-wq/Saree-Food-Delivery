@@ -246,6 +246,10 @@ class SareeBackend {
     return client.from('orders').stream(primaryKey: ['id']).eq('id', orderId);
   }
 
+  static Stream<List<Map<String, dynamic>>> restaurantOrdersStream(String restaurantId) {
+    return client.from('orders').stream(primaryKey: ['id']).eq('restaurant_id', restaurantId).order('created_at', ascending: false);
+  }
+
   static Future<List<Map<String, dynamic>>> restaurantOrders() async {
     final id = user!.id;
     final memberships = await client
@@ -309,6 +313,10 @@ class SareeBackend {
         .eq('order_id', orderId)
         .order('item_name');
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Stream<List<Map<String, dynamic>>> courierOrdersStream() {
+    return client.from('orders').stream(primaryKey: ['id']).eq('courier_id', user!.id).order('created_at', ascending: false);
   }
 
   static Future<List<Map<String, dynamic>>> courierOrders() async {
