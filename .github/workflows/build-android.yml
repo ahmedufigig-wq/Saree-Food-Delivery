@@ -28,10 +28,10 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Setup Flutter
+      - name: Setup Flutter (Android 5+ compatible toolchain)
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.35.7'
           cache: true
 
       - name: Generate Android project scaffold when missing
@@ -149,7 +149,13 @@ jobs:
           "$BUILD_TOOLS/apksigner" sign --ks "$HOME/.android/saree-release.jks" --ks-pass pass:android --key-pass pass:android --ks-key-alias saree --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/zipalign" -c -v 4 build/app/outputs/flutter-apk/app-release.apk
-          "$BUILD_TOOLS/aapt" dump badging build/app/outputs/flutter-apk/app-release.apk | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
+          BADGING="$("$BUILD_TOOLS/aapt" dump badging build/app/outputs/flutter-apk/app-release.apk)"
+          printf '%s\\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
+          # Fail the release if Flutter/plugin tooling silently raises the minimum Android version.
+          printf '%s\\n' "$BADGING" | grep -q "^sdkVersion:'21'$" || {
+            echo "APK minimum SDK is not 21; refusing to publish an incompatible package." >&2
+            exit 1
+          }
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
