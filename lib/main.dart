@@ -1862,6 +1862,7 @@ class _CourierPortalState extends State<CourierPortal> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('طلبات المندوب'), actions: [
+      IconButton(tooltip: 'إشعارات التكليف', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerNotificationsPage())), icon: const Icon(Icons.notifications_active_outlined)),
       IconButton(tooltip: 'تحديث الطلبات', onPressed: _busy ? null : _refreshOrders, icon: const Icon(Icons.refresh_rounded)),
       IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout)),
     ]),
