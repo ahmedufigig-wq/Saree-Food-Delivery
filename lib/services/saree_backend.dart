@@ -219,7 +219,7 @@ class SareeBackend {
     double? deliveryLongitude,
     String notes = '',
   }) async {
-    final result = await client.rpc('create_order', params: {
+    final result = await client.rpc('create_order_with_gps', params: {
       'p_restaurant_id': restaurantId,
       'p_customer_name': customerName,
       'p_customer_phone': customerPhone,
