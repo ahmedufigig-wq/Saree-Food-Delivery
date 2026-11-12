@@ -69,18 +69,14 @@ jobs:
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp" android:height="108dp"
               android:viewportWidth="108" android:viewportHeight="108">
-              <path android:fillColor="#171717" android:pathData="M54,3A51,51 0,1 0,54 105A51,51 0,1 0,54 3"/>
-              <path android:fillColor="#FFE0A000" android:pathData="M7,31L39,31L28,37L7,37ZM3,42L31,42L21,48L3,48ZM9,54L34,54L24,60L9,60Z"/>
-              <path android:fillColor="#FFE50914" android:pathData="M25,72A11,11 0,1 0,47 72A11,11 0,1 0,25 72M30,72A6,6 0,1 1,42 72A6,6 0,1 1,30 72"/>
-              <path android:fillColor="#FFE50914" android:pathData="M64,72A11,11 0,1 0,86 72A11,11 0,1 0,64 72M69,72A6,6 0,1 1,81 72A6,6 0,1 1,69 72"/>
-              <path android:fillColor="#FFFFC400" android:pathData="M36,71L48,47L66,47L78,70L72,73L62,54L51,54L42,73Z"/>
-              <path android:fillColor="#FFE50914" android:pathData="M39,48L57,43L73,50L82,65L70,67L62,57L45,58L34,68L29,63Z"/>
-              <path android:fillColor="#FFFFFFFF" android:pathData="M47,20A9,9 0,1 0,65 20A9,9 0,1 0,47 20"/>
-              <path android:fillColor="#FFFFC400" android:pathData="M45,19A11,11 0,0 1,67 19L63,15L49,15Z"/>
-              <path android:fillColor="#FFFFFFFF" android:pathData="M47,31L63,30L69,46L55,54L42,45Z"/>
-              <path android:fillColor="#FFE50914" android:pathData="M47,34L62,33L69,44L58,49L46,44Z"/>
-              <path android:fillColor="#FFFFC400" android:pathData="M55,50L67,49L73,56L62,59L52,57Z"/>
-              <path android:fillColor="#FFFFFFFF" android:pathData="M37,29L46,26L52,31L44,36Z"/>
+              <path android:fillColor="#FF171717" android:pathData="M54,3A51,51 0,1 0,54 105A51,51 0,1 0,54 3"/>
+              <path android:fillColor="#FFFFC400" android:pathData="M54,9A45,45 0,1 0,54 99A45,45 0,1 0,54 9"/>
+              <path android:fillColor="#FF171717" android:pathData="M54,14A40,40 0,1 0,54 94A40,40 0,1 0,54 14"/>
+              <path android:fillColor="#FFE50914" android:pathData="M54,18C37,18 25,31 25,47C25,67 54,91 54,91C54,91 83,67 83,47C83,31 71,18 54,18Z"/>
+              <path android:fillColor="#FFFFFFFF" android:pathData="M54,29A18,18 0,1 0,54 65A18,18 0,1 0,54 29Z"/>
+              <path android:fillColor="#FF171717" android:pathData="M38,48C41,43 47,40 54,40C61,40 67,43 70,48L67,54C64,59 60,62 54,62C48,62 44,59 41,54Z"/>
+              <path android:fillColor="#FFFFC400" android:pathData="M43,47L46,47L46,56L43,56ZM51,45L54,45L54,56L51,56ZM59,47L62,47L62,56L59,56Z"/>
+              <path android:fillColor="#FFFFFFFF" android:pathData="M47,70L61,70L58,75L50,75Z"/>
           </vector>
           XML
           cat > "$RES/drawable/launch_background.xml" <<'XML'
