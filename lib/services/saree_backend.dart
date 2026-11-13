@@ -302,7 +302,7 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> restaurantCourierTeam(String restaurantId) async {
-    final rows = await client.rpc('restaurant_courier_team', params: {
+    final rows = await client.rpc('restaurant_courier_team_v2', params: {
       'p_restaurant_id': restaurantId,
     });
     return List<Map<String, dynamic>>.from(rows as List);
@@ -427,6 +427,22 @@ class SareeBackend {
   static Future<List<Map<String, dynamic>>> manageMenu(String restaurantId) async {
     final rows = await client.from('menu_items').select().eq('restaurant_id', restaurantId).order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> bulkSaveMenuItems({
+    required String restaurantId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    if (items.isEmpty) return;
+    if (items.length > 100) throw ArgumentError('يمكن إضافة 100 وجبة كحد أقصى في الدفعة الواحدة.');
+    final rows = items.map((item) => {
+      'restaurant_id': restaurantId,
+      'name': item['name'].toString().trim(),
+      'description': (item['description'] ?? '').toString().trim(),
+      'price_yer': item['price_yer'],
+      'is_available': item['is_available'] == true,
+    }).toList();
+    await client.from('menu_items').insert(rows);
   }
 
   static Future<void> saveMenuItem({String? id, required String restaurantId, required String name, required String description, required int price, String? imageUrl, required bool available}) async {

@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
     if (membershipError) throw membershipError;
     if (!membership) return reply(403, { error: "ليس لديك صلاحية إضافة مندوب لهذا المطعم." });
 
-    const internalEmail = `courier+${digits}@login.saree.invalid`;
+    const internalEmail = `courier_${digits}@couriers.saree.app`; // Must match SareeBackend._courierEmailFromPhone for phone-based login.
     const { data: duplicateEmail, error: duplicateEmailError } = await admin
       .from("profiles").select("id").eq("phone", phone).maybeSingle();
     if (duplicateEmailError) throw duplicateEmailError;
@@ -151,7 +151,18 @@ Deno.serve(async (req: Request) => {
     if (createdUserId) {
       try {
         const url = Deno.env.get("SUPABASE_URL") ?? "";
-        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+        let serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SECRET_KEY") ?? "";
+        if (!serviceKey) {
+          const secretKeys = Deno.env.get("SUPABASE_SECRET_KEYS");
+          if (secretKeys) {
+            try {
+              const parsed = JSON.parse(secretKeys);
+              serviceKey = parsed.default ?? Object.values(parsed)[0] ?? "";
+            } catch {
+              serviceKey = "";
+            }
+          }
+        }
         if (url && serviceKey) {
           const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
           await admin.auth.admin.deleteUser(createdUserId);

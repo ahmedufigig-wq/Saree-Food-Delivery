@@ -1585,11 +1585,13 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         const SizedBox(height: 12),
         if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Column(children: [Icon(Icons.delivery_dining_rounded, size: 42, color: Color(0xFF8994A3)), SizedBox(height: 8), Text('لم تضف أي مندوب إلى فريق المطعم بعد', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700))]))),
         ...couriers.map((courier) {
-          final active = courier['is_active'] == true;
+          final approval = courier['approval_status']?.toString() ?? 'pending';
+          final approved = approval == 'approved';
+          final active = courier['is_active'] == true && approved;
           final available = courier['is_available'] == true;
           final name = courier['full_name']?.toString().trim().isNotEmpty == true ? courier['full_name'].toString() : 'مندوب توصيل';
           final phone = courier['phone']?.toString() ?? 'بدون رقم هاتف';
-          final status = !active ? 'بانتظار موافقة الإدارة أو موقوف' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
+          final status = approval == 'pending' ? 'بانتظار موافقة الإدارة' : approval == 'rejected' ? 'مرفوض من الإدارة' : !active ? 'موقوف من المطعم أو الإدارة' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
           return Card(child: ListTile(leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))), title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('$phone • $status'), trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3))));
         }),
       ]);
@@ -1616,6 +1618,66 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       if (validLocation) Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: OutlinedButton.icon(onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.map_outlined), label: const Text('فتح موقع العميل على الخريطة'))),
     ]);
   }
+  Future<void> _bulkAddMeals(String restaurantId) async {
+    final rows = TextEditingController();
+    final accepted = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('إضافة المنيو دفعة واحدة'),
+      content: SizedBox(width: 480, child: SingleChildScrollView(child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('أدخل كل وجبة في سطر بهذا الترتيب: اسم الوجبة | السعر | الوصف (اختياري).', style: TextStyle(height: 1.6)),
+          const SizedBox(height: 8),
+          const Text('مثال:\nبرجر لحم | 1800 | لحم وجبن\nبيتزا خضار | 2500 | خضار وجبن\nعصير مانجو | 700 | عصير طازج', style: TextStyle(color: Color(0xFFFFC400), height: 1.7)),
+          const SizedBox(height: 12),
+          TextField(controller: rows, minLines: 7, maxLines: 14, textDirection: TextDirection.rtl, decoration: const InputDecoration(hintText: 'اسم الوجبة | السعر | الوصف', alignLabelWithHint: true)),
+        ],
+      ))),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ جميع الوجبات')),
+      ],
+    ));
+    if (accepted == true) {
+      try {
+        final parsed = <Map<String, dynamic>>[];
+        final lines = rows.text.split(RegExp(r'\r?\n'));
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i].trim();
+          if (line.isEmpty) continue;
+          final parts = line.split('|').map((part) => part.trim()).toList();
+          if (parts.length < 2 || parts[0].isEmpty) {
+            throw FormatException('راجع السطر ${i + 1}: اكتب اسم الوجبة ثم | ثم السعر.');
+          }
+          final digits = parts[1]
+              .replaceAll('٠', '0').replaceAll('١', '1').replaceAll('٢', '2')
+              .replaceAll('٣', '3').replaceAll('٤', '4').replaceAll('٥', '5')
+              .replaceAll('٦', '6').replaceAll('٧', '7').replaceAll('٨', '8')
+              .replaceAll('٩', '9').replaceAll(',', '').replaceAll('٬', '').trim();
+          final price = int.tryParse(digits);
+          if (price == null || price <= 0) {
+            throw FormatException('السعر في السطر ${i + 1} غير صحيح.');
+          }
+          parsed.add({
+            'name': parts[0],
+            'description': parts.length > 2 ? parts.sublist(2).join(' | ') : '',
+            'price_yer': price,
+            'is_available': true,
+          });
+        }
+        if (parsed.isEmpty) throw const FormatException('أدخل وجبة واحدة على الأقل.');
+        if (parsed.length > 100) throw const FormatException('يمكن إضافة 100 وجبة كحد أقصى في الدفعة الواحدة.');
+        await _run(() async {
+          await SareeBackend.bulkSaveMenuItems(restaurantId: restaurantId, items: parsed);
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة ${parsed.length} وجبة إلى المنيو بنجاح.')));
+        });
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e))));
+      }
+    }
+    rows.dispose();
+  }
+
   Future<void> _editMeal(String restaurantId, [Map<String,dynamic>? item]) async {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final description = TextEditingController(text: item?['description']?.toString() ?? '');
@@ -1680,9 +1742,13 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                 if(snap.hasError) return Center(child: Text('تعذر تحميل الوجبات: ${SareeBackend.arabicError(snap.error)}'));
                 final items = snap.data ?? [];
                 return ListView(padding: const EdgeInsets.all(12), children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     const Text('قائمة الوجبات', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-                    FilledButton.icon(onPressed: () => _editMeal(rid), icon: const Icon(Icons.add), label: const Text('وجبة جديدة')),
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      OutlinedButton.icon(onPressed: () => _bulkAddMeals(rid), icon: const Icon(Icons.playlist_add_rounded), label: const Text('إضافة المنيو دفعة واحدة')),
+                      FilledButton.icon(onPressed: () => _editMeal(rid), icon: const Icon(Icons.add), label: const Text('وجبة جديدة')),
+                    ]),
                   ]),
                   if(items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('لم تضف وجبات بعد. أضف أول وجبة ليراها العملاء.')),
                   ...items.map((item) => Card(child: ListTile(
