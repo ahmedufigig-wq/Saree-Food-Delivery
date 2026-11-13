@@ -116,6 +116,78 @@ class SareeFoodBackdrop extends StatelessWidget {
   ]);
 }
 
+class FoodPhotoBanner extends StatelessWidget {
+  const FoodPhotoBanner({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.height = 190,
+  });
+
+  final String title;
+  final String subtitle;
+  final double height;
+
+  // صورة طعام فوتوغرافية حقيقية للواجهة العامة، وليست رسماً توضيحياً.
+  static const String photoUrl =
+      'https://rs-menus-api.roocdn.com/images/6c489085-92dc-488d-ad81-c77bec5c5189/image.jpeg?fit=crop&height=630&width=1200';
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(24),
+    child: SizedBox(
+      height: height,
+      width: double.infinity,
+      child: Stack(fit: StackFit.expand, children: [
+        Image.network(
+          photoUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stack) => const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Color(0xFF171717), Color(0xFF8B0008)],
+              ),
+            ),
+            child: Center(
+              child: Icon(Icons.restaurant_menu_rounded, size: 58, color: Color(0xFFFFC400)),
+            ),
+          ),
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.center,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Color(0xE6000000)],
+              stops: [0.12, 1],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(title, style: const TextStyle(
+                color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900,
+                shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
+              )),
+              const SizedBox(height: 5),
+              Text(subtitle, style: const TextStyle(
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700,
+                shadows: [Shadow(color: Colors.black87, blurRadius: 7)],
+              )),
+            ],
+          ),
+        ),
+      ]),
+    ),
+  );
+}
+
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.size = 88});
   final double size;
@@ -508,31 +580,10 @@ class CustomerHome extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF650008)]),
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Row(children: [
-                    Icon(Icons.location_on_rounded, color: Color(0xFFFFC400), size: 18),
-                    SizedBox(width: 6),
-                    Text('التوصيل إلى', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  ]),
-                  const SizedBox(height: 5),
-                  const Text('رداع، اليمن', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
-                  const SizedBox(height: 18),
-                  const Text('ماذا تشتهي اليوم؟', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24)),
-                  const SizedBox(height: 6),
-                  const Text('وجبتك المفضلة تصلك حتى باب بيتك', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  const SizedBox(height: 17),
-                  Row(children: [
-                    const Icon(Icons.delivery_dining_rounded, color: Color(0xFFFFC400), size: 24),
-                    const SizedBox(width: 8),
-                    const Text('اطلب بسهولة • تابع طلبك • استمتع', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
-                  ]),
-                ]),
+              const FoodPhotoBanner(
+                title: 'ماذا تشتهي اليوم؟',
+                subtitle: 'وجبات شهية • توصيل سريع إلى باب بيتك • رداع، اليمن',
+                height: 205,
               ),
               const SizedBox(height: 16),
               InkWell(
@@ -1736,7 +1787,15 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         final restaurant = restaurants.first;
         final rid = restaurant['id'].toString();
         return Column(children: [
-          Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 4), child: Container(
+          const Padding(
+            padding: EdgeInsets.fromLTRB(12, 10, 12, 2),
+            child: FoodPhotoBanner(
+              title: 'وجباتك تستحق الظهور',
+              subtitle: 'تابع الطلبات وأدر قائمة مطعمك بسهولة',
+              height: 132,
+            ),
+          ),
+          Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 4), child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF650008)]),
