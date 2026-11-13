@@ -1865,12 +1865,36 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                       title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
                       subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
                       isThreeLine: true,
-                      trailing: next != null
-                          ? FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label))
-                          : isReadyForPickup && !hasCourier
-                              ? FilledButton.icon(onPressed: _busy ? null : () => _assignCourier(rid, o), icon: const Icon(Icons.delivery_dining_rounded), label: const Text('اختيار مندوب'))
-                              : hasCourier ? const Chip(label: Text('تم تعيين مندوب')) : null,
                     ),
+                    if (next != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
+                            child: Text(label),
+                          ),
+                        ),
+                      )
+                    else if (isReadyForPickup && !hasCourier)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: _busy ? null : () => _assignCourier(rid, o),
+                            icon: const Icon(Icons.delivery_dining_rounded),
+                            label: const Text('اختيار مندوب'),
+                          ),
+                        ),
+                      )
+                    else if (hasCourier)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(12, 0, 12, 10),
+                        child: Chip(label: Text('تم تعيين مندوب')),
+                      ),
+                    // Keep the complete order information directly beneath the action button.
                     _restaurantOrderDetails(o),
                   ]));
                 }).toList());
