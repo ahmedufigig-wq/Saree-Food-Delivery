@@ -97,7 +97,7 @@ jobs:
           cat > "$RES/drawable/launch_background.xml" <<'XML'
           <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
               <item><shape android:shape="rectangle"><solid android:color="#A9000A"/></shape></item>
-              <item android:drawable="@drawable-nodpi/saree_launcher" android:gravity="center" />
+              <item android:drawable="@drawable/saree_launcher" android:gravity="center" />
           </layer-list>
           XML
           mkdir -p "$RES/drawable-v21"
