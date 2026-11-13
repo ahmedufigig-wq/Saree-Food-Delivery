@@ -75,23 +75,45 @@ class SareeApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE50914), brightness: Brightness.light, secondary: const Color(0xFF171717)),
-      scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-      iconTheme: const IconThemeData(color: Color(0xFFE50914), size: 23),
-      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 1, backgroundColor: Color(0xFFF5F7FA), foregroundColor: Color(0xFF171717), titleTextStyle: TextStyle(color: Color(0xFF171717), fontSize: 19, fontWeight: FontWeight.w800)),
-      cardTheme: CardThemeData(color: Colors.white, elevation: 1, shadowColor: Color(0x1420232B), margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE7ECF2)))),
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE50914), brightness: Brightness.dark, secondary: const Color(0xFFFFC400), surface: const Color(0xFF242020)),
+      scaffoldBackgroundColor: Colors.transparent,
+      iconTheme: const IconThemeData(color: Color(0xFFFFC400), size: 23),
+      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 0, backgroundColor: Color(0xFF20191A), foregroundColor: Colors.white, titleTextStyle: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800)),
+      cardTheme: CardThemeData(color: const Color(0xFF292223), elevation: 2, shadowColor: Color(0x66000000), margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF493438)))),
       inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFDCE3EC))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFDCE3EC))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFE50914), width: 1.6)),
-        filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        labelStyle: const TextStyle(color: Color(0xFFE8DADD)),
+        hintStyle: const TextStyle(color: Color(0xFFB9A9AC)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF594147))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF594147))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFFFC400), width: 1.6)),
+        filled: true, fillColor: const Color(0xFF302629), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       ),
       filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE50914), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: Color(0xFFFFE6E6), labelTextStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
+      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Color(0xFF20191A), indicatorColor: Color(0xFF650008), labelTextStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
+      dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF292223), surfaceTintColor: Colors.transparent),
+      snackBarTheme: const SnackBarThemeData(backgroundColor: Color(0xFF352629), contentTextStyle: TextStyle(color: Colors.white)),
     ),
-    builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink()),
+    builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: SareeFoodBackdrop(child: child ?? const SizedBox.shrink())),
     home: const BrandSplashGate(),
   );
+}
+
+class SareeFoodBackdrop extends StatelessWidget {
+  const SareeFoodBackdrop({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
+    const DecoratedBox(decoration: BoxDecoration(
+      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF241719), Color(0xFF171717)]),
+    )),
+    const Positioned(top: 115, right: 12, child: Opacity(opacity: .055, child: Icon(Icons.lunch_dining_rounded, size: 112, color: Color(0xFFFFC400)))),
+    const Positioned(top: 330, left: -18, child: Opacity(opacity: .045, child: Icon(Icons.local_pizza_rounded, size: 145, color: Color(0xFFE50914)))),
+    const Positioned(bottom: 125, right: -15, child: Opacity(opacity: .05, child: Icon(Icons.ramen_dining_rounded, size: 132, color: Color(0xFFFFC400)))),
+    const Positioned(bottom: 18, left: 75, child: Opacity(opacity: .04, child: Icon(Icons.local_cafe_rounded, size: 92, color: Color(0xFFE50914)))),
+    Positioned.fill(child: child),
+  ]);
 }
 
 class BrandMark extends StatelessWidget {
@@ -409,7 +431,7 @@ class _AuthPageState extends State<AuthPage> {
             TextFormField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'رقم الهاتف'), validator: (v) => (v == null || v.trim().length < 7) ? 'أدخل رقم هاتف صحيحاً' : null),
             const SizedBox(height: 12),
           ],
-          TextFormField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'البريد الإلكتروني'), validator: (v) => (v == null || !v.contains('@')) ? 'أدخل بريدًا إلكترونيًا صحيحًا' : null),
+          TextFormField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'البريد الإلكتروني أو رقم الهاتف للمندوب'), validator: (v) { final value = (v ?? '').trim(); return value.isEmpty || (!value.contains('@') && value.replaceAll(RegExp(r'[^0-9]'), '').length < 7) ? 'أدخل بريدًا صحيحًا أو رقم هاتف المندوب' : null; }),
           const SizedBox(height: 12),
           TextFormField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة المرور'), validator: (v) => (v == null || v.length < 6) ? 'كلمة المرور 6 أحرف على الأقل' : null),
           if (_message != null) ...[
@@ -1516,15 +1538,30 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   }
 
   Future<void> _addCourier(String restaurantId) async {
+    final name = TextEditingController();
     final phone = TextEditingController();
+    final password = TextEditingController();
     final form = GlobalKey<FormState>();
     final accepted = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('إضافة مندوب إلى فريق المطعم'),
-      content: Form(key: form, child: TextFormField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'رقم هاتف المندوب المسجل', prefixIcon: Icon(Icons.phone_android_rounded)), validator: (v) => (v ?? '').trim().length < 7 ? 'أدخل رقم هاتف صحيحًا' : null)),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(ctx, true); }, child: const Text('إضافة إلى الفريق'))],
+      title: const Text('إنشاء حساب مندوب جديد'),
+      content: SizedBox(width: 420, child: Form(key: form, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextFormField(controller: name, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'اسم المندوب', prefixIcon: Icon(Icons.person_outline_rounded)), validator: (v) => (v ?? '').trim().length < 2 ? 'أدخل اسم المندوب' : null),
+        const SizedBox(height: 12),
+        TextFormField(controller: phone, keyboardType: TextInputType.phone, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_android_rounded)), validator: (v) => (v ?? '').replaceAll(RegExp(r'[^0-9]'), '').length < 7 ? 'أدخل رقم هاتف صحيحًا' : null),
+        const SizedBox(height: 12),
+        TextFormField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة مرور المندوب (8 أحرف على الأقل)', prefixIcon: Icon(Icons.lock_outline_rounded)), validator: (v) => (v ?? '').length < 8 ? 'كلمة المرور يجب ألا تقل عن 8 أحرف' : null),
+        const SizedBox(height: 8),
+        const Text('سيُنشأ الحساب ويرتبط بهذا المطعم، ويظل بانتظار موافقة الإدارة قبل استقبال الطلبات.', style: TextStyle(color: Color(0xFFFFC400), height: 1.5)),
+      ])))),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(ctx, true); }, child: const Text('إنشاء الحساب'))],
     ));
-    if (accepted == true) await _run(() => SareeBackend.addRestaurantCourier(restaurantId, phone.text));
-    phone.dispose();
+    if (accepted == true) {
+      await _run(() async {
+        await SareeBackend.createRestaurantCourierAccount(restaurantId: restaurantId, fullName: name.text, phone: phone.text, password: password.text);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إنشاء الحساب وربطه بالمطعم. بانتظار موافقة الإدارة.')));
+      });
+    }
+    name.dispose(); phone.dispose(); password.dispose();
   }
 
   Future<void> _removeCourier(String restaurantId, Map<String, dynamic> courier) async {
@@ -1544,7 +1581,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       return ListView(padding: const EdgeInsets.all(14), children: [
         Row(children: [const Expanded(child: Text('مندوبو المطعم', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))), FilledButton.icon(onPressed: _busy ? null : () => _addCourier(restaurantId), icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('إضافة مندوب'))]),
         const SizedBox(height: 8),
-        const Text('أضف مندوبًا لديه حساب معتمد في سريع باستخدام رقم هاتفه. سيظهر ضمن خيارات الإسناد لهذا المطعم فقط.', style: TextStyle(color: Color(0xFF748094), height: 1.5)),
+        const Text('أنشئ حساب المندوب مباشرة بالاسم ورقم الهاتف وكلمة المرور. سيُربط بهذا المطعم، ولن يستقبل الطلبات حتى توافق الإدارة.', style: TextStyle(color: Color(0xFFFFC400), height: 1.5)),
         const SizedBox(height: 12),
         if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Column(children: [Icon(Icons.delivery_dining_rounded, size: 42, color: Color(0xFF8994A3)), SizedBox(height: 8), Text('لم تضف أي مندوب إلى فريق المطعم بعد', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700))]))),
         ...couriers.map((courier) {
@@ -1552,7 +1589,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
           final available = courier['is_available'] == true;
           final name = courier['full_name']?.toString().trim().isNotEmpty == true ? courier['full_name'].toString() : 'مندوب توصيل';
           final phone = courier['phone']?.toString() ?? 'بدون رقم هاتف';
-          final status = !active ? 'موقوف من فريق المطعم' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
+          final status = !active ? 'بانتظار موافقة الإدارة أو موقوف' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
           return Card(child: ListTile(leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))), title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('$phone • $status'), trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3))));
         }),
       ]);
