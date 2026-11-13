@@ -83,11 +83,37 @@ class SareeBackend {
     }
   }
 
-  static Future<void> signIn(String email, String password) async {
-    await client.auth.signInWithPassword(
-      email: email.trim(),
-      password: password,
+  static String _courierEmailFromPhone(String value) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    return 'courier_${digits}@couriers.saree.app';
+  }
+
+  static Future<void> signIn(String emailOrPhone, String password) async {
+    final input = emailOrPhone.trim();
+    final email = input.contains('@') ? input : _courierEmailFromPhone(input);
+    await client.auth.signInWithPassword(email: email, password: password);
+  }
+
+  static Future<void> createRestaurantCourierAccount({
+    required String restaurantId,
+    required String fullName,
+    required String phone,
+    required String password,
+  }) async {
+    final response = await client.functions.invoke(
+      'restaurant-create-courier',
+      body: {
+        'restaurant_id': restaurantId,
+        'full_name': fullName.trim(),
+        'phone': phone.trim(),
+        'password': password,
+      },
     );
+    if (response.status < 200 || response.status >= 300) {
+      final data = response.data;
+      final message = data is Map ? data['message'] ?? data['error'] : data;
+      throw Exception(message?.toString() ?? 'تعذر إنشاء حساب المندوب');
+    }
   }
 
   static Future<void> signUp({
