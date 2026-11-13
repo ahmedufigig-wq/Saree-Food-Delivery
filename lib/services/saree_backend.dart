@@ -418,6 +418,16 @@ class SareeBackend {
   }
 
 
+  static Future<void> updateRestaurantDeliveryFee({required String restaurantId, required int feeYer}) async {
+    if (feeYer < 0 || feeYer > 1000000) {
+      throw ArgumentError('رسوم التوصيل يجب أن تكون بين 0 و1,000,000 ريال');
+    }
+    await client
+        .from('restaurants')
+        .update({'delivery_fee_yer': feeYer})
+        .eq('id', restaurantId);
+  }
+
   static Future<List<Map<String, dynamic>>> myRestaurants() async {
     final memberships = await client.from('restaurant_members').select('restaurant_id').eq('user_id', user!.id);
     final ids = List<Map<String, dynamic>>.from(memberships).map((r) => r['restaurant_id'].toString()).toList();
