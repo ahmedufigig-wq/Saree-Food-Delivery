@@ -302,7 +302,7 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> restaurantCourierTeam(String restaurantId) async {
-    final rows = await client.rpc('restaurant_courier_team', params: {
+    final rows = await client.rpc('restaurant_courier_team_v2', params: {
       'p_restaurant_id': restaurantId,
     });
     return List<Map<String, dynamic>>.from(rows as List);
