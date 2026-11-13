@@ -1821,7 +1821,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             onPressed: () async {
               final picked = await showDatePicker(
                 context: ctx,
-                initialDate: endsAt ?? DateTime.now().add(const Duration(days: 7)),
+                initialDate: endsAt != null && endsAt!.isAfter(DateTime.now()) ? endsAt! : DateTime.now().add(const Duration(days: 7)),
                 firstDate: DateTime.now(),
                 lastDate: DateTime.now().add(const Duration(days: 730)),
               );
