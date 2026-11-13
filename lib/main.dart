@@ -1151,7 +1151,7 @@ class MealDetailsPage extends StatelessWidget {
     appBar: AppBar(title: const Text('تفاصيل الوجبة')),
     body: Builder(builder: (context) {
       final available = item['is_available'] == true && (item['price_yer'] as num? ?? 0) > 0;
-      final imageUrl = item['image_url']?.toString() ?? '';
+      final imageUrl = _mealPhotoUrl(item);
       return ListView(padding: const EdgeInsets.all(18), children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(26),
