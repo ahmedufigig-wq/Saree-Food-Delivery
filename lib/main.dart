@@ -1641,7 +1641,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     if (accepted == true) {
       try {
         final parsed = <Map<String, dynamic>>[];
-        final lines = rows.text.split(RegExp(r'\\r?\\n'));
+        final lines = rows.text.split(RegExp(r'\r?\n'));
         for (var i = 0; i < lines.length; i++) {
           final line = lines[i].trim();
           if (line.isEmpty) continue;
@@ -1742,10 +1742,11 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                 if(snap.hasError) return Center(child: Text('تعذر تحميل الوجبات: ${SareeBackend.arabicError(snap.error)}'));
                 final items = snap.data ?? [];
                 return ListView(padding: const EdgeInsets.all(12), children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     const Text('قائمة الوجبات', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-                    Wrap(spacing: 8, children: [
-                      OutlinedButton.icon(onPressed: () => _bulkAddMeals(rid), icon: const Icon(Icons.playlist_add_rounded), label: const Text('إضافة دفعة')),
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      OutlinedButton.icon(onPressed: () => _bulkAddMeals(rid), icon: const Icon(Icons.playlist_add_rounded), label: const Text('إضافة المنيو دفعة واحدة')),
                       FilledButton.icon(onPressed: () => _editMeal(rid), icon: const Icon(Icons.add), label: const Text('وجبة جديدة')),
                     ]),
                   ]),
