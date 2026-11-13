@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SareeBackend {
@@ -424,6 +426,66 @@ class SareeBackend {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  static Future<List<Map<String, dynamic>>> managePromotions(String restaurantId) async {
+    final rows = await client.from('promotions').select().eq('restaurant_id', restaurantId).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<void> savePromotion({
+    String? id,
+    required String restaurantId,
+    required String title,
+    required String description,
+    required String code,
+    required String discountType,
+    required int discountValue,
+    required int minimumOrder,
+    required DateTime startsAt,
+    DateTime? endsAt,
+    required bool active,
+  }) async {
+    final values = {
+      'restaurant_id': restaurantId,
+      'title': title.trim(),
+      'description': description.trim(),
+      'code': code.trim().isEmpty ? null : code.trim().toUpperCase(),
+      'discount_type': discountType,
+      'discount_value': discountValue,
+      'minimum_order_yer': minimumOrder,
+      'starts_at': startsAt.toUtc().toIso8601String(),
+      'ends_at': endsAt?.toUtc().toIso8601String(),
+      'is_active': active,
+    };
+    if (id == null) {
+      await client.from('promotions').insert(values);
+    } else {
+      await client.from('promotions').update(values..remove('restaurant_id'))
+          .eq('id', id).eq('restaurant_id', restaurantId);
+    }
+  }
+
+  static Future<void> deletePromotion(String id, String restaurantId) async {
+    await client.from('promotions').delete().eq('id', id).eq('restaurant_id', restaurantId);
+  }
+
+  static Future<String> uploadMenuPhoto({
+    required String restaurantId,
+    required Uint8List bytes,
+    required String extension,
+    required String contentType,
+  }) async {
+    if (user == null) throw Exception('يرجى تسجيل الدخول بحساب المطعم');
+    final safeExtension = ['jpg', 'jpeg', 'png', 'webp'].contains(extension.toLowerCase())
+        ? extension.toLowerCase() : 'jpg';
+    final path = '$restaurantId/${user!.id}/${DateTime.now().microsecondsSinceEpoch}.$safeExtension';
+    await client.storage.from('menu-photos').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: contentType, upsert: false),
+    );
+    return client.storage.from('menu-photos').getPublicUrl(path);
+  }
+
   static Future<List<Map<String, dynamic>>> manageMenu(String restaurantId) async {
     final rows = await client.from('menu_items').select().eq('restaurant_id', restaurantId).order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
@@ -486,7 +548,7 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> activePromotions() async {
-    final rows = await client.from('promotions').select().eq('is_active', true).lte('starts_at', DateTime.now().toUtc().toIso8601String()).order('starts_at', ascending: false).limit(10);
+    final rows = await client.from('promotions').select('*, restaurants(name)').eq('is_active', true).lte('starts_at', DateTime.now().toUtc().toIso8601String()).order('starts_at', ascending: false).limit(20);
     return List<Map<String, dynamic>>.from(rows);
   }
 
