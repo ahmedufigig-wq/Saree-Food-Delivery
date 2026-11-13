@@ -88,6 +88,20 @@ jobs:
             --dart-define=SUPABASE_URL=https://zfhqprnsrcxahzvwevse.supabase.co \
             --dart-define=SUPABASE_ANON_KEY=sb_publishable_nJACFgbwtYkfov-OoW76ew_BvI8ZdH6
 
+      - name: Verify and align installable APK
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$BUILD_TOOLS/zipalign" -f -v 4 "$APK" "$APK.aligned"
+          mv "$APK.aligned" "$APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          BADGING="$("$BUILD_TOOLS/aapt" dump badging "$APK")"
+          printf '%s\\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
+          printf '%s\\n' "$BADGING" | grep -q "^sdkVersion:'24'$"
+          unzip -t "$APK" | tail -n 2
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
