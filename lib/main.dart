@@ -6,8 +6,38 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'services/saree_backend.dart';
+
+
+String _mealPhotoUrl(Map<String, dynamic> item) {
+  final saved = item['image_url']?.toString().trim() ?? '';
+  if (saved.startsWith('https://') || saved.startsWith('http://')) return saved;
+  final category = item['menu_categories'];
+  final text = '${item['name'] ?? ''} ${item['description'] ?? ''} ${category is Map ? category['name'] ?? '' : ''}'.toLowerCase();
+  String photo;
+  if (text.contains('برجر') || text.contains('burger')) {
+    photo = 'photo-1568901346375-23c9450c58cd';
+  } else if (text.contains('بيتزا') || text.contains('pizza')) {
+    photo = 'photo-1571407970349-bc81e7e96d47';
+  } else if (text.contains('شاورما') || text.contains('shawarma')) {
+    photo = 'photo-1529006557810-274b9b2fc783';
+  } else if (text.contains('سمك') || text.contains('جمبري') || text.contains('بحري') || text.contains('fish')) {
+    photo = 'photo-1519708227418-c8fd9a32b7a2';
+  } else if (text.contains('حلويات') || text.contains('كيك') || text.contains('حلو') || text.contains('dessert')) {
+    photo = 'photo-1488477181946-6428a0291777';
+  } else if (text.contains('بروست') || text.contains('دجاج') || text.contains('chicken')) {
+    photo = 'photo-1626082927389-6cd097cdc6ec';
+  } else if (text.contains('مندي') || text.contains('رز') || text.contains('لحم') || text.contains('كبسة')) {
+    photo = 'photo-1604908176997-125f25cc6f3d';
+  } else if (text.contains('سلتة') || text.contains('فحسة') || text.contains('يمني')) {
+    photo = 'photo-1547592180-85f173990554';
+  } else {
+    photo = 'photo-1546069901-ba9599a7e63c';
+  }
+  return 'https://images.unsplash.com/$photo?auto=format&fit=crop&w=720&q=82';
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -607,16 +637,18 @@ class CustomerHome extends StatelessWidget {
                   final promos = promoSnap.data ?? [];
                   if (promos.isEmpty) return const SizedBox.shrink();
                   return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('عروض سريع', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                    const Text('عروض المطاعم وتخفيضاتها', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 9),
-                    SizedBox(height: 116, child: ListView(scrollDirection: Axis.horizontal, children: promos.map((promo) => Container(
-                      width: 270, margin: const EdgeInsetsDirectional.only(end: 10), padding: const EdgeInsets.all(15),
+                    SizedBox(height: 148, child: ListView(scrollDirection: Axis.horizontal, children: promos.map((promo) => Container(
+                      width: 286, margin: const EdgeInsetsDirectional.only(end: 10), padding: const EdgeInsets.all(15),
                       decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: const LinearGradient(colors: [Color(0xFFE50914), Color(0xFF8B0008)])),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(promo['title'].toString(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
-                        const SizedBox(height: 5),
-                        Expanded(child: Text(promo['description']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70))),
-                        if ((promo['code']?.toString() ?? '').isNotEmpty) Text('كود العرض: ${promo['code']}', style: const TextStyle(color: Color(0xFFFFC400), fontWeight: FontWeight.w900)),
+                        Text(promo['title']?.toString() ?? 'عرض خاص', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+                        const SizedBox(height: 3),
+                        Text(promo['discount_type'] == 'percentage' ? 'خصم ${promo['discount_value']}٪' : 'خصم ${promo['discount_value']} ريال', style: const TextStyle(color: Color(0xFFFFC400), fontWeight: FontWeight.w900, fontSize: 16)),
+                        Text((promo['restaurants'] is Map ? promo['restaurants']['name'] : null)?.toString() ?? 'مطعم مشارك', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                        Expanded(child: Text(promo['description']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                        if ((promo['code']?.toString() ?? '').isNotEmpty) Text('كود العرض: ${promo['code']} • الحد الأدنى: ${promo['minimum_order_yer'] ?? 0} ريال', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFC400), fontWeight: FontWeight.w900, fontSize: 11)),
                       ]),
                     )).toList())),
                     const SizedBox(height: 18),
@@ -1073,7 +1105,7 @@ class RestaurantMenuPage extends StatelessWidget {
             ),
             ...grouped[category]!.map((item) {
               final available = item['is_available'] == true && (item['price_yer'] as num? ?? 0) > 0;
-              final imageUrl = item['image_url']?.toString() ?? '';
+              final imageUrl = _mealPhotoUrl(item);
               return Card(
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
@@ -1085,9 +1117,7 @@ class RestaurantMenuPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                         child: SizedBox(
                           width: 82, height: 82,
-                          child: imageUrl.startsWith('http')
-                              ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFFE50914))))
-                              : const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFFE50914))),
+                          child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFFE50914)))),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1127,9 +1157,7 @@ class MealDetailsPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(26),
           child: SizedBox(
             height: 230,
-            child: imageUrl.startsWith('http')
-                ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914))))
-                : const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914))),
+            child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914)))),
           ),
         ),
         const SizedBox(height: 20),
@@ -1749,11 +1777,142 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     ]),
   );
 
+  Future<void> _editPromotion(String restaurantId, [Map<String, dynamic>? promotion]) async {
+    final title = TextEditingController(text: promotion?['title']?.toString() ?? '');
+    final description = TextEditingController(text: promotion?['description']?.toString() ?? '');
+    final code = TextEditingController(text: promotion?['code']?.toString() ?? '');
+    final value = TextEditingController(text: promotion?['discount_value']?.toString() ?? '');
+    final minimum = TextEditingController(text: promotion?['minimum_order_yer']?.toString() ?? '0');
+    String discountType = promotion?['discount_type']?.toString() ?? 'percentage';
+    bool active = promotion?['is_active'] != false;
+    DateTime? endsAt = DateTime.tryParse(promotion?['ends_at']?.toString() ?? '');
+    final startsAt = DateTime.tryParse(promotion?['starts_at']?.toString() ?? '') ?? DateTime.now();
+    final form = GlobalKey<FormState>();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
+        title: Text(promotion == null ? 'إضافة عرض أو تخفيض' : 'تعديل العرض'),
+        content: SizedBox(width: 440, child: Form(key: form, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان العرض'), validator: (v) => (v ?? '').trim().isEmpty ? 'أدخل عنوان العرض' : null),
+          const SizedBox(height: 8),
+          TextFormField(controller: description, maxLines: 2, decoration: const InputDecoration(labelText: 'تفاصيل العرض')),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            initialValue: discountType,
+            decoration: const InputDecoration(labelText: 'نوع التخفيض'),
+            items: const [
+              DropdownMenuItem(value: 'percentage', child: Text('نسبة مئوية ٪')),
+              DropdownMenuItem(value: 'fixed', child: Text('مبلغ ثابت بالريال')),
+            ],
+            onChanged: (v) => setLocal(() => discountType = v ?? 'percentage'),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(controller: value, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: discountType == 'percentage' ? 'نسبة الخصم (1 إلى 100)' : 'قيمة الخصم بالريال'), validator: (v) {
+            final n = int.tryParse(v ?? '') ?? 0;
+            if (n <= 0 || (discountType == 'percentage' && n > 100)) return 'أدخل قيمة تخفيض صحيحة';
+            return null;
+          }),
+          const SizedBox(height: 8),
+          TextFormField(controller: code, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: 'كود العرض (اختياري)')),
+          const SizedBox(height: 8),
+          TextFormField(controller: minimum, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'الحد الأدنى للطلب بالريال (0 = بدون حد)'), validator: (v) => (int.tryParse(v ?? '') ?? -1) < 0 ? 'أدخل مبلغًا صحيحًا' : null),
+          const SizedBox(height: 8),
+          Align(alignment: Alignment.centerRight, child: TextButton.icon(
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: ctx,
+                initialDate: endsAt ?? DateTime.now().add(const Duration(days: 7)),
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 730)),
+              );
+              if (picked != null) setLocal(() => endsAt = DateTime(picked.year, picked.month, picked.day, 23, 59));
+            },
+            icon: const Icon(Icons.event_outlined),
+            label: Text(endsAt == null ? 'بدون تاريخ انتهاء' : 'ينتهي في ${endsAt!.year}-${endsAt!.month.toString().padLeft(2, '0')}-${endsAt!.day.toString().padLeft(2, '0')}'),
+          )),
+          if (endsAt != null) Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => setLocal(() => endsAt = null), child: const Text('إزالة تاريخ الانتهاء'))),
+          SwitchListTile(value: active, onChanged: (v) => setLocal(() => active = v), title: const Text('عرض نشط ويظهر للعملاء')),
+        ])))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(ctx, true); }, child: const Text('حفظ العرض')),
+        ],
+      )),
+    );
+    if (saved == true) {
+      await _run(() => SareeBackend.savePromotion(
+        id: promotion?['id']?.toString(),
+        restaurantId: restaurantId,
+        title: title.text,
+        description: description.text,
+        code: code.text,
+        discountType: discountType,
+        discountValue: int.parse(value.text),
+        minimumOrder: int.parse(minimum.text),
+        startsAt: startsAt,
+        endsAt: endsAt,
+        active: active,
+      ));
+    }
+    title.dispose(); description.dispose(); code.dispose(); value.dispose(); minimum.dispose();
+  }
+
+  Widget _promotionsTab(String restaurantId) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: SareeBackend.managePromotions(restaurantId),
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+        if (snap.hasError) return Center(child: Text('تعذر تحميل العروض: ${SareeBackend.arabicError(snap.error)}'));
+        final promotions = snap.data ?? [];
+        return ListView(padding: const EdgeInsets.all(12), children: [
+          Row(children: [
+            const Expanded(child: Text('عروض وتخفيضات المطعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+            FilledButton.icon(onPressed: _busy ? null : () => _editPromotion(restaurantId), icon: const Icon(Icons.add), label: const Text('عرض جديد')),
+          ]),
+          const Padding(padding: EdgeInsets.only(top: 6, bottom: 12), child: Text('العروض النشطة تظهر تلقائيًا للعملاء في الصفحة الرئيسية مع كود العرض وشروطه.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
+          if (promotions.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('لم تضف عروضًا بعد. أنشئ أول تخفيض ليظهر لعملائك.', textAlign: TextAlign.center))),
+          ...promotions.map((item) {
+            final discount = item['discount_type'] == 'percentage'
+                ? '${item['discount_value']}٪ خصم'
+                : '${item['discount_value']} ريال خصم';
+            return Card(child: ListTile(
+              leading: CircleAvatar(backgroundColor: const Color(0xFFFFF0E3), child: Icon(Icons.local_offer_rounded, color: item['is_active'] == true ? const Color(0xFFE50914) : const Color(0xFF8994A3))),
+              title: Text(item['title']?.toString() ?? 'عرض'),
+              subtitle: Text('$discount • ${item['code'] == null || item['code'].toString().isEmpty ? 'بدون كود' : 'الكود: ${item['code']}'} • ${item['is_active'] == true ? 'نشط' : 'متوقف'}'),
+              trailing: PopupMenuButton<String>(
+                onSelected: (v) {
+                  if (v == 'edit') _editPromotion(restaurantId, item);
+                  if (v == 'toggle') _run(() => SareeBackend.savePromotion(
+                    id: item['id'].toString(), restaurantId: restaurantId,
+                    title: item['title'].toString(), description: item['description']?.toString() ?? '',
+                    code: item['code']?.toString() ?? '', discountType: item['discount_type'].toString(),
+                    discountValue: (item['discount_value'] as num).toInt(),
+                    minimumOrder: (item['minimum_order_yer'] as num? ?? 0).toInt(),
+                    startsAt: DateTime.tryParse(item['starts_at']?.toString() ?? '') ?? DateTime.now(),
+                    endsAt: DateTime.tryParse(item['ends_at']?.toString() ?? ''),
+                    active: item['is_active'] != true,
+                  ));
+                  if (v == 'delete') _run(() => SareeBackend.deletePromotion(item['id'].toString(), restaurantId));
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('تعديل')),
+                  PopupMenuItem(value: 'toggle', child: Text('تفعيل / إيقاف')),
+                  PopupMenuItem(value: 'delete', child: Text('حذف')),
+                ],
+              ),
+            ));
+          }),
+        ]);
+      },
+    );
+  }
+
   Future<void> _editMeal(String restaurantId, [Map<String,dynamic>? item]) async {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final description = TextEditingController(text: item?['description']?.toString() ?? '');
     final price = TextEditingController(text: item?['price_yer']?.toString() ?? '');
     final image = TextEditingController(text: item?['image_url']?.toString() ?? '');
+    XFile? selectedPhoto;
     bool available = item?['is_available'] != false;
     final form = GlobalKey<FormState>();
     final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
@@ -1766,11 +1925,37 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         TextFormField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'السعر بالريال'), validator: (v) => (int.tryParse(v ?? '') ?? 0) <= 0 ? 'أدخل سعرًا صحيحًا' : null),
         const SizedBox(height: 8),
         TextFormField(controller: image, decoration: const InputDecoration(labelText: 'رابط صورة الوجبة (اختياري)')),
+        const SizedBox(height: 6),
+        Align(alignment: Alignment.centerRight, child: TextButton.icon(
+          onPressed: () async {
+            final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 84, maxWidth: 1600);
+            if (picked != null) setLocal(() => selectedPhoto = picked);
+          },
+          icon: const Icon(Icons.photo_library_outlined),
+          label: Text(selectedPhoto == null ? 'اختيار صورة حقيقية من الهاتف' : 'تم اختيار: ${selectedPhoto!.name}'),
+        )),
         SwitchListTile(value: available, onChanged: (v) => setLocal(() => available = v), title: const Text('متاحة للطلب')),
       ]))),
       actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () { if(form.currentState!.validate()) Navigator.pop(ctx, true); }, child: const Text('حفظ'))],
     )));
-    if(ok == true) await _run(() => SareeBackend.saveMenuItem(id: item?['id']?.toString(), restaurantId: restaurantId, name: name.text, description: description.text, price: int.parse(price.text), imageUrl: image.text, available: available));
+    if(ok == true) await _run(() async {
+      String? imageUrl = image.text.trim().isEmpty ? null : image.text.trim();
+      if (selectedPhoto != null) {
+        final extension = selectedPhoto!.name.contains('.') ? selectedPhoto!.name.split('.').last.toLowerCase() : 'jpg';
+        final contentType = extension == 'png' ? 'image/png' : extension == 'webp' ? 'image/webp' : 'image/jpeg';
+        imageUrl = await SareeBackend.uploadMenuPhoto(
+          restaurantId: restaurantId,
+          bytes: await selectedPhoto!.readAsBytes(),
+          extension: extension,
+          contentType: contentType,
+        );
+      }
+      await SareeBackend.saveMenuItem(
+        id: item?['id']?.toString(), restaurantId: restaurantId, name: name.text,
+        description: description.text, price: int.parse(price.text),
+        imageUrl: imageUrl, available: available,
+      );
+    });
     name.dispose(); description.dispose(); price.dispose(); image.dispose();
   }
 
@@ -1827,7 +2012,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   ]),
                   if(items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('لم تضف وجبات بعد. أضف أول وجبة ليراها العملاء.')),
                   ...items.map((item) => Card(child: ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.fastfood_rounded)),
+                    leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 54, height: 54, child: Image.network(_mealPhotoUrl(item), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, color: Color(0xFFE50914)))))),
                     title: Text(item['name'].toString()),
                     subtitle: Text('${item['price_yer']} ريال • ${item['is_available'] == true ? 'متاحة' : 'متوقفة'}'),
                     trailing: PopupMenuButton<String>(
@@ -1901,6 +2086,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               },
             ),
             _courierTeamTab(rid),
+            _promotionsTab(rid),
           ])),
         ]);
       },
@@ -1909,6 +2095,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined), label: 'الوجبات'),
       NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'الطلبات'),
       NavigationDestination(icon: Icon(Icons.delivery_dining_outlined), label: 'المندوبون'),
+      NavigationDestination(icon: Icon(Icons.local_offer_outlined), label: 'العروض'),
     ]),
   );
 }
