@@ -28,10 +28,10 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Setup Flutter (Android 7+ compatible toolchain)
+      - name: Setup Flutter (Android 5+ compatible toolchain)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.7'
+          flutter-version: '3.32.8'
           cache: true
 
       - name: Generate Android project scaffold when missing
@@ -40,29 +40,29 @@ jobs:
             flutter create --platforms=android --org com.saree.delivery --project-name saree .
           fi
 
-      - name: Set Android minimum SDK to 24 (Android 7.0+)
+      - name: Set Android minimum SDK to 21 (Android 5.0+)
         run: |
           set -euo pipefail
           KTS=android/app/build.gradle.kts
           GROOVY=android/app/build.gradle
           if [ -f "$KTS" ]; then
             if grep -q 'minSdk = flutter.minSdkVersion' "$KTS"; then
-              sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/' "$KTS"
-            elif ! grep -q 'minSdk = 24' "$KTS"; then
+              sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' "$KTS"
+            elif ! grep -q 'minSdk = 21' "$KTS"; then
               echo "Could not locate Kotlin DSL minSdk setting" >&2
               exit 1
             fi
             grep -n 'minSdk' "$KTS"
-            grep -q 'minSdk = 24' "$KTS"
+            grep -q 'minSdk = 21' "$KTS"
           elif [ -f "$GROOVY" ]; then
             if grep -q 'minSdkVersion flutter.minSdkVersion' "$GROOVY"; then
-              sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/' "$GROOVY"
-            elif ! grep -q 'minSdkVersion 24' "$GROOVY"; then
+              sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' "$GROOVY"
+            elif ! grep -q 'minSdkVersion 21' "$GROOVY"; then
               echo "Could not locate Groovy DSL minSdk setting" >&2
               exit 1
             fi
             grep -n 'minSdk' "$GROOVY"
-            grep -q 'minSdkVersion 24' "$GROOVY"
+            grep -q 'minSdkVersion 21' "$GROOVY"
           else
             echo "Android Gradle app module not found" >&2
             exit 1
@@ -152,8 +152,8 @@ jobs:
           BADGING="$("$BUILD_TOOLS/aapt" dump badging build/app/outputs/flutter-apk/app-release.apk)"
           printf '%s\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
           # Fail the release if Flutter/plugin tooling silently raises the minimum Android version.
-          printf '%s\n' "$BADGING" | grep -q "^sdkVersion:'24'$" || {
-            echo "APK minimum SDK is not 24; refusing to publish an incompatible package." >&2
+          printf '%s\n' "$BADGING" | grep -q "^sdkVersion:'21'$" || {
+            echo "APK minimum SDK is not 21; refusing to publish an incompatible package." >&2
             exit 1
           }
 
