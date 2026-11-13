@@ -8,34 +8,86 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: saree-release-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Java
+
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.35.7'
           cache: true
+
+      - name: Generate Android project scaffold when missing
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android --org com.saree.delivery --project-name saree .
+          fi
+
+      - name: Set Android minimum SDK to 24
+        run: |
+          set -euo pipefail
+          KTS=android/app/build.gradle.kts
+          GROOVY=android/app/build.gradle
+          if [ -f "$KTS" ]; then
+            if grep -q 'minSdk = flutter.minSdkVersion' "$KTS"; then
+              sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/' "$KTS"
+            elif ! grep -q 'minSdk = 24' "$KTS"; then
+              echo "Could not locate Kotlin DSL minSdk setting" >&2
+              exit 1
+            fi
+            grep -q 'minSdk = 24' "$KTS"
+          elif [ -f "$GROOVY" ]; then
+            if grep -q 'minSdkVersion flutter.minSdkVersion' "$GROOVY"; then
+              sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/' "$GROOVY"
+            elif ! grep -q 'minSdkVersion 24' "$GROOVY"; then
+              echo "Could not locate Groovy DSL minSdk setting" >&2
+              exit 1
+            fi
+            grep -q 'minSdkVersion 24' "$GROOVY"
+          else
+            echo "Android Gradle app module not found" >&2
+            exit 1
+          fi
+
+      - name: Ensure Android internet permission
+        run: |
+          set -euo pipefail
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
+            sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
+          fi
+          grep -q 'android.permission.INTERNET' "$MANIFEST"
+
       - name: Install dependencies
         run: flutter pub get
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
+
       - name: Run tests
         run: flutter test
+
       - name: Build release APK
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          flutter build apk --release --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL=https://zfhqprnsrcxahzvwevse.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=sb_publishable_nJACFgbwtYkfov-OoW76ew_BvI8ZdH6
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -43,6 +95,7 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
+
       - name: Publish installable APK
         uses: softprops/action-gh-release@v2
         with:
