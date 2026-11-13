@@ -2087,6 +2087,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             ),
             _courierTeamTab(rid),
             _promotionsTab(rid),
+            DeliveryFeeSettingsTab(
+              restaurantId: rid,
+              initialFee: (restaurant['delivery_fee_yer'] as num?)?.toInt() ?? 100,
+            ),
           ])),
         ]);
       },
@@ -2096,7 +2100,124 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'الطلبات'),
       NavigationDestination(icon: Icon(Icons.delivery_dining_outlined), label: 'المندوبون'),
       NavigationDestination(icon: Icon(Icons.local_offer_outlined), label: 'العروض'),
+      NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'رسوم التوصيل'),
     ]),
+  );
+}
+
+
+class DeliveryFeeSettingsTab extends StatefulWidget {
+  const DeliveryFeeSettingsTab({
+    super.key,
+    required this.restaurantId,
+    required this.initialFee,
+  });
+
+  final String restaurantId;
+  final int initialFee;
+
+  @override
+  State<DeliveryFeeSettingsTab> createState() => _DeliveryFeeSettingsTabState();
+}
+
+class _DeliveryFeeSettingsTabState extends State<DeliveryFeeSettingsTab> {
+  late final TextEditingController _fee;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fee = TextEditingController(text: widget.initialFee.toString());
+  }
+
+  @override
+  void didUpdateWidget(covariant DeliveryFeeSettingsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.restaurantId != widget.restaurantId ||
+        oldWidget.initialFee != widget.initialFee) {
+      _fee.text = widget.initialFee.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _fee.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final amount = int.tryParse(_fee.text.trim());
+    if (amount == null || amount < 0 || amount > 1000000) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('أدخل رسومًا صحيحة من 0 إلى 1,000,000 ريال'),
+      ));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await SareeBackend.updateRestaurantDeliveryFee(
+        restaurantId: widget.restaurantId,
+        feeYer: amount,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('تم حفظ رسوم التوصيل بنجاح، وستُطبق على الطلبات الجديدة'),
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر حفظ الرسوم: ${SareeBackend.arabicError(e)}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      Card(child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Icon(Icons.delivery_dining_rounded, size: 52, color: Color(0xFFFFC400)),
+          const SizedBox(height: 12),
+          const Text('تحديد رسوم توصيل المطعم',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          const Text(
+            'حدد المبلغ الذي يناسب مطعمك. سيظهر للعميل بوضوح عند إتمام الطلب، ويُحفظ مع الطلب حتى لا تتغير رسوم الطلبات السابقة إذا عدّلت السعر لاحقًا.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70, height: 1.6),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _fee,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            decoration: const InputDecoration(
+              labelText: 'رسوم التوصيل بالريال اليمني',
+              suffixText: 'ريال',
+              prefixIcon: Icon(Icons.payments_outlined),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text('يمكنك كتابة 0 إذا كان التوصيل مجانيًا.',
+            style: TextStyle(color: Color(0xFFFFC400), fontSize: 12)),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox(width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.save_rounded),
+            label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ رسوم التوصيل'),
+          ),
+        ]),
+      )),
+    ],
   );
 }
 
