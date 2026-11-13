@@ -1600,22 +1600,104 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     final lat = (order['delivery_latitude'] as num?)?.toDouble();
     final lng = (order['delivery_longitude'] as num?)?.toDouble();
     final validLocation = lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      ListTile(dense: true, leading: const Icon(Icons.phone_outlined), title: const Text('هاتف العميل'), subtitle: Text(order['customer_phone']?.toString() ?? 'غير مسجل')),
-      if ((order['notes'] ?? '').toString().trim().isNotEmpty) ListTile(dense: true, leading: const Icon(Icons.notes_rounded), title: const Text('ملاحظات العميل'), subtitle: Text(order['notes'].toString())),
-      FutureBuilder<List<Map<String, dynamic>>>(future: SareeBackend.courierOrderItems(order['id'].toString()), builder: (context, itemsSnap) {
-        if (itemsSnap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator());
-        if (itemsSnap.hasError) return Padding(padding: const EdgeInsets.all(12), child: Text('تعذر تحميل الأصناف: ' + SareeBackend.arabicError(itemsSnap.error)));
-        final items = itemsSnap.data ?? [];
-        return Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('الأصناف المطلوبة', style: TextStyle(fontWeight: FontWeight.w900)),
-          if (items.isEmpty) const Padding(padding: EdgeInsets.only(top: 6), child: Text('لا توجد أصناف مسجلة')),
-          ...items.map((item) => Padding(padding: const EdgeInsets.only(top: 7), child: Row(children: [Expanded(child: Text('${item['item_name']} × ${item['quantity']}')), Text('${item['line_total_yer']} ريال', style: const TextStyle(fontWeight: FontWeight.w800))]))),
-        ]));
-      }),
-      if (validLocation) Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: OutlinedButton.icon(onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.map_outlined), label: const Text('فتح موقع العميل على الخريطة'))),
-    ]);
+    final subtotal = (order['subtotal_yer'] as num?)?.toInt() ?? 0;
+    final deliveryFee = (order['delivery_fee_yer'] as num?)?.toInt() ?? 0;
+    final total = (order['total_yer'] as num?)?.toInt() ?? subtotal + deliveryFee;
+    final status = (order['status'] ?? '').toString().trim().toLowerCase();
+    final ready = status == 'ready_for_pickup';
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF211B1C),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ready ? const Color(0xFFFFC400) : const Color(0xFF493438), width: ready ? 1.5 : 1),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(Icons.receipt_long_rounded, color: ready ? const Color(0xFFFFC400) : Colors.white70),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('تفاصيل الطلب كاملة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900))),
+          if (ready) const Chip(
+            visualDensity: VisualDensity.compact,
+            label: Text('جاهز للاستلام', style: TextStyle(fontWeight: FontWeight.w800)),
+            backgroundColor: Color(0xFFFFC400),
+            labelStyle: TextStyle(color: Color(0xFF171717)),
+            side: BorderSide.none,
+          ),
+        ]),
+        const Divider(height: 18),
+        _orderInfoRow(Icons.person_outline_rounded, 'اسم العميل', order['customer_name']?.toString() ?? 'غير مسجل'),
+        _orderInfoRow(Icons.phone_outlined, 'رقم الهاتف', order['customer_phone']?.toString() ?? 'غير مسجل'),
+        _orderInfoRow(Icons.location_on_outlined, 'عنوان التوصيل', order['delivery_address']?.toString() ?? 'غير مسجل'),
+        if ((order['notes'] ?? '').toString().trim().isNotEmpty)
+          _orderInfoRow(Icons.notes_rounded, 'ملاحظات العميل', order['notes'].toString()),
+        const SizedBox(height: 10),
+        const Text('الأصناف المطلوبة والكميات', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFFC400))),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: SareeBackend.courierOrderItems(order['id'].toString()),
+          builder: (context, itemsSnap) {
+            if (itemsSnap.connectionState != ConnectionState.done) {
+              return const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: LinearProgressIndicator());
+            }
+            if (itemsSnap.hasError) {
+              return Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('تعذر تحميل الأصناف: ${SareeBackend.arabicError(itemsSnap.error)}'));
+            }
+            final items = itemsSnap.data ?? [];
+            if (items.isEmpty) return const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('لا توجد أصناف مسجلة لهذا الطلب'));
+            return Column(children: items.map((item) {
+              final quantity = (item['quantity'] as num?)?.toInt() ?? 0;
+              final unitPrice = (item['unit_price_yer'] as num?)?.toInt() ?? 0;
+              final lineTotal = (item['line_total_yer'] as num?)?.toInt() ?? unitPrice * quantity;
+              return Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Icon(Icons.restaurant_menu_rounded, size: 18, color: Color(0xFFFFC400)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(item['item_name']?.toString() ?? 'صنف', style: const TextStyle(fontWeight: FontWeight.w800)),
+                    Text('$quantity × $unitPrice ريال', style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                  ])),
+                  Text('$lineTotal ريال', style: const TextStyle(fontWeight: FontWeight.w900)),
+                ]),
+              );
+            }).toList());
+          },
+        ),
+        const Divider(height: 22),
+        _orderInfoRow(Icons.shopping_basket_outlined, 'قيمة الأصناف', '$subtotal ريال'),
+        _orderInfoRow(Icons.delivery_dining_rounded, 'رسوم التوصيل', '$deliveryFee ريال'),
+        Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(color: const Color(0xFF650008), borderRadius: BorderRadius.circular(12)),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('الإجمالي المطلوب من العميل', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+            Text('$total ريال يمني', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFFC400), fontSize: 16)),
+          ]),
+        ),
+        const SizedBox(height: 8),
+        _orderInfoRow(Icons.payments_outlined, 'طريقة الدفع', 'نقدًا عند الاستلام'),
+        if (validLocation)
+          OutlinedButton.icon(
+            onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'), mode: LaunchMode.externalApplication),
+            icon: const Icon(Icons.map_outlined),
+            label: const Text('فتح موقع العميل على الخريطة'),
+          ),
+      ]),
+    );
   }
+
+  Widget _orderInfoRow(IconData icon, String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, size: 18, color: const Color(0xFFFFC400)),
+      const SizedBox(width: 8),
+      SizedBox(width: 105, child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12))),
+      Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
+    ]),
+  );
+
   Future<void> _editMeal(String restaurantId, [Map<String,dynamic>? item]) async {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final description = TextEditingController(text: item?['description']?.toString() ?? '');
