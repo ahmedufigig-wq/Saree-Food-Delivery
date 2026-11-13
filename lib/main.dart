@@ -1585,11 +1585,13 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         const SizedBox(height: 12),
         if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Column(children: [Icon(Icons.delivery_dining_rounded, size: 42, color: Color(0xFF8994A3)), SizedBox(height: 8), Text('لم تضف أي مندوب إلى فريق المطعم بعد', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700))]))),
         ...couriers.map((courier) {
-          final active = courier['is_active'] == true;
+          final approval = courier['approval_status']?.toString() ?? 'pending';
+          final approved = approval == 'approved';
+          final active = courier['is_active'] == true && approved;
           final available = courier['is_available'] == true;
           final name = courier['full_name']?.toString().trim().isNotEmpty == true ? courier['full_name'].toString() : 'مندوب توصيل';
           final phone = courier['phone']?.toString() ?? 'بدون رقم هاتف';
-          final status = !active ? 'بانتظار موافقة الإدارة أو موقوف' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
+          final status = approval == 'pending' ? 'بانتظار موافقة الإدارة' : approval == 'rejected' ? 'مرفوض من الإدارة' : !active ? 'موقوف من المطعم أو الإدارة' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
           return Card(child: ListTile(leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))), title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('$phone • $status'), trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3))));
         }),
       ]);
