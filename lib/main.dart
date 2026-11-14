@@ -543,15 +543,15 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('توثيق حساب المندوب'), automaticallyImplyLeading: false,
+    appBar: AppBar(title: const Text('إرفاق مستندات الهوية'), automaticallyImplyLeading: false,
       actions: [IconButton(tooltip: 'تسجيل الخروج', onPressed: _busy ? null : () => SareeBackend.signOut(), icon: const Icon(Icons.logout_rounded))]),
     body: SafeArea(child: ListView(padding: const EdgeInsets.all(18), children: [
       const Icon(Icons.verified_user_rounded, size: 58, color: Color(0xFFFFC400)),
       const SizedBox(height: 12),
-      const Text('أكمل توثيق هويتك للانضمام إلى مندوبي سريع', textAlign: TextAlign.center,
+      const Text('أرفق مستندات هويتك للتقديم للعمل لدى مطاعم سريع', textAlign: TextAlign.center,
         style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
       const SizedBox(height: 8),
-      const Text('هذه الخطوة مطلوبة مرة واحدة فقط. تُحفظ المستندات بشكل خاص، ولا تظهر إلا للمطاعم التي تتقدم إليها ولإدارة النظام المخوّلة.',
+      const Text('هذه الخطوة مطلوبة مرة واحدة فقط. رفع الصور يتيح للمطاعم التي تتقدم إليها الاطلاع عليها واتخاذ قرار قبولك أو رفضك. رفع الصور لا يُعد تصديقًا رسميًا لصحة الهوية.',
         textAlign: TextAlign.center),
       const SizedBox(height: 18),
       _documentTile('id_front', 'الهوية الشخصية – الوجه الأمامي', 'صورة واضحة للوجه الأمامي للبطاقة', Icons.badge_outlined),
@@ -1888,8 +1888,8 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   if (a['platform_approval_status'] == 'approved')
                     const ListTile(
                       dense: true,
-                      leading: Icon(Icons.verified_rounded, color: Colors.green),
-                      title: Text('توثيق الهوية'),
+                      leading: Icon(Icons.folder_shared_rounded, color: Colors.green),
+                      title: Text('مستندات الهوية'),
                       subtitle: Text('اكتمل رفع مستندات الهوية؛ قرار قبول المندوب يعود للمطعم'),
                     ),
                   ListTile(dense: true, leading: const Icon(Icons.phone), title: const Text('رقم الهاتف'), subtitle: SelectableText(a['phone']?.toString() ?? 'غير متوفر')),
