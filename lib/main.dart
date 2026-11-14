@@ -1891,6 +1891,13 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                 subtitle: Text(status == 'accepted' ? 'تم قبول الطلب' : status == 'rejected' ? 'تم رفض الطلب' : 'طلب جديد • بانتظار مراجعة المطعم'),
                 childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
                 children: [
+                  if (a['platform_approval_status'] == 'approved')
+                    const ListTile(
+                      dense: true,
+                      leading: Icon(Icons.verified_rounded, color: Colors.green),
+                      title: Text('توثيق الهوية'),
+                      subtitle: Text('تم اعتماد هوية المندوب من إدارة سريع'),
+                    ),
                   ListTile(dense: true, leading: const Icon(Icons.phone), title: const Text('رقم الهاتف'), subtitle: SelectableText(a['phone']?.toString() ?? 'غير متوفر')),
                   ListTile(dense: true, leading: const Icon(Icons.email_outlined), title: const Text('البريد الإلكتروني'), subtitle: SelectableText(a['email']?.toString() ?? 'غير متوفر')),
                   _courierDocumentPreview('الهوية من الأمام', a['id_front_url']?.toString()),
@@ -3068,10 +3075,13 @@ class _AdminPortalState extends State<AdminPortal> {
           return ListView(padding: const EdgeInsets.all(14), children: [
             const Text('الحسابات والصلاحيات', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
             const SizedBox(height: 8),
-            ...profiles.map((p) => Card(child: ListTile(
+            ...profiles.map((p) {
+              final approvalLabels = {'approved': 'معتمد', 'pending': 'بانتظار اعتماد الإدارة', 'rejected': 'مرفوض'};
+              final approvalLabel = approvalLabels[p['approval_status']?.toString()] ?? '';
+              return Card(child: ListTile(
               leading: const CircleAvatar(child: Icon(Icons.person_rounded)),
               title: Text(p['full_name']?.toString().isNotEmpty == true ? p['full_name'].toString() : 'مستخدم'),
-              subtitle: Text('${p['phone'] ?? 'لا يوجد هاتف'} • ${labels[p['role']] ?? p['role']}'),
+              subtitle: Text('${p['phone'] ?? 'لا يوجد هاتف'} • ${labels[p['role']] ?? p['role']} • $approvalLabel'),
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 if (p['role'] == 'courier') IconButton(
                   tooltip: 'مراجعة إثباتات المندوب',
@@ -3080,7 +3090,8 @@ class _AdminPortalState extends State<AdminPortal> {
                 ),
                 IconButton(tooltip: 'تعديل الصلاحية', onPressed: () => _changeRole(p), icon: const Icon(Icons.manage_accounts_rounded)),
               ]),
-            ))),
+            ));
+            }),
           ]);
         },
       ),
