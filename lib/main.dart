@@ -734,7 +734,7 @@ class _AuthPageState extends State<AuthPage> {
                 decoration: const InputDecoration(labelText: 'نوع الحساب'),
                 items: const [
                   DropdownMenuItem(value: 'customer', child: Text('عميل')),
-                  DropdownMenuItem(value: 'courier', child: Text('مندوب توصيل — يتطلب اعتماد الإدارة')),
+                  DropdownMenuItem(value: 'courier', child: Text('مندوب توصيل — يتطلب فحص الهوية')),
                   DropdownMenuItem(value: 'restaurant_owner', child: Text('صاحب مطعم — يتطلب اعتماد الإدارة')),
                 ],
                 onChanged: (value) => setState(() => _requestedRole = value ?? 'customer'),
