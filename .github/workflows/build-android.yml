@@ -68,6 +68,40 @@ jobs:
             exit 1
           fi
 
+      - name: Configure Android SDK and ML Kit shrinker rules
+        run: |
+          set -euo pipefail
+          KTS=android/app/build.gradle.kts
+          GROOVY=android/app/build.gradle
+          if [ -f "$KTS" ]; then
+            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' "$KTS"
+            grep -q 'compileSdk = 36' "$KTS" || sed -i '/android {/a\    compileSdk = 36' "$KTS"
+            if grep -q 'ndkVersion = flutter.ndkVersion' "$KTS"; then
+              sed -i 's/ndkVersion = flutter.ndkVersion/ndkVersion = "27.0.12077973"/' "$KTS"
+            elif ! grep -q 'ndkVersion = "27.0.12077973"' "$KTS"; then
+              sed -i '/android {/a\    ndkVersion = "27.0.12077973"' "$KTS"
+            fi
+          elif [ -f "$GROOVY" ]; then
+            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/' "$GROOVY"
+            if grep -q 'ndkVersion flutter.ndkVersion' "$GROOVY"; then
+              sed -i "s/ndkVersion flutter.ndkVersion/ndkVersion '27.0.12077973'/" "$GROOVY"
+            elif ! grep -q "ndkVersion '27.0.12077973'" "$GROOVY"; then
+              sed -i "/android {/a\    ndkVersion '27.0.12077973'" "$GROOVY"
+            fi
+          else
+            echo "Android Gradle app module not found" >&2
+            exit 1
+          fi
+          cat > android/app/proguard-rules.pro <<'RULES'
+          # Optional ML Kit text recognizer script implementations are not bundled.
+          -dontwarn com.google.mlkit.vision.text.chinese.**
+          -dontwarn com.google.mlkit.vision.text.devanagari.**
+          -dontwarn com.google.mlkit.vision.text.japanese.**
+          -dontwarn com.google.mlkit.vision.text.korean.**
+          RULES
+          grep -R -n 'proguard-rules.pro' android/app
+          grep -R -n 'compileSdk\|ndkVersion' android/app/build.gradle*
+
       - name: Apply Saree launcher icon and native splash artwork
         run: |
           set -euo pipefail
