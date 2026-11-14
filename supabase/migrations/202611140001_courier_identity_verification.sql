@@ -7,13 +7,16 @@ create table if not exists public.courier_verification_documents (
   document_type text not null check (document_type in ('id_front','id_back','residence','selfie')),
   storage_path text not null unique,
   created_at timestamptz not null default now(),
-  unique (courier_id, document_type)
+  unique (courier_id, document_type),
+  constraint courier_verification_path_owner_check
+    check (storage_path like courier_id::text || '/%')
 );
 
 create index if not exists courier_verification_documents_courier_idx
   on public.courier_verification_documents(courier_id);
 
 alter table public.courier_verification_documents enable row level security;
+grant select, insert on public.courier_verification_documents to authenticated;
 
 drop policy if exists courier_verification_read_self_or_admin on public.courier_verification_documents;
 create policy courier_verification_read_self_or_admin
@@ -25,6 +28,7 @@ create policy courier_verification_insert_self
   on public.courier_verification_documents for insert to authenticated
   with check (
     courier_id = (select auth.uid())
+    and storage_path like (select auth.uid())::text || '/%'
     and exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'courier')
   );
 
@@ -56,14 +60,15 @@ create policy courier_verification_read_own_or_admin on storage.objects
     )
   );
 
--- A courier cannot be approved until all four required documents exist.
+-- A courier cannot be approved unless all four metadata rows and their private
+-- Storage objects exist under that courier's own folder.
 create or replace function public.admin_review_user(p_user_id uuid, p_decision text, p_note text default null)
 returns void
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
-declare target_role public.app_role;
+declare target_role text;
 begin
   if auth.uid() is null or not public.is_admin() then raise exception 'متاح للمدير فقط'; end if;
   if p_decision not in ('approved','rejected') then raise exception 'قرار اعتماد غير صالح'; end if;
@@ -71,7 +76,13 @@ begin
   if not found then raise exception 'الحساب غير موجود'; end if;
   if target_role in ('customer','admin') then raise exception 'هذا الحساب لا يحتاج اعتماداً'; end if;
   if target_role = 'courier' and p_decision = 'approved' and (
-    select count(distinct document_type) from public.courier_verification_documents where courier_id = p_user_id
+    select count(distinct d.document_type)
+    from public.courier_verification_documents d
+    join storage.objects o
+      on o.bucket_id = 'courier-verification'
+     and o.name = d.storage_path
+    where d.courier_id = p_user_id
+      and d.storage_path like p_user_id::text || '/%'
   ) <> 4 then
     raise exception 'لا يمكن اعتماد المندوب قبل استلام الهوية وإثبات السكن والصورة الشخصية كاملة';
   end if;
@@ -86,4 +97,5 @@ $$;
 revoke all on function public.admin_review_user(uuid,text,text) from public, anon;
 grant execute on function public.admin_review_user(uuid,text,text) to authenticated;
 
+notify pgrst, 'reload schema';
 commit;
