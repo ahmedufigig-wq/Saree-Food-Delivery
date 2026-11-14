@@ -578,7 +578,7 @@ class _AuthPageState extends State<AuthPage> {
           ] else ...[
             if (_register) ...[
               DropdownButtonFormField<String>(
-                initialValue: _requestedRole,
+                value: _requestedRole,
                 decoration: const InputDecoration(labelText: 'نوع الحساب'),
                 items: const [
                   DropdownMenuItem(value: 'customer', child: Text('عميل')),
@@ -1438,7 +1438,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         const LinearProgressIndicator()
       else if (_savedAddresses.isNotEmpty) ...[
         DropdownButtonFormField<String>(
-          initialValue: _selectedAddressId,
+          value: _selectedAddressId,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'اختر عنواناً محفوظاً', prefixIcon: Icon(Icons.location_on_outlined)),
           items: _savedAddresses.map((a) => DropdownMenuItem(
@@ -1674,7 +1674,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         builder: (ctx, setLocal) => AlertDialog(
           title: Text('اختيار مندوب للطلب #${order['order_number']}'),
           content: DropdownButtonFormField<String>(
-            initialValue: selected,
+            value: selected,
             isExpanded: true,
             decoration: const InputDecoration(labelText: 'مندوبو فريق المطعم'),
             items: candidates.map((courier) => DropdownMenuItem(
@@ -1885,7 +1885,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
           TextFormField(controller: description, maxLines: 2, decoration: const InputDecoration(labelText: 'تفاصيل العرض')),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            initialValue: discountType,
+            value: discountType,
             decoration: const InputDecoration(labelText: 'نوع التخفيض'),
             items: const [
               DropdownMenuItem(value: 'percentage', child: Text('نسبة مئوية ٪')),
@@ -2631,7 +2631,7 @@ class _AdminPortalState extends State<AdminPortal> {
     final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
       title: const Text('ربط صاحب المطعم'),
       content: DropdownButtonFormField<String>(
-        initialValue: selected,
+        value: selected,
         isExpanded: true,
         items: candidates.map((p) => DropdownMenuItem(value: p['id'].toString(), child: Text('${p['full_name']} • ${p['phone'] ?? ''}', overflow: TextOverflow.ellipsis))).toList(),
         onChanged: (v) { if (v != null) setLocal(() => selected = v); },
@@ -2651,7 +2651,7 @@ class _AdminPortalState extends State<AdminPortal> {
     final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
       title: Text('صلاحيات ${profile['full_name']}'),
       content: DropdownButtonFormField<String>(
-        initialValue: role,
+        value: role,
         items: roles.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
         onChanged: (v) { if(v != null) setLocal(() => role = v); },
       ),
@@ -3040,7 +3040,7 @@ class _AdminSupportInboxState extends State<AdminSupportInbox> {
         Text(ticket['message'].toString()),
         const SizedBox(height: 12),
         TextField(controller: reply, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'رد الإدارة')),
-        DropdownButtonFormField<String>(initialValue: status, decoration: const InputDecoration(labelText: 'حالة الطلب'), items: const [
+        DropdownButtonFormField<String>(value: status, decoration: const InputDecoration(labelText: 'حالة الطلب'), items: const [
           DropdownMenuItem(value: 'open', child: Text('مفتوح')),
           DropdownMenuItem(value: 'in_progress', child: Text('قيد المعالجة')),
           DropdownMenuItem(value: 'resolved', child: Text('تم الحل')),
@@ -3144,7 +3144,7 @@ class _AdminMenuManagementPageState extends State<AdminMenuManagementPage> {
       return Column(children: [
         Padding(padding: const EdgeInsets.all(12), child: Row(children: [
           Expanded(child: DropdownButtonFormField<String>(
-            initialValue: _restaurantId,
+            value: _restaurantId,
             isExpanded: true,
             decoration: const InputDecoration(labelText: 'اختر المطعم'),
             items: restaurants.map((r) => DropdownMenuItem(value: r['id'].toString(), child: Text(r['name'].toString(), overflow: TextOverflow.ellipsis))).toList(),
