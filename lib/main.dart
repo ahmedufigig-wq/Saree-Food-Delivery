@@ -496,7 +496,7 @@ class CourierVerificationPage extends StatefulWidget {
 
 class _CourierVerificationPageState extends State<CourierVerificationPage> {
   final ImagePicker _picker = ImagePicker();
-  final Map<String, XFile?> _files = {'id_front': null, 'id_back': null, 'selfie': null};
+  final Map<String, XFile?> _files = {'id_front': null, 'id_back': null, 'selfie': null, 'residence': null};
   bool _busy = false;
   String? _message;
 
