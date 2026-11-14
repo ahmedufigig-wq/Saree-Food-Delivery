@@ -2884,6 +2884,15 @@ class _CourierPortalState extends State<CourierPortal> {
           return status == 'assigned' || status == 'picked_up';
         }).toList();
         return ListView(padding: const EdgeInsets.all(12), children: [
+          Card(child: ListTile(
+            leading: const CircleAvatar(child: Icon(Icons.storefront_outlined)),
+            title: const Text('المطاعم وطلبات الانضمام', style: TextStyle(fontWeight: FontWeight.w900)),
+            subtitle: const Text('اختر المطاعم التي تريد العمل معها وتابع ردودها'),
+            trailing: const Icon(Icons.chevron_left_rounded),
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const CourierRestaurantJoinPage(status: 'approved'),
+            )),
+          )),
           Card(child: SwitchListTile(
             value: _sharing,
             onChanged: (v) => _run(() => v ? _startSharing() : _stopSharing()),
