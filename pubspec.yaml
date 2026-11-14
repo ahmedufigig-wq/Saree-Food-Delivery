@@ -1,7 +1,7 @@
 name: saree
 description: Food delivery platform for Rada'a, Yemen
 publish_to: 'none'
-version: 1.1.6+13
+version: 1.1.7+14
 environment:
   sdk: '>=3.3.0 <4.0.0'
 dependencies:
@@ -16,6 +16,8 @@ dependencies:
   latlong2: ^0.9.1
   url_launcher: ^6.3.2
   image_picker: 1.1.2
+  google_mlkit_text_recognition: ^0.16.0
+  google_mlkit_face_detection: ^0.14.0
 
 dependency_overrides:
   # Keep the image picker Android implementation compatible with Flutter 3.32 / API 21.
