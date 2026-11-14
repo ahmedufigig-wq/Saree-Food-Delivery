@@ -357,23 +357,19 @@ class SareeGate extends StatelessWidget {
             if (profile.hasError) return ErrorPage(message: SareeBackend.arabicError(profile.error));
             final role = profile.data?['role']?.toString() ?? 'customer';
             final approval = profile.data?['approval_status']?.toString() ?? 'approved';
-            if (role == 'courier' && approval != 'approved') {
+            if (role == 'courier') {
               return FutureBuilder<bool>(
                 future: SareeBackend.hasCourierVerificationDocuments(),
                 builder: (context, docs) {
                   if (docs.connectionState != ConnectionState.done) return const LoadingPage();
                   if (docs.hasError) return ErrorPage(message: SareeBackend.arabicError(docs.error));
                   if (docs.data != true) return const CourierVerificationPage();
-                  return CourierRestaurantJoinPage(
-                    status: approval,
-                    note: profile.data?['approval_note']?.toString(),
-                  );
+                  return const CourierPortal();
                 },
               );
             }
             if (approval != 'approved' && role != 'admin') return PendingApprovalPage(status: approval, note: profile.data?['approval_note']?.toString());
             if (role == 'restaurant_owner') return const RestaurantPortal();
-            if (role == 'courier') return const CourierPortal();
             if (role == 'admin') return const AdminPortal();
             return const CustomerHome();
           },
@@ -1895,8 +1891,6 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   _courierDocumentPreview('سيلفي المندوب مع البطاقة', a['selfie_url']?.toString()),
                   if (canReview) ...[
                     const SizedBox(height: 8),
-                    if (a['platform_approval_status'] != 'approved')
-                      const Padding(padding: EdgeInsets.all(8), child: Text('تنبيه: هوية المندوب ما زالت بانتظار اعتماد إدارة سريع. يمكنك مراجعة الطلب، لكن لا يمكن قبوله قبل اعتماد الإدارة.', style: TextStyle(color: Colors.orange, height: 1.4))),
                     Row(children: [
                       Expanded(child: OutlinedButton.icon(
                         onPressed: _busy ? null : () => _reviewCourierApplication(a['application_id'].toString(), 'rejected'),
@@ -1904,7 +1898,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                       )),
                       const SizedBox(width: 8),
                       Expanded(child: FilledButton.icon(
-                        onPressed: _busy || a['platform_approval_status'] != 'approved' ? null : () => _reviewCourierApplication(a['application_id'].toString(), 'accepted'),
+                        onPressed: _busy ? null : () => _reviewCourierApplication(a['application_id'].toString(), 'accepted'),
                         icon: const Icon(Icons.check), label: const Text('قبول المندوب'),
                       )),
                     ]),
