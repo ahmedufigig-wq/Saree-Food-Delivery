@@ -151,11 +151,32 @@ jobs:
           : "${SAREE_KEYSTORE_PASSWORD:?Missing GitHub Actions secret SAREE_KEYSTORE_PASSWORD}"
           : "${SAREE_KEY_ALIAS:?Missing GitHub Actions secret SAREE_KEY_ALIAS}"
           : "${SAREE_KEY_PASSWORD:?Missing GitHub Actions secret SAREE_KEY_PASSWORD}"
-          KEYSTORE_PATH="$RUNNER_TEMP/saree-upload-key.jks"
+          KEYSTORE_PATH="$RUNNER_TEMP/saree-upload-key.p12"
+          PEM_PATH="$RUNNER_TEMP/saree-signing-material.pem"
+          NORMALIZED_KEYSTORE="$RUNNER_TEMP/saree-upload-normalized.p12"
           printf '%s' "$SAREE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          chmod 600 "$KEYSTORE_PATH"
           test -s "$KEYSTORE_PATH"
+
+          # Java 21's PKCS12 provider rejects non-ASCII passwords. Normalize the
+          # existing PKCS12 key with OpenSSL, then sign using a temporary ASCII
+          # password. This preserves the original private key/certificate.
+          openssl pkcs12 -in "$KEYSTORE_PATH" -nodes \
+            -passin env:SAREE_KEYSTORE_PASSWORD -out "$PEM_PATH"
+          test -s "$PEM_PATH"
+          SAREE_NORMALIZED_PASSWORD="$(openssl rand -hex 24)"
+          export SAREE_NORMALIZED_PASSWORD
+          openssl pkcs12 -export -in "$PEM_PATH" -out "$NORMALIZED_KEYSTORE" \
+            -name "$SAREE_KEY_ALIAS" -passout env:SAREE_NORMALIZED_PASSWORD
+          chmod 600 "$NORMALIZED_KEYSTORE"
+          test -s "$NORMALIZED_KEYSTORE"
+
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE_PATH" --ks-pass env:SAREE_KEYSTORE_PASSWORD --key-pass env:SAREE_KEY_PASSWORD --ks-key-alias "$SAREE_KEY_ALIAS" --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true build/app/outputs/flutter-apk/app-release.apk
+          "$BUILD_TOOLS/apksigner" sign --ks "$NORMALIZED_KEYSTORE" --ks-type PKCS12 \
+            --ks-pass env:SAREE_NORMALIZED_PASSWORD --key-pass env:SAREE_NORMALIZED_PASSWORD \
+            --ks-key-alias "$SAREE_KEY_ALIAS" --v1-signing-enabled true \
+            --v2-signing-enabled true --v3-signing-enabled true \
+            build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/zipalign" -c -v 4 build/app/outputs/flutter-apk/app-release.apk
           BADGING="$("$BUILD_TOOLS/aapt" dump badging build/app/outputs/flutter-apk/app-release.apk)"
