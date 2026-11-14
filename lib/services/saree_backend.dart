@@ -478,9 +478,11 @@ class SareeBackend {
   static Future<void> uploadCourierVerificationDocuments(Map<String, XFile> files) async {
     final current = user;
     if (current == null) throw Exception('يرجى تسجيل الدخول أولاً');
-    if (files.keys.toSet().length != 3 ||
-        !const {'id_front', 'id_back', 'selfie'}.every(files.containsKey)) {
-      throw Exception('المطلوب صورة الهوية الأمامية والخلفية وسيلفي مباشر مع البطاقة');
+    const requiredTypes = {'id_front', 'id_back', 'selfie'};
+    const allowedTypes = {'id_front', 'id_back', 'selfie', 'residence'};
+    if (!requiredTypes.every(files.containsKey) ||
+        files.keys.any((type) => !allowedTypes.contains(type))) {
+      throw Exception('المطلوب صورة الهوية الأمامية والخلفية وسيلفي مباشر مع البطاقة، وإثبات الإقامة اختياري');
     }
     final existing = await hasCourierVerificationDocuments();
     if (existing) throw Exception('تم إرسال مستندات التوثيق لهذا الحساب من قبل.');
