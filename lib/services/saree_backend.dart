@@ -424,15 +424,15 @@ class SareeBackend {
         .select('document_type').eq('courier_id', current.id);
     final types = List<Map<String, dynamic>>.from(rows)
         .map((row) => row['document_type'].toString()).toSet();
-    return const {'id_front', 'id_back', 'residence', 'selfie'}.every(types.contains);
+    return const {'id_front', 'id_back', 'selfie'}.every(types.contains);
   }
 
   static Future<void> uploadCourierVerificationDocuments(Map<String, XFile> files) async {
     final current = user;
     if (current == null) throw Exception('يرجى تسجيل الدخول أولاً');
-    if (files.keys.toSet().length != 4 ||
-        !const {'id_front', 'id_back', 'residence', 'selfie'}.every(files.containsKey)) {
-      throw Exception('المستندات المطلوبة غير مكتملة');
+    if (files.keys.toSet().length != 3 ||
+        !const {'id_front', 'id_back', 'selfie'}.every(files.containsKey)) {
+      throw Exception('المطلوب صورة الهوية الأمامية والخلفية وسيلفي مباشر مع البطاقة');
     }
     final existing = await hasCourierVerificationDocuments();
     if (existing) throw Exception('تم إرسال مستندات التوثيق لهذا الحساب من قبل.');
@@ -459,7 +459,7 @@ class SareeBackend {
     final rows = await client.from('courier_verification_documents')
         .select('document_type, storage_path, created_at').eq('courier_id', courierId);
     const labels = {'id_front':'الهوية – الوجه الأمامي','id_back':'الهوية – الوجه الخلفي',
-      'residence':'إثبات محل الإقامة','selfie':'الصورة الشخصية'};
+      'residence':'إثبات محل الإقامة (اختياري)','selfie':'سيلفي المندوب مع البطاقة'};
     final result = <Map<String, dynamic>>[];
     for (final row in List<Map<String, dynamic>>.from(rows)) {
       final path = row['storage_path'].toString();
