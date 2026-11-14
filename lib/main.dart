@@ -575,8 +575,13 @@ class _AuthPageState extends State<AuthPage> {
               decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
               validator: (v) {
                 final value = (v ?? '').trim();
-                return !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value)
-                    ? 'أدخل بريدًا إلكترونيًا صحيحًا'
+                if (_register) {
+                  return !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value)
+                      ? 'أدخل بريدًا إلكترونيًا صحيحًا'
+                      : null;
+                }
+                return value.isEmpty || (!value.contains('@') && value.replaceAll(RegExp(r'[^0-9]'), '').length < 7)
+                    ? 'أدخل بريدًا صحيحًا أو رقم هاتف المندوب'
                     : null;
               },
             ),
