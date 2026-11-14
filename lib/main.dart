@@ -1822,33 +1822,6 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     }
   }
 
-  Future<void> _addCourier(String restaurantId) async {
-    final name = TextEditingController();
-    final phone = TextEditingController();
-    final password = TextEditingController();
-    final form = GlobalKey<FormState>();
-    final accepted = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('إنشاء حساب مندوب جديد'),
-      content: SizedBox(width: 420, child: Form(key: form, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextFormField(controller: name, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'اسم المندوب', prefixIcon: Icon(Icons.person_outline_rounded)), validator: (v) => (v ?? '').trim().length < 2 ? 'أدخل اسم المندوب' : null),
-        const SizedBox(height: 12),
-        TextFormField(controller: phone, keyboardType: TextInputType.phone, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_android_rounded)), validator: (v) => (v ?? '').replaceAll(RegExp(r'[^0-9]'), '').length < 7 ? 'أدخل رقم هاتف صحيحًا' : null),
-        const SizedBox(height: 12),
-        TextFormField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة مرور المندوب (8 أحرف على الأقل)', prefixIcon: Icon(Icons.lock_outline_rounded)), validator: (v) => (v ?? '').length < 8 ? 'كلمة المرور يجب ألا تقل عن 8 أحرف' : null),
-        const SizedBox(height: 8),
-        const Text('سيُنشأ الحساب ويرتبط بهذا المطعم، ويظل بانتظار موافقة الإدارة قبل استقبال الطلبات.', style: TextStyle(color: Color(0xFFFFC400), height: 1.5)),
-      ])))),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(ctx, true); }, child: const Text('إنشاء الحساب'))],
-    ));
-    if (accepted == true) {
-      await _run(() async {
-        await SareeBackend.createRestaurantCourierAccount(restaurantId: restaurantId, fullName: name.text, phone: phone.text, password: password.text);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إنشاء الحساب وربطه بالمطعم. بانتظار موافقة الإدارة.')));
-      });
-    }
-    name.dispose(); phone.dispose(); password.dispose();
-  }
-
   Future<void> _removeCourier(String restaurantId, Map<String, dynamic> courier) async {
     final accepted = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
       title: const Text('إزالة المندوب من الفريق؟'),
