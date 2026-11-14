@@ -72,8 +72,8 @@ class SareeBackend {
       return 'هذه البيانات مسجلة من قبل.';
     }
     // Preserve actionable Arabic validation messages returned by the database.
-    if (RegExp(r'[\\u0600-\\u06FF]').hasMatch(raw)) {
-      return raw.replaceFirst(RegExp(r'^(Exception|PostgrestException):\\s*'), '').trim();
+    if (RegExp(r'[\u0600-\u06FF]').hasMatch(raw)) {
+      return raw.replaceFirst(RegExp(r'^(Exception|PostgrestException):\s*'), '').trim();
     }
     return 'تعذر إكمال العملية بسبب خطأ من الخادم. أعد المحاولة، وإذا تكرر الخطأ أرسل للدعم نص التفاصيل: $raw';
   }
