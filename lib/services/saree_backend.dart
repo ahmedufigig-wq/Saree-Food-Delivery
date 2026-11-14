@@ -71,7 +71,11 @@ class SareeBackend {
     if (value.contains('duplicate key') || value.contains('already exists')) {
       return 'هذه البيانات مسجلة من قبل.';
     }
-    return 'حدث خطأ غير متوقع. حاول مرة أخرى، وإذا تكرر تواصل مع الدعم.';
+    // Preserve actionable Arabic validation messages returned by the database.
+    if (RegExp(r'[\\u0600-\\u06FF]').hasMatch(raw)) {
+      return raw.replaceFirst(RegExp(r'^(Exception|PostgrestException):\\s*'), '').trim();
+    }
+    return 'تعذر إكمال العملية بسبب خطأ من الخادم. أعد المحاولة، وإذا تكرر الخطأ أرسل للدعم نص التفاصيل: $raw';
   }
 
   static Future<void> initialize() async {
