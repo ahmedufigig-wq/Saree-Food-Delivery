@@ -2030,7 +2030,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     );
     if (accepted == true) {
       final rows = <Map<String, dynamic>>[];
-      final lines = controller.text.split(RegExp(r'\\r?\\n'));
+      final lines = controller.text.split(RegExp(r'\r?\n'));
       String? problem;
       for (var index = 0; index < lines.length; index++) {
         final line = lines[index].trim();
