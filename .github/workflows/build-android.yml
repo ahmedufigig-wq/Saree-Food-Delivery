@@ -153,9 +153,9 @@ jobs:
             --v2-signing-enabled true --v3-signing-enabled true "$APK"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
           BADGING="$("$BUILD_TOOLS/aapt" dump badging "$APK")"
-          printf '%s\\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
-          printf '%s\\n' "$BADGING" | grep -q "package: name='com.saree.delivery.saree'"
-          printf '%s\\n' "$BADGING" | grep -q "sdkVersion:'21'"
+          printf '%s\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
+          printf '%s\n' "$BADGING" | grep -q "package: name='com.saree.delivery.saree'"
+          printf '%s\n' "$BADGING" | grep -q "sdkVersion:'21'"
           "$BUILD_TOOLS/zipalign" -c -v 4 "$APK"
 
       - name: Upload APK
