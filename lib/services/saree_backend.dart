@@ -347,11 +347,14 @@ class SareeBackend {
     final result = <Map<String, dynamic>>[];
     for (final raw in List<Map<String, dynamic>>.from(rows as List)) {
       final item = Map<String, dynamic>.from(raw);
-      for (final key in ['id_front_path', 'id_back_path', 'selfie_path']) {
-        final path = item[key]?.toString();
-        if (path != null && path.isNotEmpty) {
-          item[key.replaceAll('_path', '_url')] =
-              await client.storage.from('courier-verification').createSignedUrl(path, 600);
+      // Identity images are available only while the request is pending or accepted.
+      if (item['status'] == 'pending' || item['status'] == 'accepted') {
+        for (final key in ['id_front_path', 'id_back_path', 'selfie_path']) {
+          final path = item[key]?.toString();
+          if (path != null && path.isNotEmpty) {
+            item[key.replaceAll('_path', '_url')] =
+                await client.storage.from('courier-verification').createSignedUrl(path, 600);
+          }
         }
       }
       result.add(item);
