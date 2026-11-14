@@ -497,18 +497,23 @@ class CourierVerificationPage extends StatefulWidget {
 
 class _CourierVerificationPageState extends State<CourierVerificationPage> {
   final ImagePicker _picker = ImagePicker();
-  final Map<String, XFile?> _files = {'id_front': null, 'id_back': null, 'residence': null, 'selfie': null};
+  final Map<String, XFile?> _files = {'id_front': null, 'id_back': null, 'selfie': null};
   bool _busy = false;
   String? _message;
 
   Future<void> _pick(String type) async {
-    final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 82, maxWidth: 1800);
+    final file = await _picker.pickImage(
+      source: type == 'selfie' ? ImageSource.camera : ImageSource.gallery,
+      preferredCameraDevice: CameraDevice.front,
+      imageQuality: 82,
+      maxWidth: 1800,
+    );
     if (file != null && mounted) setState(() { _files[type] = file; _message = null; });
   }
 
   Future<void> _submit() async {
-    if (_files.values.any((file) => file == null)) {
-      setState(() => _message = 'يرجى إرفاق جميع الإثباتات المطلوبة قبل الإرسال.');
+    if (_files['id_front'] == null || _files['id_back'] == null || _files['selfie'] == null) {
+      setState(() => _message = 'يرجى إرفاق صورتي الهوية والتقاط سيلفي مع البطاقة قبل الإرسال.');
       return;
     }
     setState(() { _busy = true; _message = null; });
@@ -552,8 +557,8 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
       const SizedBox(height: 18),
       _documentTile('id_front', 'الهوية الشخصية – الوجه الأمامي', 'صورة واضحة للوجه الأمامي للبطاقة', Icons.badge_outlined),
       _documentTile('id_back', 'الهوية الشخصية – الوجه الخلفي', 'صورة واضحة للوجه الخلفي للبطاقة', Icons.badge_rounded),
-      _documentTile('residence', 'إثبات محل الإقامة', 'فاتورة خدمات أو عقد إيجار أو وثيقة عنوان', Icons.home_work_outlined),
-      _documentTile('selfie', 'صورة شخصية حديثة', 'صورة واضحة لوجهك', Icons.account_circle_outlined),
+      _documentTile('selfie', 'سيلفي مباشر مع البطاقة', 'التقط صورة بالكاميرا الأمامية وأنت تحمل هويتك بجانب وجهك، مع ظهور الوجه والبطاقة بوضوح', Icons.camera_front_rounded),
+      const Padding(padding: EdgeInsets.only(top: 2, bottom: 10), child: Text('إثبات محل الإقامة غير مطلوب. لا ترفع صورة شخصية منفصلة؛ المطلوب سيلفي مباشر مع البطاقة.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
       if (_message != null) Padding(padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(_message!, textAlign: TextAlign.center,
           style: TextStyle(color: _message!.startsWith('تم') ? Colors.green : Colors.red))),
@@ -673,6 +678,31 @@ class _AuthPageState extends State<AuthPage> {
                 ],
                 onChanged: (value) => setState(() => _requestedRole = value ?? 'customer'),
               ),
+              if (_requestedRole == 'courier') ...[
+                const SizedBox(height: 10),
+                Card(
+                  color: const Color(0xFFFFF8E5),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Row(children: [
+                        Icon(Icons.verified_user_outlined, color: Color(0xFF9A6700)),
+                        SizedBox(width: 8),
+                        Expanded(child: Text('متطلبات توثيق حساب المندوب', style: TextStyle(fontWeight: FontWeight.w900))),
+                      ]),
+                      const SizedBox(height: 8),
+                      const Text('بعد إنشاء الحساب ستحتاج إلى إرفاق:'),
+                      const SizedBox(height: 5),
+                      const Text('• صورة الهوية من الأمام (مطلوبة)'),
+                      const Text('• صورة الهوية من الخلف (مطلوبة)'),
+                      const Text('• سيلفي مباشر بالكاميرا الأمامية وأنت تحمل البطاقة بجانب وجهك (مطلوب)'),
+                      const Text('• إثبات محل الإقامة غير مطلوب'),
+                      const SizedBox(height: 6),
+                      const Text('يتم التحقق مرة واحدة فقط، وتُرسل الصور بشكل خاص إلى الإدارة للمراجعة.', style: TextStyle(height: 1.4)),
+                    ]),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               TextFormField(controller: _name, decoration: const InputDecoration(labelText: 'الاسم الكامل'), validator: (v) => (v == null || v.trim().length < 2) ? 'أدخل اسمك' : null),
               const SizedBox(height: 12),
