@@ -128,7 +128,7 @@ class SareeBackend {
     if (!['customer', 'courier', 'restaurant_owner'].contains(requestedRole)) {
       throw ArgumentError('نوع الحساب غير صالح');
     }
-    await client.auth.signUp(
+    final response = await client.auth.signUp(
       email: email.trim(),
       password: password,
       data: {
@@ -137,8 +137,23 @@ class SareeBackend {
         'requested_role': requestedRole,
       },
     );
+    if (response.session != null) {
+      await client.auth.signOut();
+      throw const AuthException('تأكيد البريد الإلكتروني غير مفعّل في إعدادات الخادم. يرجى تفعيل تأكيد البريد قبل استخدام التسجيل.');
+    }
   }
 
+  static Future<void> verifySignupEmail({required String email, required String token}) async {
+    await client.auth.verifyOTP(
+      email: email.trim(),
+      token: token.trim(),
+      type: OtpType.signup,
+    );
+  }
+
+  static Future<void> resendSignupEmail(String email) async {
+    await client.auth.resend(type: OtpType.signup, email: email.trim());
+  }
 
   static Future<void> updateMyProfile({
     required String fullName,
