@@ -516,6 +516,58 @@ class SareeBackend {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  static Future<int> importMenuItemsBulk({
+    required String restaurantId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    if (user == null) throw Exception('يرجى تسجيل الدخول بحساب المطعم');
+    if (items.isEmpty || items.length > 250) {
+      throw ArgumentError('يمكن استيراد منيو يحتوي من صنف واحد إلى 250 صنفًا في المرة الواحدة');
+    }
+
+    final existingRows = await client
+        .from('menu_categories')
+        .select('id,name,sort_order')
+        .eq('restaurant_id', restaurantId);
+    final categoryIds = <String, String>{};
+    var nextOrder = existingRows.length;
+    for (final row in existingRows) {
+      final name = row['name']?.toString().trim() ?? '';
+      if (name.isNotEmpty) categoryIds[name.toLowerCase()] = row['id'].toString();
+    }
+
+    for (final item in items) {
+      final category = item['category']?.toString().trim() ?? '';
+      if (category.isEmpty || categoryIds.containsKey(category.toLowerCase())) continue;
+      final created = await client
+          .from('menu_categories')
+          .insert({
+            'restaurant_id': restaurantId,
+            'name': category,
+            'sort_order': nextOrder++,
+            'is_active': true,
+          })
+          .select('id')
+          .single();
+      categoryIds[category.toLowerCase()] = created['id'].toString();
+    }
+
+    final values = items.map((item) {
+      final category = item['category']?.toString().trim() ?? '';
+      return <String, dynamic>{
+        'restaurant_id': restaurantId,
+        'category_id': category.isEmpty ? null : categoryIds[category.toLowerCase()],
+        'name': item['name'].toString().trim(),
+        'description': item['description']?.toString().trim() ?? '',
+        'price_yer': (item['price_yer'] as num).toInt(),
+        'is_available': true,
+      };
+    }).toList();
+
+    await client.from('menu_items').insert(values);
+    return values.length;
+  }
+
   static Future<void> saveMenuItem({String? id, required String restaurantId, required String name, required String description, required int price, String? imageUrl, required bool available}) async {
     final values = {
       'restaurant_id': restaurantId,
