@@ -364,6 +364,12 @@ class SareeGate extends StatelessWidget {
                   if (docs.connectionState != ConnectionState.done) return const LoadingPage();
                   if (docs.hasError) return ErrorPage(message: SareeBackend.arabicError(docs.error));
                   if (docs.data != true) return const CourierVerificationPage();
+                  if (approval != 'approved') {
+                    return PendingApprovalPage(
+                      status: approval,
+                      note: profile.data?['approval_note']?.toString(),
+                    );
+                  }
                   return const CourierPortal();
                 },
               );
