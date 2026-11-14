@@ -29,7 +29,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.7'
+          flutter-version: '3.32.8'
           cache: true
 
       - name: Generate Android project scaffold when missing
@@ -38,27 +38,27 @@ jobs:
             flutter create --platforms=android --org com.saree.delivery --project-name saree .
           fi
 
-      - name: Set Android minimum SDK to 24
+      - name: Set Android minimum SDK to 21 (Android 5.0+)
         run: |
           set -euo pipefail
           KTS=android/app/build.gradle.kts
           GROOVY=android/app/build.gradle
           if [ -f "$KTS" ]; then
             if grep -q 'minSdk = flutter.minSdkVersion' "$KTS"; then
-              sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/' "$KTS"
-            elif ! grep -q 'minSdk = 24' "$KTS"; then
+              sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' "$KTS"
+            elif ! grep -q 'minSdk = 21' "$KTS"; then
               echo "Could not locate Kotlin DSL minSdk setting" >&2
               exit 1
             fi
-            grep -q 'minSdk = 24' "$KTS"
+            grep -q 'minSdk = 21' "$KTS"
           elif [ -f "$GROOVY" ]; then
             if grep -q 'minSdkVersion flutter.minSdkVersion' "$GROOVY"; then
-              sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/' "$GROOVY"
-            elif ! grep -q 'minSdkVersion 24' "$GROOVY"; then
+              sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' "$GROOVY"
+            elif ! grep -q 'minSdkVersion 21' "$GROOVY"; then
               echo "Could not locate Groovy DSL minSdk setting" >&2
               exit 1
             fi
-            grep -q 'minSdkVersion 24' "$GROOVY"
+            grep -q 'minSdkVersion 21' "$GROOVY"
           else
             echo "Android Gradle app module not found" >&2
             exit 1
@@ -88,27 +88,33 @@ jobs:
             --dart-define=SUPABASE_URL=https://zfhqprnsrcxahzvwevse.supabase.co \
             --dart-define=SUPABASE_ANON_KEY=sb_publishable_nJACFgbwtYkfov-OoW76ew_BvI8ZdH6
 
-      - name: Align, sign and verify installable APK
+      - name: Sign with permanent release key and verify APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+          : "${ANDROID_KEYSTORE_BASE64:?Missing GitHub secret ANDROID_KEYSTORE_BASE64}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Missing GitHub secret ANDROID_KEYSTORE_PASSWORD}"
+          : "${ANDROID_KEY_ALIAS:?Missing GitHub secret ANDROID_KEY_ALIAS}"
+          : "${ANDROID_KEY_PASSWORD:?Missing GitHub secret ANDROID_KEY_PASSWORD}"
           APK=build/app/outputs/flutter-apk/app-release.apk
           test -s "$APK"
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          # APKs must be aligned before signing; signing afterward adds the
-          # required v1 META-INF manifest and modern v2/v3 signatures.
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/saree-release.p12"
           "$BUILD_TOOLS/zipalign" -f -v 4 "$APK" "$APK.aligned"
           mv "$APK.aligned" "$APK"
-          mkdir -p "$RUNNER_TEMP/saree-signing"
-          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/saree-signing/release.jks" \
-            -storepass android -keypass android -alias saree -keyalg RSA -keysize 2048 \
-            -validity 10000 -dname "CN=Saree Food Delivery, OU=Android, O=Saree, C=YE"
-          "$BUILD_TOOLS/apksigner" sign --ks "$RUNNER_TEMP/saree-signing/release.jks" \
-            --ks-pass pass:android --key-pass pass:android --ks-key-alias saree \
-            --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$APK"
+          "$BUILD_TOOLS/apksigner" sign --ks "$RUNNER_TEMP/saree-release.p12" --ks-type PKCS12 \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" --v1-signing-enabled true \
+            --v2-signing-enabled true --v3-signing-enabled true "$APK"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
           BADGING="$("$BUILD_TOOLS/aapt" dump badging "$APK")"
           printf '%s\\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
-          printf '%s\\n' "$BADGING" | grep -q "^sdkVersion:'24'$"
+          printf '%s\\n' "$BADGING" | grep -q "package: name='com.saree.delivery.saree'"
+          printf '%s\\n' "$BADGING" | grep -q "sdkVersion:'21'"
           unzip -t "$APK" | tail -n 2
 
       - name: Upload APK
