@@ -503,6 +503,9 @@ class SareeBackend {
       rows.add({'courier_id': current.id, 'document_type': entry.key, 'storage_path': path});
     }
     await client.from('courier_verification_documents').insert(rows);
+    // Submitting the complete identity package always places the courier back
+    // into the platform's pending-review state, even for legacy approved accounts.
+    await client.rpc('submit_courier_verification_for_review');
   }
 
   static Future<List<Map<String, dynamic>>> adminCourierVerificationDocuments(String courierId) async {
