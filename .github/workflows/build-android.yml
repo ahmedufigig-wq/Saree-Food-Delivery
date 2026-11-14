@@ -99,8 +99,8 @@ jobs:
           -dontwarn com.google.mlkit.vision.text.japanese.**
           -dontwarn com.google.mlkit.vision.text.korean.**
           RULES
-          grep -R -n 'proguard-rules.pro' android/app
-          grep -R -n 'compileSdk\|ndkVersion' android/app/build.gradle*
+          test -s android/app/proguard-rules.pro
+          grep -nE 'compileSdk|ndkVersion' android/app/build.gradle*
 
       - name: Apply Saree launcher icon and native splash artwork
         run: |
