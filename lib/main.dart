@@ -540,11 +540,11 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
       final frontText = await recognizer.processImage(InputImage.fromFilePath(front.path));
       final backText = await recognizer.processImage(InputImage.fromFilePath(back.path));
       final selfieText = await recognizer.processImage(InputImage.fromFilePath(selfie.path));
-      final frontPlain = frontText.text.replaceAll(RegExp(r'\\s+'), '');
-      final backPlain = backText.text.replaceAll(RegExp(r'\\s+'), '');
-      final selfiePlain = selfieText.text.replaceAll(RegExp(r'\\s+'), '');
+      final frontPlain = frontText.text.replaceAll(RegExp(r'\s+'), '');
+      final backPlain = backText.text.replaceAll(RegExp(r'\s+'), '');
+      final selfiePlain = selfieText.text.replaceAll(RegExp(r'\s+'), '');
       final allIdText = '$frontPlain$backPlain';
-      final digitCount = RegExp(r'\\d').allMatches(allIdText).length;
+      final digitCount = RegExp(r'\d').allMatches(allIdText).length;
 
       if (frontPlain.length < 5 || backPlain.length < 3 || digitCount < 3) {
         return 'لم نستطع قراءة بيانات كافية من صور البطاقة. أعد تصوير الوجهين بإضاءة جيدة، واجعل النص والأرقام واضحين بالكامل.';
