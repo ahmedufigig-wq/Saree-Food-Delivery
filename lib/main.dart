@@ -357,6 +357,17 @@ class SareeGate extends StatelessWidget {
             if (profile.hasError) return ErrorPage(message: SareeBackend.arabicError(profile.error));
             final role = profile.data?['role']?.toString() ?? 'customer';
             final approval = profile.data?['approval_status']?.toString() ?? 'approved';
+            if (role == 'courier' && approval != 'approved') {
+              return FutureBuilder<bool>(
+                future: SareeBackend.hasCourierVerificationDocuments(),
+                builder: (context, docs) {
+                  if (docs.connectionState != ConnectionState.done) return const LoadingPage();
+                  if (docs.hasError) return ErrorPage(message: SareeBackend.arabicError(docs.error));
+                  if (docs.data != true) return const CourierVerificationPage();
+                  return PendingApprovalPage(status: approval, note: profile.data?['approval_note']?.toString());
+                },
+              );
+            }
             if (approval != 'approved' && role != 'admin') return PendingApprovalPage(status: approval, note: profile.data?['approval_note']?.toString());
             if (role == 'restaurant_owner') return const RestaurantPortal();
             if (role == 'courier') return const CourierPortal();
@@ -476,6 +487,81 @@ class ErrorPage extends StatelessWidget {
         FilledButton(onPressed: () => SareeBackend.signOut(), child: const Text('تسجيل الخروج')),
       ]),
     )),
+  );
+}
+
+class CourierVerificationPage extends StatefulWidget {
+  const CourierVerificationPage({super.key});
+  @override State<CourierVerificationPage> createState() => _CourierVerificationPageState();
+}
+
+class _CourierVerificationPageState extends State<CourierVerificationPage> {
+  final ImagePicker _picker = ImagePicker();
+  final Map<String, XFile?> _files = {'id_front': null, 'id_back': null, 'residence': null, 'selfie': null};
+  bool _busy = false;
+  String? _message;
+
+  Future<void> _pick(String type) async {
+    final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 82, maxWidth: 1800);
+    if (file != null && mounted) setState(() { _files[type] = file; _message = null; });
+  }
+
+  Future<void> _submit() async {
+    if (_files.values.any((file) => file == null)) {
+      setState(() => _message = 'يرجى إرفاق جميع الإثباتات المطلوبة قبل الإرسال.');
+      return;
+    }
+    setState(() { _busy = true; _message = null; });
+    try {
+      await SareeBackend.uploadCourierVerificationDocuments(_files.map((key, value) => MapEntry(key, value!)));
+      if (!mounted) return;
+      setState(() => _message = 'تم إرسال مستنداتك بنجاح. حسابك الآن قيد مراجعة الإدارة.');
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      if (mounted) await SareeBackend.signOut();
+    } catch (e) {
+      if (mounted) setState(() => _message = SareeBackend.arabicError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _documentTile(String type, String title, String hint, IconData icon) {
+    final file = _files[type];
+    return Card(child: ListTile(
+      leading: Icon(icon, size: 30),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(file?.name ?? hint, maxLines: 2, overflow: TextOverflow.ellipsis),
+      trailing: Icon(file == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
+        color: file == null ? Colors.amber : Colors.green),
+      onTap: _busy ? null : () => _pick(type),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('توثيق حساب المندوب'), automaticallyImplyLeading: false,
+      actions: [IconButton(tooltip: 'تسجيل الخروج', onPressed: _busy ? null : () => SareeBackend.signOut(), icon: const Icon(Icons.logout_rounded))]),
+    body: SafeArea(child: ListView(padding: const EdgeInsets.all(18), children: [
+      const Icon(Icons.verified_user_rounded, size: 58, color: Color(0xFFFFC400)),
+      const SizedBox(height: 12),
+      const Text('أكمل توثيق هويتك للانضمام إلى مندوبي سريع', textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 8),
+      const Text('هذه الخطوة مطلوبة مرة واحدة فقط. تُحفظ مستنداتك بشكل خاص ولا يطّلع عليها إلا فريق الإدارة المخوّل.',
+        textAlign: TextAlign.center),
+      const SizedBox(height: 18),
+      _documentTile('id_front', 'الهوية الشخصية – الوجه الأمامي', 'صورة واضحة للوجه الأمامي للبطاقة', Icons.badge_outlined),
+      _documentTile('id_back', 'الهوية الشخصية – الوجه الخلفي', 'صورة واضحة للوجه الخلفي للبطاقة', Icons.badge_rounded),
+      _documentTile('residence', 'إثبات محل الإقامة', 'فاتورة خدمات أو عقد إيجار أو وثيقة عنوان', Icons.home_work_outlined),
+      _documentTile('selfie', 'صورة شخصية حديثة', 'صورة واضحة لوجهك', Icons.account_circle_outlined),
+      if (_message != null) Padding(padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(_message!, textAlign: TextAlign.center,
+          style: TextStyle(color: _message!.startsWith('تم') ? Colors.green : Colors.red))),
+      const SizedBox(height: 8),
+      FilledButton.icon(onPressed: _busy ? null : _submit,
+        icon: _busy ? const SizedBox(width: 18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.cloud_upload_outlined),
+        label: Text(_busy ? 'جارٍ رفع المستندات...' : 'إرسال المستندات للمراجعة')),
+    ])),
   );
 }
 
@@ -2645,6 +2731,40 @@ class _AdminPortalState extends State<AdminPortal> {
     }
   }
 
+  Future<void> _reviewCourierDocuments(Map<String, dynamic> profile) async {
+    try {
+      final docs = await SareeBackend.adminCourierVerificationDocuments(profile['id'].toString());
+      if (!mounted) return;
+      final note = TextEditingController();
+      final decision = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
+        title: Text('توثيق المندوب: ${profile['full_name'] ?? ''}'),
+        content: SizedBox(width: 520, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ...docs.map((doc) => Padding(padding: const EdgeInsets.only(bottom: 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(doc['label'].toString(), style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(doc['signed_url'].toString(),
+              height: 190, width: double.infinity, fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Text('تعذر عرض الصورة؛ حاول تحديث المستندات.'))),
+          ]))),
+          TextField(controller: note, maxLines: 2, decoration: const InputDecoration(labelText: 'ملاحظة أو سبب الرفض (اختياري)')),
+        ]))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, 'cancel'), child: const Text('إغلاق')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'rejected'), child: const Text('رفض التوثيق', style: TextStyle(color: Colors.red))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, 'approved'), child: const Text('اعتماد المندوب')),
+        ],
+      ));
+      if (decision == 'approved' || decision == 'rejected') {
+        await SareeBackend.adminReviewUser(profile['id'].toString(), decision!, note.text);
+        await _refresh();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(decision == 'approved' ? 'تم اعتماد المندوب' : 'تم رفض التوثيق')));
+      }
+      note.dispose();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحميل مستندات المندوب: ${SareeBackend.arabicError(e)}')));
+    }
+  }
+
   Future<void> _changeRole(Map<String, dynamic> profile) async {
     const roles = {'customer':'عميل','restaurant_owner':'صاحب مطعم','courier':'مندوب','admin':'مدير'};
     String role = profile['role'].toString();
@@ -2719,7 +2839,14 @@ class _AdminPortalState extends State<AdminPortal> {
               leading: const CircleAvatar(child: Icon(Icons.person_rounded)),
               title: Text(p['full_name']?.toString().isNotEmpty == true ? p['full_name'].toString() : 'مستخدم'),
               subtitle: Text('${p['phone'] ?? 'لا يوجد هاتف'} • ${labels[p['role']] ?? p['role']}'),
-              trailing: IconButton(tooltip: 'تعديل الصلاحية', onPressed: () => _changeRole(p), icon: const Icon(Icons.manage_accounts_rounded)),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (p['role'] == 'courier') IconButton(
+                  tooltip: 'مراجعة إثباتات المندوب',
+                  onPressed: () => _reviewCourierDocuments(p),
+                  icon: const Icon(Icons.verified_user_outlined),
+                ),
+                IconButton(tooltip: 'تعديل الصلاحية', onPressed: () => _changeRole(p), icon: const Icon(Icons.manage_accounts_rounded)),
+              ]),
             ))),
           ]);
         },
