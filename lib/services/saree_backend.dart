@@ -326,6 +326,51 @@ class SareeBackend {
     return List<Map<String, dynamic>>.from(rows as List);
   }
 
+  static Future<int> courierApplyToRestaurants(List<String> restaurantIds) async {
+    final ids = restaurantIds.toSet().toList();
+    if (ids.isEmpty) throw Exception('اختر مطعماً واحداً على الأقل');
+    final result = await client.rpc('courier_apply_to_restaurants', params: {
+      'p_restaurant_ids': ids,
+    });
+    return (result as num).toInt();
+  }
+
+  static Future<List<Map<String, dynamic>>> courierMyRestaurantApplications() async {
+    final rows = await client.rpc('courier_my_restaurant_applications');
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  static Future<List<Map<String, dynamic>>> restaurantCourierApplications(String restaurantId) async {
+    final rows = await client.rpc('restaurant_courier_applications', params: {
+      'p_restaurant_id': restaurantId,
+    });
+    final result = <Map<String, dynamic>>[];
+    for (final raw in List<Map<String, dynamic>>.from(rows as List)) {
+      final item = Map<String, dynamic>.from(raw);
+      for (final key in ['id_front_path', 'id_back_path', 'selfie_path']) {
+        final path = item[key]?.toString();
+        if (path != null && path.isNotEmpty) {
+          item[key.replaceAll('_path', '_url')] =
+              await client.storage.from('courier-verification').createSignedUrl(path, 600);
+        }
+      }
+      result.add(item);
+    }
+    return result;
+  }
+
+  static Future<void> restaurantReviewCourierApplication(
+    String applicationId,
+    String decision, {
+    String note = '',
+  }) async {
+    await client.rpc('restaurant_review_courier_application', params: {
+      'p_application_id': applicationId,
+      'p_decision': decision,
+      'p_note': note.trim().isEmpty ? null : note.trim(),
+    });
+  }
+
   static Future<void> addRestaurantCourier(String restaurantId, String phone) async {
     await client.rpc('restaurant_add_courier', params: {
       'p_restaurant_id': restaurantId,
