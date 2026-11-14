@@ -472,7 +472,13 @@ class SareeBackend {
         .select('document_type').eq('courier_id', current.id);
     final types = List<Map<String, dynamic>>.from(rows)
         .map((row) => row['document_type'].toString()).toSet();
-    return const {'id_front', 'id_back', 'selfie'}.every(types.contains);
+    final complete = const {'id_front', 'id_back', 'selfie'}.every(types.contains);
+    if (complete) {
+      // Completing the required identity upload activates the courier account;
+      // restaurant owners decide whether to accept the courier's application.
+      await client.rpc('submit_courier_verification_for_review');
+    }
+    return complete;
   }
 
   static Future<void> uploadCourierVerificationDocuments(Map<String, XFile> files) async {
@@ -503,8 +509,7 @@ class SareeBackend {
       rows.add({'courier_id': current.id, 'document_type': entry.key, 'storage_path': path});
     }
     await client.from('courier_verification_documents').insert(rows);
-    // Submitting the complete identity package always places the courier back
-    // into the platform's pending-review state, even for legacy approved accounts.
+    // Completing the identity package activates the courier for restaurant applications.
     await client.rpc('submit_courier_verification_for_review');
   }
 
@@ -737,7 +742,11 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> activePromotions() async {
-    final rows = await client.from('promotions').select('*, restaurants(name)').eq('is_active', true).lte('starts_at', DateTime.now().toUtc().toIso8601String()).order('starts_at', ascending: false).limit(20);
+    final now = DateTime.now().toUtc().toIso8601String();
+    final rows = await client.from('promotions').select('*, restaurants(name)')
+        .eq('is_active', true).lte('starts_at', now)
+        .or('ends_at.is.null,ends_at.gt.$now')
+        .order('starts_at', ascending: false).limit(20);
     return List<Map<String, dynamic>>.from(rows);
   }
 
