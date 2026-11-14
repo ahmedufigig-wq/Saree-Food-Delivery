@@ -364,12 +364,6 @@ class SareeGate extends StatelessWidget {
                   if (docs.connectionState != ConnectionState.done) return const LoadingPage();
                   if (docs.hasError) return ErrorPage(message: SareeBackend.arabicError(docs.error));
                   if (docs.data != true) return const CourierVerificationPage();
-                  if (approval != 'approved') {
-                    return PendingApprovalPage(
-                      status: approval,
-                      note: profile.data?['approval_note']?.toString(),
-                    );
-                  }
                   return const CourierPortal();
                 },
               );
@@ -525,9 +519,9 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
     try {
       await SareeBackend.uploadCourierVerificationDocuments(Map.fromEntries(_files.entries.where((entry) => entry.value != null).map((entry) => MapEntry(entry.key, entry.value!))));
       if (!mounted) return;
-      setState(() => _message = 'تم إرسال مستنداتك بنجاح. حسابك الآن قيد مراجعة الإدارة.');
-      await Future<void>.delayed(const Duration(milliseconds: 900));
-      if (mounted) await SareeBackend.signOut();
+      setState(() => _message = 'اكتمل رفع مستندات الهوية وتم تفعيل حسابك للتقديم للمطاعم. قرار قبولك للعمل يعود لكل مطعم تتقدم إليه.');
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const CourierPortal()));
     } catch (e) {
       if (mounted) setState(() => _message = SareeBackend.arabicError(e));
     } finally {
@@ -557,7 +551,7 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
       const Text('أكمل توثيق هويتك للانضمام إلى مندوبي سريع', textAlign: TextAlign.center,
         style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
       const SizedBox(height: 8),
-      const Text('هذه الخطوة مطلوبة مرة واحدة فقط. تُحفظ مستنداتك بشكل خاص ولا يطّلع عليها إلا فريق الإدارة المخوّل.',
+      const Text('هذه الخطوة مطلوبة مرة واحدة فقط. تُحفظ المستندات بشكل خاص، ولا تظهر إلا للمطاعم التي تتقدم إليها ولإدارة النظام المخوّلة.',
         textAlign: TextAlign.center),
       const SizedBox(height: 18),
       _documentTile('id_front', 'الهوية الشخصية – الوجه الأمامي', 'صورة واضحة للوجه الأمامي للبطاقة', Icons.badge_outlined),
@@ -571,7 +565,7 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
       const SizedBox(height: 8),
       FilledButton.icon(onPressed: _busy ? null : _submit,
         icon: _busy ? const SizedBox(width: 18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.cloud_upload_outlined),
-        label: Text(_busy ? 'جارٍ رفع المستندات...' : 'إرسال المستندات للمراجعة')),
+        label: Text(_busy ? 'جارٍ رفع المستندات...' : 'إرسال المستندات وتفعيل الحساب')),
     ])),
   );
 }
@@ -1896,7 +1890,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                       dense: true,
                       leading: Icon(Icons.verified_rounded, color: Colors.green),
                       title: Text('توثيق الهوية'),
-                      subtitle: Text('تم اعتماد هوية المندوب من إدارة سريع'),
+                      subtitle: Text('اكتمل رفع مستندات الهوية؛ قرار قبول المندوب يعود للمطعم'),
                     ),
                   ListTile(dense: true, leading: const Icon(Icons.phone), title: const Text('رقم الهاتف'), subtitle: SelectableText(a['phone']?.toString() ?? 'غير متوفر')),
                   ListTile(dense: true, leading: const Icon(Icons.email_outlined), title: const Text('البريد الإلكتروني'), subtitle: SelectableText(a['email']?.toString() ?? 'غير متوفر')),
