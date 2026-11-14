@@ -221,24 +221,48 @@ class FoodPhotoBanner extends StatelessWidget {
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.size = 88});
   final double size;
+
   @override
   Widget build(BuildContext context) => Container(
-    width: size, height: size,
+    width: size,
+    height: size,
     decoration: BoxDecoration(
-      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFC400), Color(0xFFE50914), Color(0xFF171717)]),
-      borderRadius: BorderRadius.circular(size * .30),
-      border: Border.all(color: Colors.white, width: 2),
-      boxShadow: const [BoxShadow(color: Color(0x30B91F2B), blurRadius: 20, offset: Offset(0, 8))],
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFFF242D), Color(0xFFB90012), Color(0xFF650008)],
+      ),
+      borderRadius: BorderRadius.circular(size * .29),
+      border: Border.all(color: const Color(0xFFFFD45A), width: size * .025),
+      boxShadow: const [
+        BoxShadow(color: Color(0x55000000), blurRadius: 18, offset: Offset(0, 7)),
+      ],
     ),
     child: Stack(alignment: Alignment.center, children: [
-      Positioned(left: size * .07, top: size * .27, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(width: size * .28, height: size * .035, decoration: BoxDecoration(color: const Color(0xFFFFC400), borderRadius: BorderRadius.circular(8))),
-        SizedBox(height: size * .055),
-        Container(width: size * .20, height: size * .035, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8))),
-      ])),
-      Icon(Icons.location_on_rounded, color: Colors.white, size: size * .76),
-      Positioned(top: size * .30, child: Icon(Icons.restaurant_rounded, color: const Color(0xFFE50914), size: size * .29)),
-      Positioned(top: size * .10, right: size * .13, child: Icon(Icons.bolt_rounded, color: const Color(0xFFFFC400), size: size * .23)),
+      Positioned(
+        left: size * .10,
+        top: size * .29,
+        child: Column(children: [
+          Container(width: size * .25, height: size * .045, decoration: BoxDecoration(color: const Color(0xFFFFD45A), borderRadius: BorderRadius.circular(8))),
+          SizedBox(height: size * .075),
+          Container(width: size * .18, height: size * .04, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8))),
+        ]),
+      ),
+      Container(
+        width: size * .68,
+        height: size * .68,
+        decoration: BoxDecoration(
+          color: const Color(0xFF8E0010),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: size * .045),
+        ),
+        child: Icon(Icons.delivery_dining_rounded, color: const Color(0xFFFFD45A), size: size * .48),
+      ),
+      Positioned(
+        right: size * .08,
+        bottom: size * .10,
+        child: Icon(Icons.bolt_rounded, color: Colors.white, size: size * .25),
+      ),
     ]),
   );
 }
@@ -1970,6 +1994,73 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     );
   }
 
+  Future<void> _importMenuBulk(String restaurantId) async {
+    final controller = TextEditingController();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إضافة منيو كامل دفعة واحدة'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const Text('اكتب كل صنف في سطر مستقل بهذا الترتيب: الاسم | السعر | الوصف | القسم. الوصف والقسم اختياريان.', style: TextStyle(height: 1.6)),
+              const SizedBox(height: 10),
+              const Text('مثال:\nبرجر لحم | 1800 | لحم وجبن | البرجر\nبيتزا خضار | 2200 | خضار وجبن | البيتزا\nعصير مانجو | 700 | عصير طازج | المشروبات', style: TextStyle(color: Color(0xFFFFD45A), fontSize: 12, height: 1.7)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                minLines: 8,
+                maxLines: 12,
+                textDirection: TextDirection.rtl,
+                decoration: const InputDecoration(
+                  hintText: 'الصنف | السعر | الوصف | القسم',
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ]),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          FilledButton.icon(onPressed: () => Navigator.pop(ctx, true), icon: const Icon(Icons.upload_rounded), label: const Text('استيراد الأصناف')),
+        ],
+      ),
+    );
+    if (accepted == true) {
+      final rows = <Map<String, dynamic>>[];
+      final lines = controller.text.split(RegExp(r'\\r?\\n'));
+      String? problem;
+      for (var index = 0; index < lines.length; index++) {
+        final line = lines[index].trim();
+        if (line.isEmpty) continue;
+        final parts = line.split('|').map((part) => part.trim()).toList();
+        final name = parts.isNotEmpty ? parts[0] : '';
+        final price = parts.length > 1 ? int.tryParse(parts[1].replaceAll(',', '')) : null;
+        if (name.isEmpty || price == null || price <= 0 || parts.length > 4) {
+          problem = 'راجع السطر رقم ${index + 1}: يجب كتابة الاسم ثم السعر، ويمكن إضافة الوصف والقسم.';
+          break;
+        }
+        rows.add({
+          'name': name,
+          'price_yer': price,
+          'description': parts.length > 2 ? parts[2] : '',
+          'category': parts.length > 3 ? parts[3] : '',
+        });
+      }
+      if (problem != null || rows.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problem ?? 'أدخل صنفًا واحدًا على الأقل')));
+      } else {
+        await _run(() async {
+          final imported = await SareeBackend.importMenuItemsBulk(restaurantId: restaurantId, items: rows);
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة $imported صنفًا إلى المنيو بنجاح')));
+        });
+      }
+    }
+    controller.dispose();
+  }
+
   Future<void> _editMeal(String restaurantId, [Map<String,dynamic>? item]) async {
     final name = TextEditingController(text: item?['name']?.toString() ?? '');
     final description = TextEditingController(text: item?['description']?.toString() ?? '');
@@ -2073,6 +2164,14 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                     const Text('قائمة الوجبات', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
                     FilledButton.icon(onPressed: () => _editMeal(rid), icon: const Icon(Icons.add), label: const Text('وجبة جديدة')),
                   ]),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : () => _importMenuBulk(rid),
+                      icon: const Icon(Icons.playlist_add_rounded),
+                      label: const Text('إضافة منيو كامل دفعة واحدة'),
+                    ),
+                  ),
                   if(items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('لم تضف وجبات بعد. أضف أول وجبة ليراها العملاء.')),
                   ...items.map((item) => Card(child: ListTile(
                     leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 54, height: 54, child: Image.network(_mealPhotoUrl(item), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, color: Color(0xFFE50914)))))),
