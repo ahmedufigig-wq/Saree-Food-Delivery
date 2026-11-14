@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -414,6 +415,64 @@ class SareeBackend {
   static Future<List<Map<String, dynamic>>> adminProfiles() async {
     final rows = await client.from('profiles').select('id, full_name, phone, role, approval_status, approval_note, created_at').order('created_at', ascending: false).limit(200);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  static Future<bool> hasCourierVerificationDocuments() async {
+    final current = user;
+    if (current == null) return false;
+    final rows = await client.from('courier_verification_documents')
+        .select('document_type').eq('courier_id', current.id);
+    final types = List<Map<String, dynamic>>.from(rows)
+        .map((row) => row['document_type'].toString()).toSet();
+    return const {'id_front', 'id_back', 'residence', 'selfie'}.every(types.contains);
+  }
+
+  static Future<void> uploadCourierVerificationDocuments(Map<String, XFile> files) async {
+    final current = user;
+    if (current == null) throw Exception('يرجى تسجيل الدخول أولاً');
+    if (files.keys.toSet().length != 4 ||
+        !const {'id_front', 'id_back', 'residence', 'selfie'}.every(files.containsKey)) {
+      throw Exception('المستندات المطلوبة غير مكتملة');
+    }
+    final existing = await hasCourierVerificationDocuments();
+    if (existing) throw Exception('تم إرسال مستندات التوثيق لهذا الحساب من قبل.');
+    final rows = <Map<String, dynamic>>[];
+    for (final entry in files.entries) {
+      final file = entry.value;
+      final name = file.name.toLowerCase();
+      final ext = name.contains('.') ? name.split('.').last : 'jpg';
+      final safeExt = const {'jpg','jpeg','png','webp'}.contains(ext) ? ext : 'jpg';
+      final contentType = safeExt == 'png' ? 'image/png' : safeExt == 'webp' ? 'image/webp' : 'image/jpeg';
+      final path = '${current.id}/${entry.key}_${DateTime.now().microsecondsSinceEpoch}.$safeExt';
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty || bytes.length > 8 * 1024 * 1024) {
+        throw Exception('حجم كل صورة يجب أن يكون أقل من 8 ميجابايت');
+      }
+      await client.storage.from('courier-verification').uploadBinary(
+        path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: false));
+      rows.add({'courier_id': current.id, 'document_type': entry.key, 'storage_path': path});
+    }
+    await client.from('courier_verification_documents').insert(rows);
+  }
+
+  static Future<List<Map<String, dynamic>>> adminCourierVerificationDocuments(String courierId) async {
+    final rows = await client.from('courier_verification_documents')
+        .select('document_type, storage_path, created_at').eq('courier_id', courierId);
+    const labels = {'id_front':'الهوية – الوجه الأمامي','id_back':'الهوية – الوجه الخلفي',
+      'residence':'إثبات محل الإقامة','selfie':'الصورة الشخصية'};
+    final result = <Map<String, dynamic>>[];
+    for (final row in List<Map<String, dynamic>>.from(rows)) {
+      final path = row['storage_path'].toString();
+      final signed = await client.storage.from('courier-verification').createSignedUrl(path, 300);
+      result.add({...row, 'label': labels[row['document_type']] ?? row['document_type'], 'signed_url': signed});
+    }
+    return result;
+  }
+
+  static Future<void> adminReviewUser(String id, String decision, String note) async {
+    await client.rpc('admin_review_user', params: {
+      'p_user_id': id, 'p_decision': decision, 'p_note': note.trim().isEmpty ? null : note.trim(),
+    });
   }
 
   static Future<void> setUserRole(String id, String role) async {
