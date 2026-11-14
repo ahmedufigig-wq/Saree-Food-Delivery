@@ -100,7 +100,37 @@ jobs:
           -dontwarn com.google.mlkit.vision.text.korean.**
           RULES
           test -s android/app/proguard-rules.pro
-          grep -nE 'compileSdk|ndkVersion' android/app/build.gradle*
+          # Attach compatibility rules to the release shrinker.
+          if [ -f "$KTS" ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/app/build.gradle.kts")
+          s = p.read_text()
+          if "proguardFiles(" not in s:
+              m = re.search(r"buildTypes\s*\{\s*release\s*\{", s)
+              if not m:
+                  raise SystemExit("Could not locate release buildType in Kotlin Gradle file")
+              addition = '\n            isMinifyEnabled = true\n            isShrinkResources = false\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")\n'
+              s = s[:m.end()] + addition + s[m.end():]
+              p.write_text(s)
+          PY
+          elif [ -f "$GROOVY" ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/app/build.gradle")
+          s = p.read_text()
+          if "proguardFiles" not in s:
+              m = re.search(r"buildTypes\s*\{\s*release\s*\{", s)
+              if not m:
+                  raise SystemExit("Could not locate release buildType in Groovy Gradle file")
+              addition = '\n            minifyEnabled true\n            shrinkResources false\n            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"\n'
+              s = s[:m.end()] + addition + s[m.end():]
+              p.write_text(s)
+          PY
+          fi
+          grep -nE 'proguardFiles|isMinifyEnabled|minifyEnabled|compileSdk|ndkVersion' android/app/build.gradle*
 
       - name: Apply Saree launcher icon and native splash artwork
         run: |
