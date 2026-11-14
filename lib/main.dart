@@ -517,7 +517,7 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
     }
     setState(() { _busy = true; _message = null; });
     try {
-      await SareeBackend.uploadCourierVerificationDocuments(_files.map((key, value) => MapEntry(key, value!)));
+      await SareeBackend.uploadCourierVerificationDocuments(Map.fromEntries(_files.entries.where((entry) => entry.value != null).map((entry) => MapEntry(entry.key, entry.value!))));
       if (!mounted) return;
       setState(() => _message = 'تم إرسال مستنداتك بنجاح. حسابك الآن قيد مراجعة الإدارة.');
       await Future<void>.delayed(const Duration(milliseconds: 900));
@@ -557,7 +557,8 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
       _documentTile('id_front', 'الهوية الشخصية – الوجه الأمامي', 'صورة واضحة للوجه الأمامي للبطاقة', Icons.badge_outlined),
       _documentTile('id_back', 'الهوية الشخصية – الوجه الخلفي', 'صورة واضحة للوجه الخلفي للبطاقة', Icons.badge_rounded),
       _documentTile('selfie', 'سيلفي مباشر مع البطاقة', 'التقط صورة بالكاميرا الأمامية وأنت تحمل هويتك بجانب وجهك، مع ظهور الوجه والبطاقة بوضوح', Icons.camera_front_rounded),
-      const Padding(padding: EdgeInsets.only(top: 2, bottom: 10), child: Text('إثبات محل الإقامة غير مطلوب. لا ترفع صورة شخصية منفصلة؛ المطلوب سيلفي مباشر مع البطاقة.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
+      _documentTile('residence', 'إثبات محل الإقامة (اختياري)', 'يمكنك إرفاق فاتورة أو مستند يوضح محل إقامتك، ويمكنك تركه فارغًا', Icons.home_work_outlined),
+      const Padding(padding: EdgeInsets.only(top: 2, bottom: 10), child: Text('إثبات محل الإقامة اختياري تمامًا ولن يمنع إرسال طلبك إذا لم ترفقه. لا ترفع صورة شخصية منفصلة؛ المطلوب سيلفي مباشر مع البطاقة.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
       if (_message != null) Padding(padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(_message!, textAlign: TextAlign.center,
           style: TextStyle(color: _message!.startsWith('تم') ? Colors.green : Colors.red))),
