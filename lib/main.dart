@@ -7,6 +7,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'services/saree_backend.dart';
 
@@ -510,6 +512,60 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
     if (file != null && mounted) setState(() { _files[type] = file; _message = null; });
   }
 
+  Future<String> _validateIdentityImages() async {
+    final front = _files['id_front']!;
+    final back = _files['id_back']!;
+    final selfie = _files['selfie']!;
+    final frontBytes = await front.readAsBytes();
+    final backBytes = await back.readAsBytes();
+    final selfieBytes = await selfie.readAsBytes();
+
+    if ([frontBytes, backBytes, selfieBytes].any((bytes) => bytes.length < 18 * 1024 || bytes.length > 8 * 1024 * 1024)) {
+      return 'إحدى الصور صغيرة جدًا أو كبيرة جدًا. أعد تصوير الهوية والسيلفي بوضوح.';
+    }
+    bool sameBytes(List<int> a, List<int> b) =>
+        a.length == b.length && a.asMap().entries.every((entry) => entry.value == b[entry.key]);
+    if (sameBytes(frontBytes, backBytes) || sameBytes(frontBytes, selfieBytes) || sameBytes(backBytes, selfieBytes)) {
+      return 'لا يمكن استخدام الصورة نفسها لأكثر من مستند. التقط كل صورة بشكل مستقل.';
+    }
+
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    final detector = FaceDetector(options: FaceDetectorOptions(
+      performanceMode: FaceDetectorMode.accurate,
+      enableLandmarks: false,
+      enableContours: false,
+      enableClassification: false,
+    ));
+    try {
+      final frontText = await recognizer.processImage(InputImage.fromFilePath(front.path));
+      final backText = await recognizer.processImage(InputImage.fromFilePath(back.path));
+      final selfieText = await recognizer.processImage(InputImage.fromFilePath(selfie.path));
+      final frontPlain = frontText.text.replaceAll(RegExp(r'\\s+'), '');
+      final backPlain = backText.text.replaceAll(RegExp(r'\\s+'), '');
+      final selfiePlain = selfieText.text.replaceAll(RegExp(r'\\s+'), '');
+      final allIdText = '$frontPlain$backPlain';
+      final digitCount = RegExp(r'\\d').allMatches(allIdText).length;
+
+      if (frontPlain.length < 5 || backPlain.length < 3 || digitCount < 3) {
+        return 'لم نستطع قراءة بيانات كافية من صور البطاقة. أعد تصوير الوجهين بإضاءة جيدة، واجعل النص والأرقام واضحين بالكامل.';
+      }
+      if (selfiePlain.length < 3) {
+        return 'يجب أن تظهر البطاقة بوضوح بجانب وجهك في صورة السيلفي، مع ظهور بعض بياناتها.';
+      }
+
+      final faces = await detector.processImage(InputImage.fromFilePath(selfie.path));
+      if (faces.length != 1) {
+        return faces.isEmpty
+            ? 'لم يتم اكتشاف وجه في السيلفي. التقط صورة مباشرة يظهر فيها وجهك والبطاقة معًا.'
+            : 'يجب أن يظهر وجه شخص واحد فقط في صورة السيلفي.';
+      }
+      return '';
+    } finally {
+      await recognizer.close();
+      await detector.close();
+    }
+  }
+
   Future<void> _submit() async {
     if (_files['id_front'] == null || _files['id_back'] == null || _files['selfie'] == null) {
       setState(() => _message = 'يرجى إرفاق صورتي الهوية والتقاط سيلفي مع البطاقة قبل الإرسال.');
@@ -517,10 +573,15 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
     }
     setState(() { _busy = true; _message = null; });
     try {
+      final validationMessage = await _validateIdentityImages();
+      if (validationMessage.isNotEmpty) {
+        if (mounted) setState(() => _message = validationMessage);
+        return;
+      }
       await SareeBackend.uploadCourierVerificationDocuments(Map.fromEntries(_files.entries.where((entry) => entry.value != null).map((entry) => MapEntry(entry.key, entry.value!))));
       if (!mounted) return;
-      setState(() => _message = 'اكتمل رفع مستندات الهوية وتم تفعيل حسابك للتقديم للمطاعم. قرار قبولك للعمل يعود لكل مطعم تتقدم إليه.');
-      await Future<void>.delayed(const Duration(milliseconds: 700));
+      setState(() => _message = 'اجتازت الصور فحص وضوح النصوص ووجود الوجه في السيلفي. هذا فحص آلي أولي وليس إثباتًا رسميًا لأصالة الهوية. يمكنك الآن التقديم للمطاعم.');
+      await Future<void>.delayed(const Duration(milliseconds: 900));
       if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const CourierPortal()));
     } catch (e) {
       if (mounted) setState(() => _message = SareeBackend.arabicError(e));
@@ -551,7 +612,7 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
       const Text('أرفق مستندات هويتك للتقديم للعمل لدى مطاعم سريع', textAlign: TextAlign.center,
         style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
       const SizedBox(height: 8),
-      const Text('هذه الخطوة مطلوبة مرة واحدة فقط. رفع الصور يتيح للمطاعم التي تتقدم إليها الاطلاع عليها واتخاذ قرار قبولك أو رفضك. رفع الصور لا يُعد تصديقًا رسميًا لصحة الهوية.',
+      const Text('لن نقبل الصور العشوائية: يفحص التطبيق وضوح النصوص والأرقام في وجهي البطاقة، ويتأكد من وجود وجه واحد وظهور نص البطاقة في السيلفي. هذا فحص آلي أولي ولا يثبت وحده أن الهوية أصلية أو غير مزورة.',
         textAlign: TextAlign.center),
       const SizedBox(height: 18),
       _documentTile('id_front', 'الهوية الشخصية – الوجه الأمامي', 'صورة واضحة للوجه الأمامي للبطاقة', Icons.badge_outlined),
@@ -698,7 +759,7 @@ class _AuthPageState extends State<AuthPage> {
                       const Text('• سيلفي مباشر بالكاميرا الأمامية وأنت تحمل البطاقة بجانب وجهك (مطلوب)'),
                       const Text('• إثبات محل الإقامة غير مطلوب'),
                       const SizedBox(height: 6),
-                      const Text('يتم التحقق مرة واحدة فقط، وتُرسل الصور بشكل خاص إلى الإدارة للمراجعة.', style: TextStyle(height: 1.4)),
+                      const Text('سيُفحص محتوى الصور آليًا قبل التفعيل. الصور غير الواضحة أو التي لا تحتوي على نصوص وبيانات كافية ستُرفض. الفحص الآلي لا يغني عن التحقق الرسمي من أصالة البطاقة.', style: TextStyle(height: 1.4)),
                     ]),
                   ),
                 ),
