@@ -364,7 +364,10 @@ class SareeGate extends StatelessWidget {
                   if (docs.connectionState != ConnectionState.done) return const LoadingPage();
                   if (docs.hasError) return ErrorPage(message: SareeBackend.arabicError(docs.error));
                   if (docs.data != true) return const CourierVerificationPage();
-                  return PendingApprovalPage(status: approval, note: profile.data?['approval_note']?.toString());
+                  return CourierRestaurantJoinPage(
+                    status: approval,
+                    note: profile.data?['approval_note']?.toString(),
+                  );
                 },
               );
             }
@@ -1855,24 +1858,116 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     if (accepted == true) await _run(() => SareeBackend.removeRestaurantCourier(restaurantId, courier['courier_id'].toString()));
   }
 
+  Future<void> _reviewCourierApplication(String applicationId, String decision) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: Text(decision == 'accepted' ? 'قبول المندوب؟' : 'رفض طلب المندوب؟'),
+      content: Text(decision == 'accepted'
+        ? 'سيُضاف المندوب إلى فريق توصيل مطعمك بعد القبول.'
+        : 'سيتم إبلاغ المندوب برفض طلب الانضمام.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(decision == 'accepted' ? 'قبول' : 'رفض')),
+      ],
+    ));
+    if (confirmed != true) return;
+    await _run(() async {
+      await SareeBackend.restaurantReviewCourierApplication(applicationId, decision);
+      if (mounted) setState(() {});
+    });
+  }
+
+  Widget _courierDocumentPreview(String title, String? url) {
+    if (url == null || url.isEmpty) {
+      return Card(child: Padding(padding: const EdgeInsets.all(12), child: Text('$title: لم تُرفق الصورة')));
+    }
+    return Card(child: Padding(padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      const SizedBox(height: 8),
+      ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(
+        url, height: 170, width: double.infinity, fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const SizedBox(height: 100, child: Center(child: Text('تعذر عرض الصورة، حدّث القائمة وحاول مجدداً'))),
+      )),
+    ])));
+  }
+
+  Widget _courierApplicationsSection(String restaurantId) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: SareeBackend.restaurantCourierApplications(restaurantId),
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(14), child: LinearProgressIndicator());
+        if (snap.hasError) return Padding(padding: const EdgeInsets.all(14), child: Text('تعذر تحميل طلبات الانضمام: ${SareeBackend.arabicError(snap.error)}'));
+        final applications = snap.data ?? [];
+        final pending = applications.where((a) => a['status'] == 'pending').toList();
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(padding: const EdgeInsets.fromLTRB(14, 14, 14, 6), child: Row(children: [
+            const Expanded(child: Text('طلبات انضمام المندوبين', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+            Chip(label: Text('قيد المراجعة: ${pending.length}')),
+          ])),
+          if (applications.isEmpty) const Padding(padding: EdgeInsets.all(14), child: Text('لا توجد طلبات انضمام حتى الآن.')),
+          ...applications.map((a) {
+            final status = a['status']?.toString() ?? 'pending';
+            final canReview = status == 'pending';
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: ExpansionTile(
+                leading: CircleAvatar(child: Icon(Icons.delivery_dining_rounded, color: status == 'accepted' ? Colors.green : status == 'rejected' ? Colors.red : Colors.orange)),
+                title: Text(a['full_name']?.toString() ?? 'مندوب توصيل', style: const TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: Text(status == 'accepted' ? 'تم قبول الطلب' : status == 'rejected' ? 'تم رفض الطلب' : 'طلب جديد • بانتظار مراجعة المطعم'),
+                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                children: [
+                  ListTile(dense: true, leading: const Icon(Icons.phone), title: const Text('رقم الهاتف'), subtitle: SelectableText(a['phone']?.toString() ?? 'غير متوفر')),
+                  ListTile(dense: true, leading: const Icon(Icons.email_outlined), title: const Text('البريد الإلكتروني'), subtitle: SelectableText(a['email']?.toString() ?? 'غير متوفر')),
+                  _courierDocumentPreview('الهوية من الأمام', a['id_front_url']?.toString()),
+                  _courierDocumentPreview('الهوية من الخلف', a['id_back_url']?.toString()),
+                  _courierDocumentPreview('سيلفي المندوب مع البطاقة', a['selfie_url']?.toString()),
+                  if (canReview) ...[
+                    const SizedBox(height: 8),
+                    if (a['platform_approval_status'] != 'approved')
+                      const Padding(padding: EdgeInsets.all(8), child: Text('تنبيه: هوية المندوب ما زالت بانتظار اعتماد إدارة سريع. يمكنك مراجعة الطلب، لكن لا يمكن قبوله قبل اعتماد الإدارة.', style: TextStyle(color: Colors.orange, height: 1.4))),
+                    Row(children: [
+                      Expanded(child: OutlinedButton.icon(
+                        onPressed: _busy ? null : () => _reviewCourierApplication(a['application_id'].toString(), 'rejected'),
+                        icon: const Icon(Icons.close, color: Colors.red), label: const Text('رفض الطلب'),
+                      )),
+                      const SizedBox(width: 8),
+                      Expanded(child: FilledButton.icon(
+                        onPressed: _busy || a['platform_approval_status'] != 'approved' ? null : () => _reviewCourierApplication(a['application_id'].toString(), 'accepted'),
+                        icon: const Icon(Icons.check), label: const Text('قبول المندوب'),
+                      )),
+                    ]),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ]);
+      },
+    );
+  }
+
   Widget _courierTeamTab(String restaurantId) {
     return FutureBuilder<List<Map<String, dynamic>>>(future: SareeBackend.restaurantCourierTeam(restaurantId), builder: (context, snap) {
       if (snap.connectionState != ConnectionState.done) return const LoadingPage();
       if (snap.hasError) return Center(child: Text('تعذر تحميل فريق المندوبين: ' + SareeBackend.arabicError(snap.error)));
       final couriers = snap.data ?? [];
-      return ListView(padding: const EdgeInsets.all(14), children: [
-        Row(children: [const Expanded(child: Text('مندوبو المطعم', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))), FilledButton.icon(onPressed: _busy ? null : () => _addCourier(restaurantId), icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('إضافة مندوب'))]),
-        const SizedBox(height: 8),
-        const Text('أنشئ حساب المندوب مباشرة بالاسم ورقم الهاتف وكلمة المرور. سيُربط بهذا المطعم، ولن يستقبل الطلبات حتى توافق الإدارة.', style: TextStyle(color: Color(0xFFFFC400), height: 1.5)),
-        const SizedBox(height: 12),
-        if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Column(children: [Icon(Icons.delivery_dining_rounded, size: 42, color: Color(0xFF8994A3)), SizedBox(height: 8), Text('لم تضف أي مندوب إلى فريق المطعم بعد', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700))]))),
+      return ListView(padding: const EdgeInsets.only(bottom: 16), children: [
+        _courierApplicationsSection(restaurantId),
+        const Divider(height: 24),
+        const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Text('فريق المندوبين المقبولين', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
+        const Padding(padding: EdgeInsets.fromLTRB(14, 6, 14, 8), child: Text('يظهر هنا المندوبون الذين وافقوا على العمل مع مطعمك، ويمكنك إزالة المندوب من الفريق عند الحاجة.', style: TextStyle(color: Color(0xFF748094), height: 1.4))),
+        if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('لم يتم قبول أي مندوب في فريق المطعم بعد', textAlign: TextAlign.center))),
         ...couriers.map((courier) {
           final active = courier['is_active'] == true;
           final available = courier['is_available'] == true;
           final name = courier['full_name']?.toString().trim().isNotEmpty == true ? courier['full_name'].toString() : 'مندوب توصيل';
           final phone = courier['phone']?.toString() ?? 'بدون رقم هاتف';
-          final status = !active ? 'بانتظار موافقة الإدارة أو موقوف' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
-          return Card(child: ListTile(leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))), title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('$phone • $status'), trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3))));
+          final status = !active ? 'موقوف' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
+          return Card(child: ListTile(
+            leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))),
+            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: Text('$phone • $status'),
+            trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3)),
+          ));
         }),
       ]);
     });
@@ -2496,6 +2591,131 @@ class _DeliveryFeeSettingsTabState extends State<DeliveryFeeSettingsTab> {
         ]),
       )),
     ],
+  );
+}
+
+class CourierRestaurantJoinPage extends StatefulWidget {
+  const CourierRestaurantJoinPage({super.key, required this.status, this.note});
+  final String status;
+  final String? note;
+  @override State<CourierRestaurantJoinPage> createState() => _CourierRestaurantJoinPageState();
+}
+
+class _CourierRestaurantJoinPageState extends State<CourierRestaurantJoinPage> {
+  bool _busy = false;
+  Set<String> _selected = {};
+  late Future<List<Map<String, dynamic>>> _restaurants;
+  late Future<List<Map<String, dynamic>>> _applications;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _restaurants = SareeBackend.restaurants();
+    _applications = SareeBackend.courierMyRestaurantApplications();
+  }
+
+  Future<void> _submit() async {
+    if (_selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اختر مطعماً واحداً على الأقل')));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await SareeBackend.courierApplyToRestaurants(_selected.toList());
+      if (!mounted) return;
+      setState(() {
+        _selected.clear();
+        _load();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال طلبات الانضمام إلى المطاعم المختارة')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String _statusLabel(String value) => switch (value) {
+    'accepted' => 'تم قبولك',
+    'rejected' => 'تم رفض الطلب',
+    _ => 'بانتظار رد المطعم',
+  };
+
+  Color _statusColor(String value) => value == 'accepted'
+      ? const Color(0xFF16834A)
+      : value == 'rejected' ? const Color(0xFFCC3030) : const Color(0xFFB7791F);
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('اختيار المطاعم للعمل معها'),
+      actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))],
+    ),
+    body: ListView(padding: const EdgeInsets.all(14), children: [
+      Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [Icon(Icons.verified_user_outlined, color: Color(0xFF16834A)), SizedBox(width: 8), Expanded(child: Text('تم استلام مستندات هويتك', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)))]),
+        const SizedBox(height: 8),
+        Text(widget.status == 'approved'
+          ? 'اختر المطاعم التي ترغب في العمل معها. سيراجع كل مطعم طلبك وبياناتك.'
+          : 'يمكنك إرسال طلباتك للمطاعم الآن. سيظل تفعيل استقبال الطلبات مرتبطاً باعتماد الإدارة لهويتك.'),
+        if (widget.status != 'approved') ...[
+          const SizedBox(height: 10),
+          const Chip(avatar: Icon(Icons.hourglass_top_rounded), label: Text('توثيق الحساب بانتظار مراجعة الإدارة')),
+        ],
+        if (widget.note?.trim().isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 8), child: Text(widget.note!, style: const TextStyle(color: Colors.red))),
+      ]))),
+      const SizedBox(height: 12),
+      const Text('اختر المطاعم التي تريد العمل معها', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 8),
+      FutureBuilder<List<Map<String, dynamic>>>(
+        future: _restaurants,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+          if (snap.hasError) return Text('تعذر تحميل المطاعم: ${SareeBackend.arabicError(snap.error)}');
+          final rows = snap.data ?? [];
+          if (rows.isEmpty) return const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('لا توجد مطاعم متاحة حالياً.')));
+          return Column(children: rows.map((r) {
+            final id = r['id'].toString();
+            return Card(child: CheckboxListTile(
+              value: _selected.contains(id),
+              onChanged: _busy ? null : (v) => setState(() => v == true ? _selected.add(id) : _selected.remove(id)),
+              title: Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(r['address']?.toString() ?? 'العنوان غير متوفر'),
+              secondary: const CircleAvatar(child: Icon(Icons.restaurant_rounded)),
+            ));
+          }).toList());
+        },
+      ),
+      FilledButton.icon(
+        onPressed: _busy ? null : _submit,
+        icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded),
+        label: const Text('إرسال طلبات الانضمام'),
+      ),
+      const SizedBox(height: 20),
+      const Text('طلبات الانضمام التي أرسلتها', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+      FutureBuilder<List<Map<String, dynamic>>>(
+        future: _applications,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator());
+          if (snap.hasError) return Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}');
+          final rows = snap.data ?? [];
+          if (rows.isEmpty) return const Padding(padding: EdgeInsets.all(12), child: Text('لم ترسل أي طلبات بعد.'));
+          return Column(children: rows.map((a) {
+            final status = a['status']?.toString() ?? 'pending';
+            return Card(child: ListTile(
+              leading: Icon(status == 'accepted' ? Icons.check_circle : status == 'rejected' ? Icons.cancel : Icons.hourglass_top, color: _statusColor(status)),
+              title: Text(a['restaurant_name']?.toString() ?? 'مطعم'),
+              subtitle: Text('${_statusLabel(status)} • ${a['review_note'] ?? ''}'),
+              isThreeLine: (a['review_note']?.toString().isNotEmpty ?? false),
+            ));
+          }).toList());
+        },
+      ),
+    ]),
   );
 }
 
