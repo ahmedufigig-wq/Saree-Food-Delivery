@@ -469,8 +469,9 @@ class SareeBackend {
     final current = user;
     if (current == null) return false;
     final rows = await client.from('courier_verification_documents')
-        .select('document_type').eq('courier_id', current.id);
+        .select('document_type, image_precheck_passed').eq('courier_id', current.id);
     final types = List<Map<String, dynamic>>.from(rows)
+        .where((row) => row['image_precheck_passed'] == true)
         .map((row) => row['document_type'].toString()).toSet();
     final complete = const {'id_front', 'id_back', 'selfie'}.every(types.contains);
     if (complete) {
@@ -509,7 +510,9 @@ class SareeBackend {
       rows.add({'courier_id': current.id, 'document_type': entry.key, 'storage_path': path});
     }
     await client.from('courier_verification_documents').insert(rows);
-    // Completing the identity package activates the courier for restaurant applications.
+    // Mark only the newly submitted package as having passed the on-device OCR/face precheck.
+    await client.rpc('mark_courier_identity_precheck_passed');
+    // Completing the prechecked identity package activates the courier for restaurant applications.
     await client.rpc('submit_courier_verification_for_review');
   }
 
