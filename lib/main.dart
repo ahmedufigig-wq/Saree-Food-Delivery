@@ -890,9 +890,12 @@ class CustomerOffersPage extends StatelessWidget {
           children: promotions.map((promotion) {
             final restaurant = promotion['restaurants'] is Map ? promotion['restaurants']['name']?.toString() : null;
             final meal = promotion['menu_items'] is Map ? promotion['menu_items']['name']?.toString() : null;
+            final discountValue = promotion['discount_value'] ?? 0;
             final discount = promotion['discount_type'] == 'percentage'
-                ? 'خصم ${promotion['discount_value']}٪'
-                : 'خصم ${promotion['discount_value']} ريال';
+                ? 'خصم $discountValue٪'
+                : 'خصم $discountValue ريال';
+            final promotionCode = promotion['code']?.toString() ?? '';
+            final minimumOrder = (promotion['minimum_order_yer'] as num? ?? 0).toInt();
             return Card(
               clipBehavior: Clip.antiAlias,
               child: Container(
@@ -906,10 +909,10 @@ class CustomerOffersPage extends StatelessWidget {
                   if (meal != null) Text('العرض على صنف: $meal', style: const TextStyle(color: Colors.white)),
                   if ((promotion['description']?.toString() ?? '').isNotEmpty)
                     Padding(padding: const EdgeInsets.only(top: 7), child: Text(promotion['description'].toString(), style: const TextStyle(color: Colors.white70))),
-                  if ((promotion['code']?.toString() ?? '').isNotEmpty)
-                    Padding(padding: const EdgeInsets.only(top: 8), child: Text('كود العرض: ${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
-                  if ((promotion['minimum_order_yer'] as num? ?? 0) > 0)
-                    Text('الحد الأدنى للطلب: ${promotion['minimum_order_yer']} ريال', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  if (promotionCode.isNotEmpty)
+                    Padding(padding: const EdgeInsets.only(top: 8), child: Text('كود العرض: $promotionCode', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
+                  if (minimumOrder > 0)
+                    Text('الحد الأدنى للطلب: $minimumOrder ريال', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                 ]),
               ),
             );
