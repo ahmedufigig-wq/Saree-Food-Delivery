@@ -524,7 +524,10 @@ class SareeBackend {
         path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: false));
       rows.add({'courier_id': current.id, 'document_type': entry.key, 'storage_path': path});
     }
-    await client.from('courier_verification_documents').insert(rows);
+    await client.from('courier_verification_documents').upsert(
+      rows,
+      onConflict: 'courier_id,document_type',
+    );
     // Mark only the newly submitted package as having passed the on-device OCR/face precheck.
     await client.rpc('mark_courier_identity_precheck_passed');
     // Completing the prechecked identity package activates the courier for restaurant applications.
