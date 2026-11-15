@@ -628,7 +628,7 @@ class SareeBackend {
   }) async {
     if (user == null) throw Exception('يرجى تسجيل الدخول بحساب المطعم');
     final safeExtension = ['jpg', 'jpeg', 'png', 'webp'].contains(extension.toLowerCase()) ? extension.toLowerCase() : 'jpg';
-    final path = '$restaurantId/\${user!.id}/cover_\${DateTime.now().microsecondsSinceEpoch}.$safeExtension';
+    final path = '$restaurantId/${user!.id}/cover_${DateTime.now().microsecondsSinceEpoch}.$safeExtension';
     await client.storage.from('restaurant-covers').uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: false));
     return client.storage.from('restaurant-covers').getPublicUrl(path);
   }

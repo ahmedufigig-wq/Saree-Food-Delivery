@@ -97,7 +97,7 @@ Future<void> showAccountSignOutOptions(BuildContext context) async {
     await SareeBackend.signOut(scope: scope);
   } catch (error) {
     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('تعذر تسجيل الخروج: \${SareeBackend.arabicError(error)}')),
+      SnackBar(content: Text('تعذر تسجيل الخروج: ${SareeBackend.arabicError(error)}')),
     );
   }
 }
@@ -882,7 +882,7 @@ class CustomerOffersPage extends StatelessWidget {
       future: SareeBackend.activePromotions(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snapshot.hasError) return Center(child: Text('تعذر تحميل العروض: \${SareeBackend.arabicError(snapshot.error)}'));
+        if (snapshot.hasError) return Center(child: Text('تعذر تحميل العروض: ${SareeBackend.arabicError(snapshot.error)}'));
         final promotions = snapshot.data ?? [];
         if (promotions.isEmpty) return const Center(child: Text('لا توجد عروض نشطة حاليًا. تابع الصفحة لمعرفة العروض الجديدة.'));
         return ListView(
@@ -891,8 +891,8 @@ class CustomerOffersPage extends StatelessWidget {
             final restaurant = promotion['restaurants'] is Map ? promotion['restaurants']['name']?.toString() : null;
             final meal = promotion['menu_items'] is Map ? promotion['menu_items']['name']?.toString() : null;
             final discount = promotion['discount_type'] == 'percentage'
-                ? 'خصم \${promotion['discount_value']}٪'
-                : 'خصم \${promotion['discount_value']} ريال';
+                ? 'خصم ${promotion['discount_value']}٪'
+                : 'خصم ${promotion['discount_value']} ريال';
             return Card(
               clipBehavior: Clip.antiAlias,
               child: Container(
@@ -907,9 +907,9 @@ class CustomerOffersPage extends StatelessWidget {
                   if ((promotion['description']?.toString() ?? '').isNotEmpty)
                     Padding(padding: const EdgeInsets.only(top: 7), child: Text(promotion['description'].toString(), style: const TextStyle(color: Colors.white70))),
                   if ((promotion['code']?.toString() ?? '').isNotEmpty)
-                    Padding(padding: const EdgeInsets.only(top: 8), child: Text('كود العرض: \${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
+                    Padding(padding: const EdgeInsets.only(top: 8), child: Text('كود العرض: ${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
                   if ((promotion['minimum_order_yer'] as num? ?? 0) > 0)
-                    Text('الحد الأدنى للطلب: \${promotion['minimum_order_yer']} ريال', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text('الحد الأدنى للطلب: ${promotion['minimum_order_yer']} ريال', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                 ]),
               ),
             );
@@ -2240,7 +2240,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     try {
       menuItems = await SareeBackend.manageMenu(restaurantId);
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحميل أصناف المطعم: \${SareeBackend.arabicError(error)}')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحميل أصناف المطعم: ${SareeBackend.arabicError(error)}')));
       return;
     }
     String? selectedMenuItemId = promotion?['menu_item_id']?.toString();
@@ -2931,7 +2931,7 @@ class _RestaurantBrandingTabState extends State<RestaurantBrandingTab> {
       setState(() => _coverUrl = url);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث خلفية المطعم وستظهر للعملاء')));
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر حفظ الخلفية: \${SareeBackend.arabicError(error)}')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر حفظ الخلفية: ${SareeBackend.arabicError(error)}')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -2945,7 +2945,7 @@ class _RestaurantBrandingTabState extends State<RestaurantBrandingTab> {
       setState(() => _coverUrl = null);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت إزالة خلفية المطعم')));
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إزالة الخلفية: \${SareeBackend.arabicError(error)}')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إزالة الخلفية: ${SareeBackend.arabicError(error)}')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
