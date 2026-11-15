@@ -15,7 +15,13 @@ import 'services/saree_backend.dart';
 
 String _mealPhotoUrl(Map<String, dynamic> item) {
   final saved = item['image_url']?.toString().trim() ?? '';
-  if (saved.startsWith('https://') || saved.startsWith('http://')) return saved;
+  final restaurantData = item['restaurants'];
+  final restaurantCover = restaurantData is Map
+      ? restaurantData['cover_image_url']?.toString().trim() ?? ''
+      : '';
+  // Restaurant covers belong to restaurant cards/headers, never individual meal tiles.
+  if ((saved.startsWith('https://') || saved.startsWith('http://')) &&
+      saved != restaurantCover) return saved;
   final category = item['menu_categories'];
   final text = '${item['name'] ?? ''} ${item['description'] ?? ''} ${category is Map ? category['name'] ?? '' : ''}'.toLowerCase();
   String photo;
@@ -98,6 +104,54 @@ Future<void> showAccountSignOutOptions(BuildContext context) async {
   } catch (error) {
     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تعذر تسجيل الخروج: ${SareeBackend.arabicError(error)}')),
+    );
+  }
+}
+
+Future<void> showRestaurantSignOutOptions(BuildContext context) async {
+  final choice = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('حساب المطعم'),
+      content: const Text('يمكنك الخروج من هذا الجهاز أو من جميع الأجهزة. إغلاق الحساب نهائياً يمنع استخدام الحساب القديم ويتيح إنشاء حساب جديد.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext, 'cancel'), child: const Text('إلغاء')),
+        TextButton(onPressed: () => Navigator.pop(dialogContext, 'local'), child: const Text('خروج من هذا الجهاز')),
+        TextButton(onPressed: () => Navigator.pop(dialogContext, 'global'), child: const Text('خروج من جميع الأجهزة')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9B0010)),
+          onPressed: () => Navigator.pop(dialogContext, 'close'),
+          child: const Text('إغلاق الحساب نهائياً'),
+        ),
+      ],
+    ),
+  );
+  if (choice == null || choice == 'cancel') return;
+  if (choice == 'local' || choice == 'global') {
+    await SareeBackend.signOut(scope: choice == 'global' ? SignOutScope.global : SignOutScope.local);
+    return;
+  }
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('تأكيد إغلاق الحساب نهائياً'),
+      content: const Text('سيتم إيقاف المطعم وإغلاق حساب الدخول القديم نهائياً. ستبقى سجلات الطلبات السابقة محفوظة، ولن يمكن استعادة الحساب القديم. هل تريد المتابعة؟'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('تراجع')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9B0010)),
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('نعم، أغلق الحساب'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  try {
+    await SareeBackend.permanentlyCloseRestaurantAccount();
+  } catch (error) {
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('تعذر إغلاق الحساب: ${SareeBackend.arabicError(error)}')),
     );
   }
 }
@@ -409,6 +463,7 @@ class SareeGate extends StatelessWidget {
               return const LoadingPage();
             }
             if (profile.hasError) return ErrorPage(message: SareeBackend.arabicError(profile.error));
+            if (profile.data?['is_blocked'] == true) return const AccountClosedPage();
             final role = profile.data?['role']?.toString() ?? 'customer';
             final approval = profile.data?['approval_status']?.toString() ?? 'approved';
             if (role == 'courier') {
@@ -433,6 +488,25 @@ class SareeGate extends StatelessWidget {
   }
 }
 
+
+class AccountClosedPage extends StatelessWidget {
+  const AccountClosedPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.no_accounts_rounded, size: 64, color: Color(0xFFFFC400)),
+        const SizedBox(height: 16),
+        const Text('تم إغلاق هذا الحساب نهائياً', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900), textAlign: TextAlign.center),
+        const SizedBox(height: 10),
+        const Text('لم يعد بإمكانك الدخول بهذا الحساب. يمكنك إنشاء حساب جديد للانضمام إلى سريع.', textAlign: TextAlign.center),
+        const SizedBox(height: 20),
+        FilledButton(onPressed: () => SareeBackend.signOut(scope: SignOutScope.local), child: const Text('العودة إلى تسجيل الدخول')),
+      ]),
+    )),
+  );
+}
 
 class PendingApprovalPage extends StatelessWidget {
   const PendingApprovalPage({super.key, required this.status, this.note});
@@ -934,7 +1008,7 @@ class CustomerHome extends StatelessWidget {
         title: const Row(mainAxisSize: MainAxisSize.min, children: [
           BrandMark(size: 34),
           SizedBox(width: 9),
-          Text('سريع', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+          Text('سريع', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
         ]),
         actions: [
           IconButton(tooltip: 'البحث', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSearchPage())), icon: const Icon(Icons.search_rounded)),
@@ -1069,21 +1143,35 @@ class CustomerHome extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Row(children: [
-                        Container(
-                          width: 82, height: 82,
-                          decoration: BoxDecoration(color: const Color(0xFFFFF0E3), borderRadius: BorderRadius.circular(18)),
-                          child: const Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFE50914)),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: SizedBox(
+                            width: 82, height: 82,
+                            child: (r['cover_image_url']?.toString().trim().isNotEmpty == true)
+                                ? Image.network(
+                                    r['cover_image_url'].toString(),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const ColoredBox(
+                                      color: Color(0xFF3A292C),
+                                      child: Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFFFC400)),
+                                    ),
+                                  )
+                                : const ColoredBox(
+                                    color: Color(0xFF3A292C),
+                                    child: Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFFFC400)),
+                                  ),
+                          ),
                         ),
                         const SizedBox(width: 13),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+                          Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFD45A))),
                           const SizedBox(height: 5),
-                          Text(r['description']?.toString() ?? 'وجبات شهية بانتظارك', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
+                          Text(r['description']?.toString() ?? 'وجبات شهية بانتظارك', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFE5DADD), fontSize: 12)),
                           const SizedBox(height: 8),
                           Row(children: [
                             const Icon(Icons.delivery_dining_rounded, size: 16, color: Color(0xFFE50914)),
                             const SizedBox(width: 4),
-                            Text('رسوم التوصيل: ${r['delivery_fee_yer'] ?? '—'} ريال', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF171717))),
+                            Text('رسوم التوصيل: ${r['delivery_fee_yer'] ?? '—'} ريال', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
                           ]),
                         ])),
                         const Icon(Icons.chevron_left_rounded, color: Color(0xFF8994A3)),
@@ -1389,7 +1477,7 @@ class RestaurantMenuPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: Text(restaurant['name'].toString()),
+      title: Text(restaurant['name'].toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
       actions: [
         FutureBuilder<bool>(
           future: SareeBackend.isFavorite(restaurant['id'].toString()),
@@ -1497,9 +1585,9 @@ class RestaurantMenuPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.white)),
+                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFFFFD45A))),
                         const SizedBox(height: 4),
-                        Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
+                        Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFE5DADD), fontSize: 12)),
                         const SizedBox(height: 7),
                         if (!available)
                           const Text('السعر والتوفر يحددهما المطعم', style: TextStyle(color: Color(0xFF8A6670), fontWeight: FontWeight.w900, fontSize: 12))
@@ -2345,10 +2433,19 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         if (snap.hasError) return Center(child: Text('تعذر تحميل العروض: ${SareeBackend.arabicError(snap.error)}'));
         final promotions = snap.data ?? [];
         return ListView(padding: const EdgeInsets.all(12), children: [
-          Row(children: [
-            const Expanded(child: Text('عروض وتخفيضات المطعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
-            FilledButton.icon(onPressed: _busy ? null : () => _editPromotion(restaurantId), icon: const Icon(Icons.add), label: const Text('عرض جديد')),
-          ]),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _busy ? null : () => _editPromotion(restaurantId),
+              icon: const Icon(Icons.add_circle_outline_rounded),
+              label: const Text('إضافة عرض جديد'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Text('عروض وتخفيضات المطعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFFFFD45A))),
+          ),
           const Padding(padding: EdgeInsets.only(top: 6, bottom: 12), child: Text('العروض النشطة تظهر تلقائيًا للعملاء في الصفحة الرئيسية مع كود العرض وشروطه.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
           if (promotions.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('لم تضف عروضًا بعد. أنشئ أول تخفيض ليظهر لعملائك.', textAlign: TextAlign.center))),
           ...promotions.map((item) {
@@ -2509,7 +2606,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('إدارة المطعم'), actions: [IconButton(tooltip: 'خيارات تسجيل الخروج', onPressed: () => showAccountSignOutOptions(context), icon: const Icon(Icons.logout))]),
+    appBar: AppBar(title: const Text('إدارة المطعم'), actions: [IconButton(tooltip: 'خيارات الحساب وتسجيل الخروج', onPressed: () => showRestaurantSignOutOptions(context), icon: const Icon(Icons.logout))]),
     body: FutureBuilder<List<Map<String,dynamic>>>(
       future: SareeBackend.myRestaurants(),
       builder: (context, rs) {
@@ -2569,8 +2666,8 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   if(items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('لم تضف وجبات بعد. أضف أول وجبة ليراها العملاء.')),
                   ...items.map((item) => Card(child: ListTile(
                     leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 54, height: 54, child: Image.network(_mealPhotoUrl(item), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, color: Color(0xFFE50914)))))),
-                    title: Text(item['name'].toString()),
-                    subtitle: Text('${item['price_yer']} ريال • ${item['is_available'] == true ? 'متاحة' : 'متوقفة'}'),
+                    title: Text(item['name'].toString(), style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w900)),
+                    subtitle: Text('${item['price_yer']} ريال • ${item['is_available'] == true ? 'متاحة' : 'متوقفة'}', style: const TextStyle(color: Color(0xFFE5DADD))),
                     trailing: PopupMenuButton<String>(
                       onSelected: (v) {
                         if(v == 'edit') _editMeal(rid, item);

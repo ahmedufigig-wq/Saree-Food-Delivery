@@ -226,12 +226,23 @@ class SareeBackend {
 
   static Future<void> signOut({SignOutScope scope = SignOutScope.local}) => client.auth.signOut(scope: scope);
 
+  static Future<void> permanentlyCloseRestaurantAccount() async {
+    if (user == null) throw Exception('يرجى تسجيل الدخول بحساب المطعم');
+    final response = await client.functions.invoke('restaurant-close-account');
+    if (response.status < 200 || response.status >= 300) {
+      final data = response.data;
+      final message = data is Map ? data['message'] ?? data['error'] : data;
+      throw Exception(message?.toString() ?? 'تعذر إغلاق الحساب نهائياً');
+    }
+    await client.auth.signOut(scope: SignOutScope.local);
+  }
+
   static Future<Map<String, dynamic>> profile() async {
     final current = user;
     if (current == null) throw Exception('يرجى تسجيل الدخول');
     final row = await client
         .from('profiles')
-        .select('id, full_name, phone, role, approval_status, approval_note, created_at')
+        .select('id, full_name, phone, role, approval_status, approval_note, created_at, is_blocked')
         .eq('id', current.id)
         .single();
     return Map<String, dynamic>.from(row);
@@ -251,7 +262,7 @@ class SareeBackend {
     // Availability is checked separately before allowing an order.
     final rows = await client
         .from('menu_items')
-        .select('*, menu_categories(name, sort_order), promotions!promotions_menu_item_id_fkey(*)')
+        .select('*, restaurants(cover_image_url), menu_categories(name, sort_order), promotions!promotions_menu_item_id_fkey(*)')
         .eq('restaurant_id', restaurantId)
         .order('name');
     return List<Map<String, dynamic>>.from(rows);
@@ -465,7 +476,7 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> adminProfiles() async {
-    final rows = await client.from('profiles').select('id, full_name, phone, role, approval_status, approval_note, created_at').order('created_at', ascending: false).limit(200);
+    final rows = await client.from('profiles').select('id, full_name, phone, role, approval_status, approval_note, created_at, is_blocked').order('created_at', ascending: false).limit(200);
     return List<Map<String, dynamic>>.from(rows);
   }
 
@@ -656,7 +667,7 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> manageMenu(String restaurantId) async {
-    final rows = await client.from('menu_items').select().eq('restaurant_id', restaurantId).order('created_at', ascending: false);
+    final rows = await client.from('menu_items').select('*, restaurants(cover_image_url)').eq('restaurant_id', restaurantId).order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
   }
 
