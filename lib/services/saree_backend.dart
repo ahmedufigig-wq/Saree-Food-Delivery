@@ -224,7 +224,7 @@ class SareeBackend {
         .eq('id', id).eq('customer_id', user!.id);
   }
 
-  static Future<void> signOut() => client.auth.signOut();
+  static Future<void> signOut({SignOutScope scope = SignOutScope.local}) => client.auth.signOut(scope: scope);
 
   static Future<Map<String, dynamic>> profile() async {
     final current = user;
@@ -251,7 +251,7 @@ class SareeBackend {
     // Availability is checked separately before allowing an order.
     final rows = await client
         .from('menu_items')
-        .select('*, menu_categories(name, sort_order)')
+        .select('*, menu_categories(name, sort_order), promotions!promotions_menu_item_id_fkey(*)')
         .eq('restaurant_id', restaurantId)
         .order('name');
     return List<Map<String, dynamic>>.from(rows);
@@ -576,7 +576,7 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> managePromotions(String restaurantId) async {
-    final rows = await client.from('promotions').select().eq('restaurant_id', restaurantId).order('created_at', ascending: false);
+    final rows = await client.from('promotions').select('*, menu_items(name)').eq('restaurant_id', restaurantId).order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
   }
 
@@ -589,6 +589,7 @@ class SareeBackend {
     required String discountType,
     required int discountValue,
     required int minimumOrder,
+    String? menuItemId,
     required DateTime startsAt,
     DateTime? endsAt,
     required bool active,
@@ -601,6 +602,7 @@ class SareeBackend {
       'discount_type': discountType,
       'discount_value': discountValue,
       'minimum_order_yer': minimumOrder,
+      'menu_item_id': menuItemId,
       'starts_at': startsAt.toUtc().toIso8601String(),
       'ends_at': endsAt?.toUtc().toIso8601String(),
       'is_active': active,
@@ -615,6 +617,24 @@ class SareeBackend {
 
   static Future<void> deletePromotion(String id, String restaurantId) async {
     await client.from('promotions').delete().eq('id', id).eq('restaurant_id', restaurantId);
+  }
+
+
+  static Future<String> uploadRestaurantCover({
+    required String restaurantId,
+    required Uint8List bytes,
+    required String extension,
+    required String contentType,
+  }) async {
+    if (user == null) throw Exception('يرجى تسجيل الدخول بحساب المطعم');
+    final safeExtension = ['jpg', 'jpeg', 'png', 'webp'].contains(extension.toLowerCase()) ? extension.toLowerCase() : 'jpg';
+    final path = '$restaurantId/\${user!.id}/cover_\${DateTime.now().microsecondsSinceEpoch}.$safeExtension';
+    await client.storage.from('restaurant-covers').uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: false));
+    return client.storage.from('restaurant-covers').getPublicUrl(path);
+  }
+
+  static Future<void> updateRestaurantCover({required String restaurantId, required String? imageUrl}) async {
+    await client.from('restaurants').update({'cover_image_url': imageUrl}).eq('id', restaurantId);
   }
 
   static Future<String> uploadMenuPhoto({
@@ -750,7 +770,7 @@ class SareeBackend {
 
   static Future<List<Map<String, dynamic>>> activePromotions() async {
     final now = DateTime.now().toUtc().toIso8601String();
-    final rows = await client.from('promotions').select('*, restaurants(name)')
+    final rows = await client.from('promotions').select('*, restaurants(name), menu_items(name)')
         .eq('is_active', true).lte('starts_at', now)
         .or('ends_at.is.null,ends_at.gt.$now')
         .order('starts_at', ascending: false).limit(20);

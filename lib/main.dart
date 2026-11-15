@@ -41,6 +41,36 @@ String _mealPhotoUrl(Map<String, dynamic> item) {
   return 'https://images.unsplash.com/$photo?auto=format&fit=crop&w=720&q=82';
 }
 
+Map<String, dynamic>? _activeItemPromotion(Map<String, dynamic> item) {
+  final raw = item['promotions'];
+  final candidates = raw is List
+      ? raw.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList()
+      : raw is Map ? [Map<String, dynamic>.from(raw)] : <Map<String, dynamic>>[];
+  final now = DateTime.now().toUtc();
+  for (final promotion in candidates) {
+    if (promotion['is_active'] != true) continue;
+    final startsAt = DateTime.tryParse(promotion['starts_at']?.toString() ?? '');
+    final endsAt = DateTime.tryParse(promotion['ends_at']?.toString() ?? '');
+    if (startsAt != null && startsAt.isAfter(now)) continue;
+    if (endsAt != null && !endsAt.isAfter(now)) continue;
+    return promotion;
+  }
+  return null;
+}
+
+int _effectiveItemPrice(Map<String, dynamic> item) {
+  final basePrice = (item['price_yer'] as num? ?? 0).toInt();
+  final promotion = _activeItemPromotion(item);
+  if (promotion == null) return basePrice;
+  final value = (promotion['discount_value'] as num? ?? 0).toInt();
+  if (promotion['discount_type'] == 'percentage') {
+    final discounted = (basePrice * (100 - value) / 100).floor();
+    return discounted < 1 ? 1 : discounted;
+  }
+  final discounted = basePrice - value;
+  return discounted < 1 ? 1 : discounted;
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SareeBackend.initialize();
@@ -48,6 +78,28 @@ Future<void> main() async {
     create: (_) => CartController(),
     child: const SareeApp(),
   ));
+}
+
+Future<void> showAccountSignOutOptions(BuildContext context) async {
+  final scope = await showDialog<SignOutScope>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('تسجيل الخروج'),
+      content: const Text('اختر طريقة تسجيل الخروج. يمكنك تسجيل الدخول إلى الحساب مرة أخرى في أي وقت.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext, SignOutScope.local), child: const Text('من هذا الجهاز فقط')),
+        FilledButton(onPressed: () => Navigator.pop(dialogContext, SignOutScope.global), child: const Text('من جميع الأجهزة')),
+      ],
+    ),
+  );
+  if (scope == null) return;
+  try {
+    await SareeBackend.signOut(scope: scope);
+  } catch (error) {
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('تعذر تسجيل الخروج: \${SareeBackend.arabicError(error)}')),
+    );
+  }
 }
 
 class CartLine {
@@ -77,7 +129,7 @@ class CartController extends ChangeNotifier {
       _items.add(CartLine(
         id: id,
         name: item['name'].toString(),
-        price: (item['price_yer'] as num).toInt(),
+        price: _effectiveItemPrice(item),
         quantity: 1,
       ));
     }
@@ -399,7 +451,7 @@ class PendingApprovalPage extends StatelessWidget {
           const SizedBox(height: 10),
           Text(note?.isNotEmpty == true ? note! : rejected ? 'يرجى التواصل مع إدارة سريع لمعرفة التفاصيل.' : 'سيتم تفعيل حسابك بعد مراجعة الإدارة واعتماد بياناتك.', textAlign: TextAlign.center),
           const SizedBox(height: 20),
-          FilledButton(onPressed: () => SareeBackend.signOut(), child: const Text('تسجيل الخروج')),
+          FilledButton(onPressed: () => showAccountSignOutOptions(context), child: const Text('تسجيل الخروج')),
         ]),
       )),
     );
@@ -485,7 +537,7 @@ class ErrorPage extends StatelessWidget {
         const Text('تعذر تحميل الحساب'),
         Text(message, textAlign: TextAlign.center),
         const SizedBox(height: 12),
-        FilledButton(onPressed: () => SareeBackend.signOut(), child: const Text('تسجيل الخروج')),
+        FilledButton(onPressed: () => showAccountSignOutOptions(context), child: const Text('تسجيل الخروج')),
       ]),
     )),
   );
@@ -605,7 +657,7 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('إرفاق مستندات الهوية'), automaticallyImplyLeading: false,
-      actions: [IconButton(tooltip: 'تسجيل الخروج', onPressed: _busy ? null : () => SareeBackend.signOut(), icon: const Icon(Icons.logout_rounded))]),
+      actions: [IconButton(tooltip: 'خيارات تسجيل الخروج', onPressed: _busy ? null : () => showAccountSignOutOptions(context), icon: const Icon(Icons.logout_rounded))]),
     body: SafeArea(child: ListView(padding: const EdgeInsets.all(18), children: [
       const Icon(Icons.verified_user_rounded, size: 58, color: Color(0xFFFFC400)),
       const SizedBox(height: 12),
@@ -819,6 +871,55 @@ class _AuthPageState extends State<AuthPage> {
   );
 }
 
+
+class CustomerOffersPage extends StatelessWidget {
+  const CustomerOffersPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('عروض المطاعم')),
+    body: FutureBuilder<List<Map<String, dynamic>>>(
+      future: SareeBackend.activePromotions(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
+        if (snapshot.hasError) return Center(child: Text('تعذر تحميل العروض: \${SareeBackend.arabicError(snapshot.error)}'));
+        final promotions = snapshot.data ?? [];
+        if (promotions.isEmpty) return const Center(child: Text('لا توجد عروض نشطة حاليًا. تابع الصفحة لمعرفة العروض الجديدة.'));
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: promotions.map((promotion) {
+            final restaurant = promotion['restaurants'] is Map ? promotion['restaurants']['name']?.toString() : null;
+            final meal = promotion['menu_items'] is Map ? promotion['menu_items']['name']?.toString() : null;
+            final discount = promotion['discount_type'] == 'percentage'
+                ? 'خصم \${promotion['discount_value']}٪'
+                : 'خصم \${promotion['discount_value']} ريال';
+            return Card(
+              clipBehavior: Clip.antiAlias,
+              child: Container(
+                padding: const EdgeInsets.all(17),
+                decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF8B0008), Color(0xFF241719)])),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(promotion['title']?.toString() ?? 'عرض خاص', style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 7),
+                  Text(discount, style: const TextStyle(color: Color(0xFFFFC400), fontSize: 20, fontWeight: FontWeight.w900)),
+                  if (restaurant != null) Text('المطعم: $restaurant', style: const TextStyle(color: Colors.white)),
+                  if (meal != null) Text('العرض على صنف: $meal', style: const TextStyle(color: Colors.white)),
+                  if ((promotion['description']?.toString() ?? '').isNotEmpty)
+                    Padding(padding: const EdgeInsets.only(top: 7), child: Text(promotion['description'].toString(), style: const TextStyle(color: Colors.white70))),
+                  if ((promotion['code']?.toString() ?? '').isNotEmpty)
+                    Padding(padding: const EdgeInsets.only(top: 8), child: Text('كود العرض: \${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
+                  if ((promotion['minimum_order_yer'] as num? ?? 0) > 0)
+                    Text('الحد الأدنى للطلب: \${promotion['minimum_order_yer']} ريال', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                ]),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    ),
+  );
+}
+
 class CustomerHome extends StatelessWidget {
   const CustomerHome({super.key});
 
@@ -848,10 +949,11 @@ class CustomerHome extends StatelessWidget {
                 'account' => const CustomerAccountPage(),
                 'wallet' => const WalletPage(),
                 'support' => const CustomerSupportPage(),
+                'offers' => const CustomerOffersPage(),
                 _ => null,
               };
               if (page != null) Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-              if (value == 'logout') SareeBackend.signOut();
+              if (value == 'logout') showAccountSignOutOptions(context);
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'notifications', child: ListTile(dense: true, leading: Icon(Icons.notifications_none), title: Text('الإشعارات'))),
@@ -860,6 +962,7 @@ class CustomerHome extends StatelessWidget {
               PopupMenuItem(value: 'account', child: ListTile(dense: true, leading: Icon(Icons.person_outline), title: Text('حسابي والعناوين'))),
               PopupMenuItem(value: 'wallet', child: ListTile(dense: true, leading: Icon(Icons.account_balance_wallet_outlined), title: Text('محفظتي'))),
               PopupMenuItem(value: 'support', child: ListTile(dense: true, leading: Icon(Icons.support_agent), title: Text('الدعم والمساعدة'))),
+              PopupMenuItem(value: 'offers', child: ListTile(dense: true, leading: Icon(Icons.local_offer_outlined), title: Text('عروض المطاعم'))),
               PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout), title: Text('تسجيل الخروج'))),
             ],
           ),
@@ -911,6 +1014,7 @@ class CustomerHome extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text(promo['discount_type'] == 'percentage' ? 'خصم ${promo['discount_value']}٪' : 'خصم ${promo['discount_value']} ريال', style: const TextStyle(color: Color(0xFFFFC400), fontWeight: FontWeight.w900, fontSize: 16)),
                         Text((promo['restaurants'] is Map ? promo['restaurants']['name'] : null)?.toString() ?? 'مطعم مشارك', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                        if (promo['menu_items'] is Map && promo['menu_items']['name'] != null) Text('على صنف: ${promo['menu_items']['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFD45A), fontSize: 11, fontWeight: FontWeight.w800)),
                         Expanded(child: Text(promo['description']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12))),
                         if ((promo['code']?.toString() ?? '').isNotEmpty) Text('كود العرض: ${promo['code']} • الحد الأدنى: ${promo['minimum_order_yer'] ?? 0} ريال', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFC400), fontWeight: FontWeight.w900, fontSize: 11)),
                       ]),
@@ -1265,8 +1369,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
         const SizedBox(height: 18),
         OutlinedButton.icon(
           onPressed: () async {
-            await SareeBackend.signOut();
-            if (context.mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+            await showAccountSignOutOptions(context);
           },
           icon: const Icon(Icons.logout_rounded),
           label: const Text('تسجيل الخروج'),
@@ -1326,18 +1429,23 @@ class RestaurantMenuPage extends StatelessWidget {
           'أصناف أخرى',
         ];
         final orderedCategories = [...categoryOrder.where(grouped.containsKey), ...grouped.keys.where((name) => !categoryOrder.contains(name))];
+        final coverUrl = restaurant['cover_image_url']?.toString() ?? '';
         return ListView(padding: const EdgeInsets.all(16), children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: const Color(0xFF171717), borderRadius: BorderRadius.circular(22)),
-            child: Row(children: [
-              const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFFC400), size: 32),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(restaurant['name'].toString(), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
-                const Text('تصفح أقسام المنيو واختر وجبتك', style: TextStyle(color: Colors.white70)),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: SizedBox(height: 174, width: double.infinity, child: Stack(fit: StackFit.expand, children: [
+              if (coverUrl.isNotEmpty) Image.network(coverUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const DecoratedBox(decoration: BoxDecoration(color: Color(0xFF171717)))),
+              if (coverUrl.isEmpty) const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF650008)]))),
+              const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.center, end: Alignment.bottomCenter, colors: [Colors.transparent, Color(0xE6000000)]))),
+              Padding(padding: const EdgeInsets.all(18), child: Row(children: [
+                const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFFC400), size: 32),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
+                  Text(restaurant['name'].toString(), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                  const Text('تصفح أقسام المنيو واختر وجبتك', style: TextStyle(color: Colors.white70)),
+                ])),
               ])),
-            ]),
+            ])),
           ),
           const SizedBox(height: 12),
           FutureBuilder<List<Map<String,dynamic>>>(
@@ -1386,11 +1494,20 @@ class RestaurantMenuPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF171717))),
+                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.white)),
                         const SizedBox(height: 4),
                         Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
                         const SizedBox(height: 7),
-                        Text(available ? '${item['price_yer']} ريال يمني' : 'السعر والتوفر يحددهما المطعم', style: TextStyle(color: available ? const Color(0xFFE50914) : const Color(0xFF8A6670), fontWeight: FontWeight.w900, fontSize: 12)),
+                        if (!available)
+                          const Text('السعر والتوفر يحددهما المطعم', style: TextStyle(color: Color(0xFF8A6670), fontWeight: FontWeight.w900, fontSize: 12))
+                        else if (_activeItemPromotion(item) != null)
+                          Row(children: [
+                            Text('${_effectiveItemPrice(item)} ريال يمني', style: const TextStyle(color: Color(0xFFE50914), fontWeight: FontWeight.w900, fontSize: 12)),
+                            const SizedBox(width: 7),
+                            Text('${item['price_yer']} ريال', style: const TextStyle(color: Color(0xFF8994A3), fontSize: 11, decoration: TextDecoration.lineThrough)),
+                          ])
+                        else
+                          Text('${item['price_yer']} ريال يمني', style: const TextStyle(color: Color(0xFFE50914), fontWeight: FontWeight.w900, fontSize: 12)),
                       ])),
                       Icon(available ? Icons.chevron_left_rounded : Icons.info_outline_rounded, color: const Color(0xFF8994A3)),
                     ]),
@@ -1416,6 +1533,8 @@ class MealDetailsPage extends StatelessWidget {
     body: Builder(builder: (context) {
       final available = item['is_available'] == true && (item['price_yer'] as num? ?? 0) > 0;
       final imageUrl = _mealPhotoUrl(item);
+      final itemPromotion = _activeItemPromotion(item);
+      final salePrice = _effectiveItemPrice(item);
       return ListView(padding: const EdgeInsets.all(18), children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(26),
@@ -1425,7 +1544,7 @@ class MealDetailsPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+        Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
         const SizedBox(height: 8),
         Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF748094))),
         const SizedBox(height: 18),
@@ -1434,7 +1553,11 @@ class MealDetailsPage extends StatelessWidget {
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE7ECF2))),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             const Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF748094))),
-            Text(available ? '${item['price_yer']} ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFFE50914))),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(available ? '$salePrice ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFFE50914))),
+              if (available && itemPromotion != null)
+                Text('${item['price_yer']} ريال قبل الخصم', style: const TextStyle(fontSize: 12, color: Color(0xFF8994A3), decoration: TextDecoration.lineThrough)),
+            ]),
           ]),
         ),
         const SizedBox(height: 24),
@@ -2112,6 +2235,15 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   );
 
   Future<void> _editPromotion(String restaurantId, [Map<String, dynamic>? promotion]) async {
+
+    List<Map<String, dynamic>> menuItems;
+    try {
+      menuItems = await SareeBackend.manageMenu(restaurantId);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحميل أصناف المطعم: \${SareeBackend.arabicError(error)}')));
+      return;
+    }
+    String? selectedMenuItemId = promotion?['menu_item_id']?.toString();
     final title = TextEditingController(text: promotion?['title']?.toString() ?? '');
     final description = TextEditingController(text: promotion?['description']?.toString() ?? '');
     final code = TextEditingController(text: promotion?['code']?.toString() ?? '');
@@ -2130,6 +2262,16 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
           TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان العرض'), validator: (v) => (v ?? '').trim().isEmpty ? 'أدخل عنوان العرض' : null),
           const SizedBox(height: 8),
           TextFormField(controller: description, maxLines: 2, decoration: const InputDecoration(labelText: 'تفاصيل العرض')),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String?>(
+            value: selectedMenuItemId,
+            decoration: const InputDecoration(labelText: 'تطبيق العرض على صنف (اختياري) أو المطعم كاملًا'),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('عرض عام للمطعم')),
+              ...menuItems.map((meal) => DropdownMenuItem<String?>(value: meal['id'].toString(), child: Text(meal['name']?.toString() ?? 'صنف', overflow: TextOverflow.ellipsis))),
+            ],
+            onChanged: (value) => setLocal(() => selectedMenuItemId = value),
+          ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             value: discountType,
@@ -2183,6 +2325,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         discountType: discountType,
         discountValue: int.parse(value.text),
         minimumOrder: int.parse(minimum.text),
+        menuItemId: selectedMenuItemId,
         startsAt: startsAt,
         endsAt: endsAt,
         active: active,
@@ -2212,7 +2355,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             return Card(child: ListTile(
               leading: CircleAvatar(backgroundColor: const Color(0xFFFFF0E3), child: Icon(Icons.local_offer_rounded, color: item['is_active'] == true ? const Color(0xFFE50914) : const Color(0xFF8994A3))),
               title: Text(item['title']?.toString() ?? 'عرض'),
-              subtitle: Text('$discount • ${item['code'] == null || item['code'].toString().isEmpty ? 'بدون كود' : 'الكود: ${item['code']}'} • ${item['is_active'] == true ? 'نشط' : 'متوقف'}'),
+              subtitle: Text('$discount • ${item['menu_items'] is Map ? 'الصنف: ${item['menu_items']['name']}' : 'عرض عام'} • ${item['code'] == null || item['code'].toString().isEmpty ? 'بدون كود' : 'الكود: ${item['code']}'} • ${item['is_active'] == true ? 'نشط' : 'متوقف'}'),
               trailing: PopupMenuButton<String>(
                 onSelected: (v) {
                   if (v == 'edit') _editPromotion(restaurantId, item);
@@ -2222,6 +2365,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                     code: item['code']?.toString() ?? '', discountType: item['discount_type'].toString(),
                     discountValue: (item['discount_value'] as num).toInt(),
                     minimumOrder: (item['minimum_order_yer'] as num? ?? 0).toInt(),
+                    menuItemId: item['menu_item_id']?.toString(),
                     startsAt: DateTime.tryParse(item['starts_at']?.toString() ?? '') ?? DateTime.now(),
                     endsAt: DateTime.tryParse(item['ends_at']?.toString() ?? ''),
                     active: item['is_active'] != true,
@@ -2362,7 +2506,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('إدارة المطعم'), actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))]),
+    appBar: AppBar(title: const Text('إدارة المطعم'), actions: [IconButton(tooltip: 'خيارات تسجيل الخروج', onPressed: () => showAccountSignOutOptions(context), icon: const Icon(Icons.logout))]),
     body: FutureBuilder<List<Map<String,dynamic>>>(
       future: SareeBackend.myRestaurants(),
       builder: (context, rs) {
@@ -2500,6 +2644,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               restaurantId: rid,
               initialFee: (restaurant['delivery_fee_yer'] as num?)?.toInt() ?? 100,
             ),
+            RestaurantBrandingTab(restaurantId: rid, initialCoverUrl: restaurant['cover_image_url']?.toString()),
           ])),
         ]);
       },
@@ -2510,6 +2655,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       NavigationDestination(icon: Icon(Icons.delivery_dining_outlined), label: 'المندوبون'),
       NavigationDestination(icon: Icon(Icons.local_offer_outlined), label: 'العروض'),
       NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'رسوم التوصيل'),
+      NavigationDestination(icon: Icon(Icons.wallpaper_outlined), label: 'خلفية المطعم'),
     ]),
   );
 }
@@ -2689,7 +2835,7 @@ class _CourierRestaurantJoinPageState extends State<CourierRestaurantJoinPage> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: const Text('اختيار المطاعم للعمل معها'),
-      actions: [IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout))],
+      actions: [IconButton(tooltip: 'خيارات تسجيل الخروج', onPressed: () => showAccountSignOutOptions(context), icon: const Icon(Icons.logout))],
     ),
     body: ListView(padding: const EdgeInsets.all(14), children: [
       Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2753,6 +2899,74 @@ class _CourierRestaurantJoinPageState extends State<CourierRestaurantJoinPage> {
       ),
     ]),
   );
+}
+
+
+class RestaurantBrandingTab extends StatefulWidget {
+  const RestaurantBrandingTab({super.key, required this.restaurantId, this.initialCoverUrl});
+  final String restaurantId;
+  final String? initialCoverUrl;
+  @override State<RestaurantBrandingTab> createState() => _RestaurantBrandingTabState();
+}
+class _RestaurantBrandingTabState extends State<RestaurantBrandingTab> {
+  bool _busy = false;
+  late String? _coverUrl;
+  @override void initState() { super.initState(); _coverUrl = widget.initialCoverUrl; }
+  @override void didUpdateWidget(covariant RestaurantBrandingTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialCoverUrl != widget.initialCoverUrl) _coverUrl = widget.initialCoverUrl;
+  }
+  Future<void> _chooseCover() async {
+    if (_busy) return;
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 84, maxWidth: 2000);
+    if (file == null) return;
+    setState(() => _busy = true);
+    try {
+      final bytes = await file.readAsBytes();
+      final extension = file.name.contains('.') ? file.name.split('.').last.toLowerCase() : 'jpg';
+      final contentType = switch (extension) { 'png' => 'image/png', 'webp' => 'image/webp', _ => 'image/jpeg' };
+      final url = await SareeBackend.uploadRestaurantCover(restaurantId: widget.restaurantId, bytes: bytes, extension: extension, contentType: contentType);
+      await SareeBackend.updateRestaurantCover(restaurantId: widget.restaurantId, imageUrl: url);
+      if (!mounted) return;
+      setState(() => _coverUrl = url);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث خلفية المطعم وستظهر للعملاء')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر حفظ الخلفية: \${SareeBackend.arabicError(error)}')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+  Future<void> _removeCover() async {
+    if (_busy || _coverUrl == null || _coverUrl!.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await SareeBackend.updateRestaurantCover(restaurantId: widget.restaurantId, imageUrl: null);
+      if (!mounted) return;
+      setState(() => _coverUrl = null);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت إزالة خلفية المطعم')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إزالة الخلفية: \${SareeBackend.arabicError(error)}')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+  @override Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
+    const Text('خلفية صفحة المطعم', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 8),
+    const Text('اختر صورة عريضة تمثل مطعمك. ستظهر أعلى صفحة مطعمك عند تصفح العملاء للوجبات.', style: TextStyle(color: Colors.white70, height: 1.6)),
+    const SizedBox(height: 16),
+    ClipRRect(borderRadius: BorderRadius.circular(20), child: SizedBox(height: 190, width: double.infinity,
+      child: _coverUrl == null || _coverUrl!.isEmpty
+        ? const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF171717), Color(0xFF650008)])), child: Center(child: Icon(Icons.wallpaper_rounded, size: 54, color: Color(0xFFFFC400))))
+        : Image.network(_coverUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined, size: 48))),
+    )),
+    const SizedBox(height: 14),
+    FilledButton.icon(onPressed: _busy ? null : _chooseCover,
+      icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.photo_library_outlined),
+      label: Text(_busy ? 'جارٍ الحفظ...' : 'اختيار خلفية من الهاتف')),
+    if (_coverUrl != null && _coverUrl!.isNotEmpty)
+      TextButton.icon(onPressed: _busy ? null : _removeCover, icon: const Icon(Icons.delete_outline_rounded), label: const Text('إزالة الخلفية')),
+  ]);
 }
 
 class CourierPortal extends StatefulWidget {
@@ -2908,7 +3122,7 @@ class _CourierPortalState extends State<CourierPortal> {
     appBar: AppBar(title: const Text('طلبات المندوب'), actions: [
       IconButton(tooltip: 'إشعارات التكليف', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerNotificationsPage())), icon: const Icon(Icons.notifications_active_outlined)),
       IconButton(tooltip: 'تحديث الطلبات', onPressed: _busy ? null : _refreshOrders, icon: const Icon(Icons.refresh_rounded)),
-      IconButton(onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout)),
+      IconButton(tooltip: 'خيارات تسجيل الخروج', onPressed: () => showAccountSignOutOptions(context), icon: const Icon(Icons.logout)),
     ]),
     body: FutureBuilder<List<Map<String,dynamic>>>(
       future: _ordersFuture,
@@ -3082,7 +3296,7 @@ class _AdminPortalState extends State<AdminPortal> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: const Text('لوحة إدارة سريع'),
-      actions: [IconButton(tooltip: 'تحديث', onPressed: _refresh, icon: const Icon(Icons.refresh_rounded)), IconButton(tooltip: 'خروج', onPressed: () => SareeBackend.signOut(), icon: const Icon(Icons.logout_rounded))],
+      actions: [IconButton(tooltip: 'تحديث', onPressed: _refresh, icon: const Icon(Icons.refresh_rounded)), IconButton(tooltip: 'خيارات تسجيل الخروج', onPressed: () => showAccountSignOutOptions(context), icon: const Icon(Icons.logout_rounded))],
     ),
     body: IndexedStack(index: _tab, children: [
       FutureBuilder<List<Map<String, dynamic>>>(
