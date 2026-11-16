@@ -52,18 +52,18 @@ jobs:
           if not gradle.exists():
               gradle = Path("android/app/build.gradle")
           source = gradle.read_text()
-          match = re.search(r'namespace\\s*(?:=\\s*)?[\\'"]([^\\'"]+)[\\'"]', source)
+          match = re.search(r'namespace\s*(?:=\s*)?[\'"]([^\'"]+)[\'"]', source)
           if not match:
-              match = re.search(r'applicationId\\s*(?:=\\s*)?[\\'"]([^\\'"]+)[\\'"]', source)
+              match = re.search(r'applicationId\s*(?:=\s*)?[\'"]([^\'"]+)[\'"]', source)
           if not match:
               raise SystemExit("Could not determine Android namespace for MainActivity")
           package = match.group(1)
           activity_dir = Path("android/app/src/main/kotlin") / Path(*package.split("."))
           activity_dir.mkdir(parents=True, exist_ok=True)
           (activity_dir / "MainActivity.kt").write_text(
-              f"package {package}\\n\\n"
-              "import io.flutter.embedding.android.FlutterActivity\\n\\n"
-              "class MainActivity : FlutterActivity()\\n"
+              f"package {package}\n\n"
+              "import io.flutter.embedding.android.FlutterActivity\n\n"
+              "class MainActivity : FlutterActivity()\n"
           )
 
           manifest = Path("android/app/src/main/AndroidManifest.xml")
@@ -74,10 +74,12 @@ jobs:
           if application is None:
               raise SystemExit("AndroidManifest has no application element")
           application.set(android + "label", "سريع")
+          embedding_found = False
           for item in application.findall("meta-data"):
               if item.get(android + "name") == "flutterEmbedding":
                   item.set(android + "value", "2")
-          else:
+                  embedding_found = True
+          if not embedding_found:
               ET.SubElement(application, "meta-data", {
                   android + "name": "flutterEmbedding",
                   android + "value": "2",
@@ -112,8 +114,11 @@ jobs:
               ET.SubElement(intent, "data", {android + "scheme": "com.saree.delivery", android + "host": "login-callback"})
           tree.write(manifest, encoding="utf-8", xml_declaration=True)
           PY
-          grep -R -n 'io.flutter.app.FlutterActivity\\|io.flutter.app.FlutterApplication' android/app/src/main || true
-          grep -q 'io.flutter.embedding.android.FlutterActivity' android/app/src/main/kotlin/*/*/*/MainActivity.kt || find android/app/src/main/kotlin -name MainActivity.kt -exec grep -q 'io.flutter.embedding.android.FlutterActivity' {} ;
+          if grep -R -n 'io.flutter.app.FlutterActivity\|io.flutter.app.FlutterApplication' android/app/src/main; then
+            echo "Legacy Android v1 embedding reference remains" >&2
+            exit 1
+          fi
+          grep -R -q 'io.flutter.embedding.android.FlutterActivity' android/app/src/main/kotlin
           grep -q 'flutterEmbedding' android/app/src/main/AndroidManifest.xml
 
       - name: Set Android minimum SDK to 21 (Android 5.0+)
