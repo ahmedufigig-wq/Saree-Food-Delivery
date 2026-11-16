@@ -48,10 +48,20 @@ String _mealPhotoUrl(Map<String, dynamic> item) {
 }
 
 Map<String, dynamic>? _activeItemPromotion(Map<String, dynamic> item) {
+  final candidates = <Map<String, dynamic>>[];
   final raw = item['promotions'];
-  final candidates = raw is List
-      ? raw.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList()
-      : raw is Map ? [Map<String, dynamic>.from(raw)] : <Map<String, dynamic>>[];
+  if (raw is List) {
+    candidates.addAll(raw.whereType<Map>().map((row) => Map<String, dynamic>.from(row)));
+  } else if (raw is Map) {
+    candidates.add(Map<String, dynamic>.from(raw));
+  }
+  final links = item['promotion_menu_items'];
+  if (links is List) {
+    for (final link in links.whereType<Map>()) {
+      final promotion = link['promotions'];
+      if (promotion is Map) candidates.add(Map<String, dynamic>.from(promotion));
+    }
+  }
   final now = DateTime.now().toUtc();
   for (final promotion in candidates) {
     if (promotion['is_active'] != true) continue;
@@ -924,6 +934,28 @@ class _AuthPageState extends State<AuthPage> {
             onPressed: _busy ? null : _submit,
             child: _busy ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(_awaitingEmailCode ? 'تأكيد البريد' : (_register ? 'إنشاء الحساب' : 'دخول')),
           ),
+          if (!_register && !_awaitingEmailCode) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : () async {
+                setState(() { _busy = true; _message = null; });
+                try {
+                  await SareeBackend.signInWithGoogle();
+                } catch (error) {
+                  if (mounted) setState(() => _message = SareeBackend.arabicError(error));
+                } finally {
+                  if (mounted) setState(() => _busy = false);
+                }
+              },
+              icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
+              label: const Text('المتابعة باستخدام Google'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFFFFC400)),
+                minimumSize: const Size.fromHeight(50),
+              ),
+            ),
+          ],
           if (_awaitingEmailCode) ...[
             TextButton(onPressed: _busy ? null : _resendEmailCode, child: const Text('إعادة إرسال رمز التحقق')),
             TextButton(
@@ -963,7 +995,13 @@ class CustomerOffersPage extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: promotions.map((promotion) {
             final restaurant = promotion['restaurants'] is Map ? promotion['restaurants']['name']?.toString() : null;
-            final meal = promotion['menu_items'] is Map ? promotion['menu_items']['name']?.toString() : null;
+            final linkedItems = promotion['promotion_menu_items'];
+            final linkedNames = linkedItems is List ? linkedItems.whereType<Map>().map((link) {
+              final item = link['menu_items'];
+              return item is Map ? item['name']?.toString() : null;
+            }).whereType<String>().toList() : <String>[];
+            final legacyMeal = promotion['menu_items'] is Map ? promotion['menu_items']['name']?.toString() : null;
+            final meal = linkedNames.isNotEmpty ? linkedNames.join('، ') : legacyMeal;
             final discountValue = promotion['discount_value'] ?? 0;
             final discount = promotion['discount_type'] == 'percentage'
                 ? 'خصم $discountValue٪'
@@ -2219,6 +2257,29 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3)),
           ));
         }),
+        const Divider(height: 28),
+        const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Text('سجل المندوبين السابقين والإجراءات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: SareeBackend.restaurantCourierHistory(restaurantId),
+          builder: (context, historySnap) {
+            if (historySnap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(14), child: LinearProgressIndicator());
+            if (historySnap.hasError) return Padding(padding: const EdgeInsets.all(14), child: Text('تعذر تحميل سجل الفريق: ${SareeBackend.arabicError(historySnap.error)}'));
+            final history = historySnap.data ?? [];
+            if (history.isEmpty) return const Padding(padding: EdgeInsets.all(14), child: Text('سيظهر هنا سجل القبول والإزالة من الآن فصاعدًا.'));
+            return Column(children: history.map((entry) {
+              final event = entry['event_type']?.toString() ?? '';
+              final eventLabel = event == 'removed' ? 'تمت الإزالة' : event == 'restored' ? 'أُعيد للفريق' : 'تم القبول';
+              final date = DateTime.tryParse(entry['event_at']?.toString() ?? '')?.toLocal();
+              final dateLabel = date == null ? '' : '${date.year}/${date.month.toString().padLeft(2,'0')}/${date.day.toString().padLeft(2,'0')}';
+              return Card(child: ListTile(
+                leading: Icon(event == 'removed' ? Icons.person_remove_alt_1_rounded : Icons.history_rounded, color: event == 'removed' ? Colors.redAccent : Colors.green),
+                title: Text(entry['courier_name']?.toString() ?? 'مندوب'),
+                subtitle: Text('${entry['courier_phone'] ?? 'لا يوجد هاتف'} • ${entry['courier_email'] ?? 'لا يوجد بريد'}\n$eventLabel • $dateLabel'),
+                isThreeLine: true,
+              ));
+            }).toList());
+          },
+        ),
       ]);
     });
   }
@@ -2334,7 +2395,16 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحميل أصناف المطعم: ${SareeBackend.arabicError(error)}')));
       return;
     }
-    String? selectedMenuItemId = promotion?['menu_item_id']?.toString();
+    final selectedMenuItemIds = <String>{};
+    final legacyItemId = promotion?['menu_item_id']?.toString();
+    if (legacyItemId != null && legacyItemId.isNotEmpty) selectedMenuItemIds.add(legacyItemId);
+    final oldLinks = promotion?['promotion_menu_items'];
+    if (oldLinks is List) {
+      for (final link in oldLinks.whereType<Map>()) {
+        final linkedId = link['menu_item_id']?.toString();
+        if (linkedId != null && linkedId.isNotEmpty) selectedMenuItemIds.add(linkedId);
+      }
+    }
     final title = TextEditingController(text: promotion?['title']?.toString() ?? '');
     final description = TextEditingController(text: promotion?['description']?.toString() ?? '');
     final code = TextEditingController(text: promotion?['code']?.toString() ?? '');
@@ -2354,14 +2424,29 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
           const SizedBox(height: 8),
           TextFormField(controller: description, maxLines: 2, decoration: const InputDecoration(labelText: 'تفاصيل العرض')),
           const SizedBox(height: 8),
-          DropdownButtonFormField<String?>(
-            value: selectedMenuItemId,
-            decoration: const InputDecoration(labelText: 'تطبيق العرض على صنف (اختياري) أو المطعم كاملًا'),
-            items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('عرض عام للمطعم')),
-              ...menuItems.map((meal) => DropdownMenuItem<String?>(value: meal['id'].toString(), child: Text(meal['name']?.toString() ?? 'صنف', overflow: TextOverflow.ellipsis))),
-            ],
-            onChanged: (value) => setLocal(() => selectedMenuItemId = value),
+          const Align(alignment: Alignment.centerRight, child: Text('أصناف العرض (يمكن اختيار عدة أصناف)', style: TextStyle(fontWeight: FontWeight.w800))),
+          const SizedBox(height: 6),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 220),
+            decoration: BoxDecoration(border: Border.all(color: const Color(0xFF594147)), borderRadius: BorderRadius.circular(12)),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const Padding(padding: EdgeInsets.all(10), child: Text('اترك الاختيارات فارغة إذا كان العرض يشمل المطعم كاملًا.', style: TextStyle(fontSize: 12, color: Colors.white70))),
+                ...menuItems.map((meal) {
+                  final itemId = meal['id'].toString();
+                  return CheckboxListTile(
+                    dense: true,
+                    value: selectedMenuItemIds.contains(itemId),
+                    title: Text(meal['name']?.toString() ?? 'صنف'),
+                    onChanged: (checked) => setLocal(() {
+                      if (checked == true) { selectedMenuItemIds.add(itemId); }
+                      else { selectedMenuItemIds.remove(itemId); }
+                    }),
+                  );
+                }),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
@@ -2416,7 +2501,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         discountType: discountType,
         discountValue: int.parse(value.text),
         minimumOrder: int.parse(minimum.text),
-        menuItemId: selectedMenuItemId,
+        menuItemIds: selectedMenuItemIds.toList(),
         startsAt: startsAt,
         endsAt: endsAt,
         active: active,
@@ -2465,7 +2550,9 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                     code: item['code']?.toString() ?? '', discountType: item['discount_type'].toString(),
                     discountValue: (item['discount_value'] as num).toInt(),
                     minimumOrder: (item['minimum_order_yer'] as num? ?? 0).toInt(),
-                    menuItemId: item['menu_item_id']?.toString(),
+                    menuItemIds: (item['promotion_menu_items'] is List)
+                      ? (item['promotion_menu_items'] as List).whereType<Map>().map((link) => link['menu_item_id'].toString()).toList()
+                      : (item['menu_item_id'] == null ? <String>[] : [item['menu_item_id'].toString()]),
                     startsAt: DateTime.tryParse(item['starts_at']?.toString() ?? '') ?? DateTime.now(),
                     endsAt: DateTime.tryParse(item['ends_at']?.toString() ?? ''),
                     active: item['is_active'] != true,
