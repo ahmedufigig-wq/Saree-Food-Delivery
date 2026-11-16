@@ -268,30 +268,9 @@ jobs:
           fi
           grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
           grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
-          # Supabase Google OAuth callback deep link.
-          python3 - <<'PY'
-          from pathlib import Path
-          import xml.etree.ElementTree as ET
-          path = Path("android/app/src/main/AndroidManifest.xml")
-          tree = ET.parse(path)
-          root = tree.getroot()
-          android = "{http://schemas.android.com/apk/res/android}"
-          activity = next((node for node in root.iter("activity") if node.get(android + "name", "").endswith("MainActivity")), None)
-          if activity is None:
-              raise SystemExit("MainActivity was not found in AndroidManifest.xml")
-          for node in activity.findall("intent-filter"):
-              data = node.find("data")
-              if data is not None and data.get(android + "scheme") == "com.saree.delivery" and data.get(android + "host") == "login-callback":
-                  break
-          else:
-              intent = ET.SubElement(activity, "intent-filter")
-              ET.SubElement(intent, "action", {android + "name": "android.intent.action.VIEW"})
-              ET.SubElement(intent, "category", {android + "name": "android.intent.category.DEFAULT"})
-              ET.SubElement(intent, "category", {android + "name": "android.intent.category.BROWSABLE"})
-              ET.SubElement(intent, "data", {android + "scheme": "com.saree.delivery", android + "host": "login-callback"})
-          tree.write(path, encoding="utf-8", xml_declaration=True)
-          PY
+          # Deep-link callback is added by the v2 embedding setup step.
           grep -q 'com.saree.delivery' "$MANIFEST"
+
 
       - name: Resolve dependencies
         run: flutter pub get
