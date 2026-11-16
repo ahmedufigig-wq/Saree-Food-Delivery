@@ -40,6 +40,82 @@ jobs:
             flutter create --platforms=android --org com.saree.delivery --project-name saree .
           fi
 
+      - name: Ensure Android v2 embedding and Google callback activity
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import xml.etree.ElementTree as ET
+
+          gradle = Path("android/app/build.gradle.kts")
+          if not gradle.exists():
+              gradle = Path("android/app/build.gradle")
+          source = gradle.read_text()
+          match = re.search(r'namespace\\s*(?:=\\s*)?[\\'"]([^\\'"]+)[\\'"]', source)
+          if not match:
+              match = re.search(r'applicationId\\s*(?:=\\s*)?[\\'"]([^\\'"]+)[\\'"]', source)
+          if not match:
+              raise SystemExit("Could not determine Android namespace for MainActivity")
+          package = match.group(1)
+          activity_dir = Path("android/app/src/main/kotlin") / Path(*package.split("."))
+          activity_dir.mkdir(parents=True, exist_ok=True)
+          (activity_dir / "MainActivity.kt").write_text(
+              f"package {package}\\n\\n"
+              "import io.flutter.embedding.android.FlutterActivity\\n\\n"
+              "class MainActivity : FlutterActivity()\\n"
+          )
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          tree = ET.parse(manifest)
+          root = tree.getroot()
+          android = "{http://schemas.android.com/apk/res/android}"
+          application = root.find("application")
+          if application is None:
+              raise SystemExit("AndroidManifest has no application element")
+          application.set(android + "label", "سريع")
+          for item in application.findall("meta-data"):
+              if item.get(android + "name") == "flutterEmbedding":
+                  item.set(android + "value", "2")
+          else:
+              ET.SubElement(application, "meta-data", {
+                  android + "name": "flutterEmbedding",
+                  android + "value": "2",
+              })
+          activity = next((node for node in application.findall("activity")
+                           if node.get(android + "name", "").endswith("MainActivity")), None)
+          if activity is None:
+              activity = ET.SubElement(application, "activity", {
+                  android + "name": ".MainActivity",
+                  android + "exported": "true",
+                  android + "launchMode": "singleTop",
+                  android + "theme": "@style/LaunchTheme",
+                  android + "configChanges": "orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode",
+                  android + "hardwareAccelerated": "true",
+                  android + "windowSoftInputMode": "adjustResize",
+              })
+              intent = ET.SubElement(activity, "intent-filter")
+              ET.SubElement(intent, "action", {android + "name": "android.intent.action.MAIN"})
+              ET.SubElement(intent, "category", {android + "name": "android.intent.category.LAUNCHER"})
+          activity.set(android + "name", ".MainActivity")
+          activity.set(android + "exported", "true")
+          callback_exists = any(
+              any(data.get(android + "scheme") == "com.saree.delivery" and data.get(android + "host") == "login-callback"
+                  for data in intent.findall("data"))
+              for intent in activity.findall("intent-filter")
+          )
+          if not callback_exists:
+              intent = ET.SubElement(activity, "intent-filter")
+              ET.SubElement(intent, "action", {android + "name": "android.intent.action.VIEW"})
+              ET.SubElement(intent, "category", {android + "name": "android.intent.category.DEFAULT"})
+              ET.SubElement(intent, "category", {android + "name": "android.intent.category.BROWSABLE"})
+              ET.SubElement(intent, "data", {android + "scheme": "com.saree.delivery", android + "host": "login-callback"})
+          tree.write(manifest, encoding="utf-8", xml_declaration=True)
+          PY
+          grep -R -n 'io.flutter.app.FlutterActivity\\|io.flutter.app.FlutterApplication' android/app/src/main || true
+          grep -q 'io.flutter.embedding.android.FlutterActivity' android/app/src/main/kotlin/*/*/*/MainActivity.kt || find android/app/src/main/kotlin -name MainActivity.kt -exec grep -q 'io.flutter.embedding.android.FlutterActivity' {} ;
+          grep -q 'flutterEmbedding' android/app/src/main/AndroidManifest.xml
+
       - name: Set Android minimum SDK to 21 (Android 5.0+)
         run: |
           set -euo pipefail
