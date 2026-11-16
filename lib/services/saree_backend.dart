@@ -101,6 +101,13 @@ class SareeBackend {
     await client.auth.signInWithPassword(email: email, password: password);
   }
 
+  static Future<void> signInWithGoogle() async {
+    await client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'com.saree.delivery://login-callback/',
+    );
+  }
+
   static Future<void> createRestaurantCourierAccount({
     required String restaurantId,
     required String fullName,
@@ -262,7 +269,7 @@ class SareeBackend {
     // Availability is checked separately before allowing an order.
     final rows = await client
         .from('menu_items')
-        .select('*, restaurants(cover_image_url), menu_categories(name, sort_order), promotions!promotions_menu_item_id_fkey(*)')
+        .select('*, restaurants(cover_image_url), menu_categories(name, sort_order), promotions!promotions_menu_item_id_fkey(*), promotion_menu_items(menu_item_id, promotions(*))')
         .eq('restaurant_id', restaurantId)
         .order('name');
     return List<Map<String, dynamic>>.from(rows);
@@ -339,6 +346,15 @@ class SareeBackend {
       'p_restaurant_id': restaurantId,
     });
     return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  static Future<List<Map<String, dynamic>>> restaurantCourierHistory(String restaurantId) async {
+    final rows = await client.from('restaurant_courier_history')
+        .select('courier_name,courier_phone,courier_email,event_type,event_at,note')
+        .eq('restaurant_id', restaurantId)
+        .order('event_at', ascending: false)
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows);
   }
 
   static Future<int> courierApplyToRestaurants(List<String> restaurantIds) async {
@@ -590,7 +606,9 @@ class SareeBackend {
   }
 
   static Future<List<Map<String, dynamic>>> managePromotions(String restaurantId) async {
-    final rows = await client.from('promotions').select('*, menu_items(name)').eq('restaurant_id', restaurantId).order('created_at', ascending: false);
+    final rows = await client.from('promotions')
+        .select('*, menu_items(name), promotion_menu_items(menu_item_id, menu_items(name))')
+        .eq('restaurant_id', restaurantId).order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
   }
 
@@ -604,10 +622,12 @@ class SareeBackend {
     required int discountValue,
     required int minimumOrder,
     String? menuItemId,
+    List<String> menuItemIds = const [],
     required DateTime startsAt,
     DateTime? endsAt,
     required bool active,
   }) async {
+    final selectedIds = menuItemIds.toSet().toList();
     final values = {
       'restaurant_id': restaurantId,
       'title': title.trim(),
@@ -616,16 +636,27 @@ class SareeBackend {
       'discount_type': discountType,
       'discount_value': discountValue,
       'minimum_order_yer': minimumOrder,
-      'menu_item_id': menuItemId,
+      // Keep the legacy single-item column populated for older app versions.
+      'menu_item_id': selectedIds.length == 1 ? selectedIds.first : (selectedIds.isEmpty ? menuItemId : null),
       'starts_at': startsAt.toUtc().toIso8601String(),
       'ends_at': endsAt?.toUtc().toIso8601String(),
       'is_active': active,
     };
+    String promotionId;
     if (id == null) {
-      await client.from('promotions').insert(values);
+      final created = await client.from('promotions').insert(values).select('id').single();
+      promotionId = created['id'].toString();
     } else {
+      promotionId = id;
       await client.from('promotions').update(values..remove('restaurant_id'))
           .eq('id', id).eq('restaurant_id', restaurantId);
+    }
+    await client.from('promotion_menu_items').delete().eq('promotion_id', promotionId);
+    if (selectedIds.isNotEmpty) {
+      await client.from('promotion_menu_items').insert(selectedIds.map((itemId) => {
+        'promotion_id': promotionId,
+        'menu_item_id': itemId,
+      }).toList());
     }
   }
 
@@ -784,7 +815,8 @@ class SareeBackend {
 
   static Future<List<Map<String, dynamic>>> activePromotions() async {
     final now = DateTime.now().toUtc().toIso8601String();
-    final rows = await client.from('promotions').select('*, restaurants(name), menu_items(name)')
+    final rows = await client.from('promotions')
+        .select('*, restaurants(name), menu_items(name), promotion_menu_items(menu_items(name))')
         .eq('is_active', true).lte('starts_at', now)
         .or('ends_at.is.null,ends_at.gt.$now')
         .order('starts_at', ascending: false).limit(20);
