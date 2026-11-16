@@ -74,6 +74,12 @@ jobs:
           if application is None:
               raise SystemExit("AndroidManifest has no application element")
           application.set(android + "label", "سريع")
+          # Remove the deprecated v1 application class if the generated manifest contains it.
+          if application.get(android + "name") == "io.flutter.app.FlutterApplication":
+              application.set(android + "name", "${applicationName}")
+          for item in list(application.findall("meta-data")):
+              if item.get(android + "name") == "io.flutter.app.android.SplashScreenUntilFirstFrame":
+                  application.remove(item)
           embedding_found = False
           for item in application.findall("meta-data"):
               if item.get(android + "name") == "flutterEmbedding":
@@ -119,7 +125,12 @@ jobs:
             exit 1
           fi
           grep -R -q 'io.flutter.embedding.android.FlutterActivity' android/app/src/main/kotlin
-          grep -q 'flutterEmbedding' android/app/src/main/AndroidManifest.xml
+          if grep -q 'io.flutter.app.FlutterApplication' android/app/src/main/AndroidManifest.xml; then
+            echo "Legacy FlutterApplication remains in AndroidManifest" >&2
+            exit 1
+          fi
+          grep -q 'android:name="flutterEmbedding"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:value="2"' android/app/src/main/AndroidManifest.xml
 
       - name: Set Android minimum SDK to 21 (Android 5.0+)
         run: |
