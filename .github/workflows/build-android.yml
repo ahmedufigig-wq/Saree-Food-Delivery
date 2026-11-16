@@ -48,6 +48,9 @@ jobs:
           import re
           import xml.etree.ElementTree as ET
 
+          # Flutter's embedding detector reads android:name/android:value by prefix.
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+
           gradle = Path("android/app/build.gradle.kts")
           if not gradle.exists():
               gradle = Path("android/app/build.gradle")
