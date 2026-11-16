@@ -125,12 +125,18 @@ jobs:
             exit 1
           fi
           grep -R -q 'io.flutter.embedding.android.FlutterActivity' android/app/src/main/kotlin
-          if grep -q 'io.flutter.app.FlutterApplication' android/app/src/main/AndroidManifest.xml; then
-            echo "Legacy FlutterApplication remains in AndroidManifest" >&2
-            exit 1
-          fi
-          grep -q 'android:name="flutterEmbedding"' android/app/src/main/AndroidManifest.xml
-          grep -q 'android:value="2"' android/app/src/main/AndroidManifest.xml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          path = "android/app/src/main/AndroidManifest.xml"
+          root = ET.parse(path).getroot()
+          android = "{http://schemas.android.com/apk/res/android}"
+          app = root.find("application")
+          if app is None or app.get(android + "name") == "io.flutter.app.FlutterApplication":
+              raise SystemExit("Legacy FlutterApplication remains in AndroidManifest")
+          if not any(item.get(android + "name") == "flutterEmbedding" and item.get(android + "value") == "2"
+                     for item in app.findall("meta-data")):
+              raise SystemExit("Android v2 embedding metadata is missing")
+          PY
 
       - name: Set Android minimum SDK to 21 (Android 5.0+)
         run: |
