@@ -276,9 +276,12 @@ class FoodPhotoBanner extends StatelessWidget {
   final String subtitle;
   final double height;
 
-  // صورة طعام فوتوغرافية حقيقية للواجهة العامة، وليست رسماً توضيحياً.
-  static const String photoUrl =
-      'https://rs-menus-api.roocdn.com/images/6c489085-92dc-488d-ad81-c77bec5c5189/image.jpeg?fit=crop&height=630&width=1200';
+  // A three-photo food strip gives the banner variety instead of a single static meal.
+  static const List<String> photoUrls = [
+    'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=900&q=85',
+  ];
 
   @override
   Widget build(BuildContext context) => ClipRRect(
@@ -287,29 +290,23 @@ class FoodPhotoBanner extends StatelessWidget {
       height: height,
       width: double.infinity,
       child: Stack(fit: StackFit.expand, children: [
-        Image.network(
-          photoUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stack) => const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [Color(0xFF171717), Color(0xFF8B0008)],
-              ),
-            ),
-            child: Center(
-              child: Icon(Icons.restaurant_menu_rounded, size: 58, color: Color(0xFFFFC400)),
+        Row(children: photoUrls.map((url) => Expanded(
+          child: Image.network(
+            url,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stack) => const ColoredBox(
+              color: Color(0xFF3A2024),
+              child: Center(child: Icon(Icons.restaurant_menu_rounded, size: 34, color: Color(0xFFFFC400))),
             ),
           ),
-        ),
+        )).toList()),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.center,
+              begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Color(0xE6000000)],
-              stops: [0.12, 1],
+              colors: [Color(0x22000000), Color(0xE6000000)],
+              stops: [0.08, 1],
             ),
           ),
         ),
