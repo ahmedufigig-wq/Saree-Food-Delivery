@@ -682,6 +682,23 @@ class SareeBackend {
     await client.from('restaurants').update({'cover_image_url': imageUrl}).eq('id', restaurantId);
   }
 
+  static Future<void> updateRestaurantAccount({
+    required String restaurantId,
+    required String name,
+    required String phone,
+  }) async {
+    final cleanName = name.trim();
+    final cleanPhone = phone.trim();
+    if (cleanName.length < 2) throw ArgumentError('اسم المطعم يجب ألا يقل عن حرفين');
+    if (cleanPhone.isNotEmpty && cleanPhone.replaceAll(RegExp(r'[^0-9+]'), '').length < 7) {
+      throw ArgumentError('أدخل رقم هاتف صحيحًا للمطعم');
+    }
+    await client.from('restaurants').update({
+      'name': cleanName,
+      'phone': cleanPhone.isEmpty ? null : cleanPhone,
+    }).eq('id', restaurantId);
+  }
+
   static Future<String> uploadMenuPhoto({
     required String restaurantId,
     required Uint8List bytes,
