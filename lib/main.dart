@@ -840,7 +840,11 @@ class _AuthPageState extends State<AuthPage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: Form(key: _form, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const BrandMark(size: 86),
+          const FoodPhotoBanner(
+            title: 'وجبات شهية من مطاعم قريب منك',
+            subtitle: 'اختر وجبتك المفضلة ودع سريع يوصلها إليك',
+            height: 172,
+          ),
           const SizedBox(height: 14),
           const Text('سريع', textAlign: TextAlign.center, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
           const Text('طعامك يصل إليك', textAlign: TextAlign.center),
@@ -2176,8 +2180,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(14), child: LinearProgressIndicator());
         if (snap.hasError) return Padding(padding: const EdgeInsets.all(14), child: Text('تعذر تحميل طلبات الانضمام: ${SareeBackend.arabicError(snap.error)}'));
-        final applications = snap.data ?? [];
-        final pending = applications.where((a) => a['status'] == 'pending').toList();
+        // Only pending requests belong in the courier requests tab. Accepted couriers
+        // are recorded in Account Settings and remain available in the active team list.
+        final applications = (snap.data ?? []).where((a) => a['status'] == 'pending').toList();
+        final pending = applications;
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Padding(padding: const EdgeInsets.fromLTRB(14, 14, 14, 6), child: Row(children: [
             const Expanded(child: Text('طلبات انضمام المندوبين', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
