@@ -2257,29 +2257,6 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3)),
           ));
         }),
-        const Divider(height: 28),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Text('سجل المندوبين السابقين والإجراءات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
-        FutureBuilder<List<Map<String, dynamic>>>(
-          future: SareeBackend.restaurantCourierHistory(restaurantId),
-          builder: (context, historySnap) {
-            if (historySnap.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(14), child: LinearProgressIndicator());
-            if (historySnap.hasError) return Padding(padding: const EdgeInsets.all(14), child: Text('تعذر تحميل سجل الفريق: ${SareeBackend.arabicError(historySnap.error)}'));
-            final history = historySnap.data ?? [];
-            if (history.isEmpty) return const Padding(padding: EdgeInsets.all(14), child: Text('سيظهر هنا سجل القبول والإزالة من الآن فصاعدًا.'));
-            return Column(children: history.map((entry) {
-              final event = entry['event_type']?.toString() ?? '';
-              final eventLabel = event == 'removed' ? 'تمت الإزالة' : event == 'restored' ? 'أُعيد للفريق' : 'تم القبول';
-              final date = DateTime.tryParse(entry['event_at']?.toString() ?? '')?.toLocal();
-              final dateLabel = date == null ? '' : '${date.year}/${date.month.toString().padLeft(2,'0')}/${date.day.toString().padLeft(2,'0')}';
-              return Card(child: ListTile(
-                leading: Icon(event == 'removed' ? Icons.person_remove_alt_1_rounded : Icons.history_rounded, color: event == 'removed' ? Colors.redAccent : Colors.green),
-                title: Text(entry['courier_name']?.toString() ?? 'مندوب'),
-                subtitle: Text('${entry['courier_phone'] ?? 'لا يوجد هاتف'} • ${entry['courier_email'] ?? 'لا يوجد بريد'}\n$eventLabel • $dateLabel'),
-                isThreeLine: true,
-              ));
-            }).toList());
-          },
-        ),
       ]);
     });
   }
@@ -2832,6 +2809,11 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               initialFee: (restaurant['delivery_fee_yer'] as num?)?.toInt() ?? 100,
             ),
             RestaurantBrandingTab(restaurantId: rid, initialCoverUrl: restaurant['cover_image_url']?.toString()),
+            RestaurantAccountSettingsTab(
+              restaurantId: rid,
+              initialName: restaurant['name']?.toString() ?? '',
+              initialPhone: restaurant['phone']?.toString() ?? '',
+            ),
           ])),
         ]);
       },
@@ -2843,6 +2825,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       NavigationDestination(icon: Icon(Icons.local_offer_outlined), label: 'العروض'),
       NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'رسوم التوصيل'),
       NavigationDestination(icon: Icon(Icons.wallpaper_outlined), label: 'خلفية المطعم'),
+      NavigationDestination(icon: Icon(Icons.manage_accounts_outlined), label: 'إعدادات الحساب'),
     ]),
   );
 }
@@ -3088,6 +3071,127 @@ class _CourierRestaurantJoinPageState extends State<CourierRestaurantJoinPage> {
   );
 }
 
+
+class RestaurantAccountSettingsTab extends StatefulWidget {
+  const RestaurantAccountSettingsTab({
+    super.key,
+    required this.restaurantId,
+    required this.initialName,
+    required this.initialPhone,
+  });
+  final String restaurantId;
+  final String initialName;
+  final String initialPhone;
+
+  @override
+  State<RestaurantAccountSettingsTab> createState() => _RestaurantAccountSettingsTabState();
+}
+
+class _RestaurantAccountSettingsTabState extends State<RestaurantAccountSettingsTab> {
+  late final TextEditingController _name;
+  late final TextEditingController _phone;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.initialName);
+    _phone = TextEditingController(text: widget.initialPhone);
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await SareeBackend.updateRestaurantAccount(
+        restaurantId: widget.restaurantId,
+        name: _name.text,
+        phone: _phone.text,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ بيانات المطعم بنجاح')),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر حفظ بيانات المطعم: ${SareeBackend.arabicError(error)}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      const Text('بيانات حساب المطعم', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 8),
+      const Text('يمكنك تعديل اسم المطعم ورقم التواصل المرتبط بصفحة المطعم.', style: TextStyle(color: Colors.white70, height: 1.5)),
+      const SizedBox(height: 14),
+      TextField(
+        controller: _name,
+        textDirection: TextDirection.rtl,
+        decoration: const InputDecoration(labelText: 'اسم المطعم', prefixIcon: Icon(Icons.storefront_outlined)),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _phone,
+        keyboardType: TextInputType.phone,
+        textDirection: TextDirection.ltr,
+        decoration: const InputDecoration(labelText: 'رقم هاتف المطعم', prefixIcon: Icon(Icons.phone_outlined), hintText: 'اختياري'),
+      ),
+      const SizedBox(height: 14),
+      FilledButton.icon(
+        onPressed: _busy ? null : _save,
+        icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined),
+        label: Text(_busy ? 'جارٍ الحفظ...' : 'حفظ التعديلات'),
+      ),
+      const Divider(height: 32),
+      const Text('المندوبون الذين تمت الموافقة عليهم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 6),
+      const Text('تظهر هنا بيانات المندوبين المقبولين وسجل تاريخ الموافقة. طلبات الرفض لا تظهر في حساب المطعم.', style: TextStyle(color: Colors.white70, height: 1.5)),
+      FutureBuilder<List<Map<String, dynamic>>>(
+        future: SareeBackend.restaurantCourierHistory(widget.restaurantId),
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Padding(padding: EdgeInsets.all(14), child: LinearProgressIndicator());
+          }
+          if (snap.hasError) {
+            return Padding(padding: const EdgeInsets.all(12), child: Text('تعذر تحميل سجل المندوبين: ${SareeBackend.arabicError(snap.error)}'));
+          }
+          final accepted = (snap.data ?? []).where((entry) =>
+            entry['event_type'] == 'accepted' || entry['event_type'] == 'restored'
+          ).toList();
+          if (accepted.isEmpty) {
+            return const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('لا يوجد مندوبون تمت الموافقة عليهم حتى الآن.', textAlign: TextAlign.center)));
+          }
+          return Column(children: accepted.map((entry) {
+            final date = DateTime.tryParse(entry['event_at']?.toString() ?? '')?.toLocal();
+            final dateLabel = date == null ? 'التاريخ غير متاح' : '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+            return Card(
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.verified_user_rounded, color: Colors.green)),
+                title: Text(entry['courier_name']?.toString().trim().isNotEmpty == true ? entry['courier_name'].toString() : 'مندوب توصيل'),
+                subtitle: Text('${entry['courier_phone'] ?? 'لا يوجد رقم هاتف'}\n${entry['courier_email'] ?? 'لا يوجد بريد إلكتروني'}\nتمت الموافقة: $dateLabel'),
+                isThreeLine: true,
+              ),
+            );
+          }).toList());
+        },
+      ),
+    ],
+  );
+}
 
 class RestaurantBrandingTab extends StatefulWidget {
   const RestaurantBrandingTab({super.key, required this.restaurantId, this.initialCoverUrl});
