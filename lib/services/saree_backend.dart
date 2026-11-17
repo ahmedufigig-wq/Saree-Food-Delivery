@@ -607,7 +607,7 @@ class SareeBackend {
 
   static Future<List<Map<String, dynamic>>> managePromotions(String restaurantId) async {
     final rows = await client.from('promotions')
-        .select('*, menu_items!promotions_menu_item_id_fkey(name), promotion_menu_items(menu_item_id, menu_items!promotion_menu_items_menu_item_id_fkey(name))')
+        .select('*, menu_items(name), promotion_menu_items(menu_item_id, menu_items!promotion_menu_items_menu_item_id_fkey(name))')
         .eq('restaurant_id', restaurantId).order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
   }
@@ -816,7 +816,7 @@ class SareeBackend {
   static Future<List<Map<String, dynamic>>> activePromotions() async {
     final now = DateTime.now().toUtc().toIso8601String();
     final rows = await client.from('promotions')
-        .select('*, restaurants!promotions_restaurant_id_fkey(name), menu_items!promotions_menu_item_id_fkey(name), promotion_menu_items(menu_items!promotion_menu_items_menu_item_id_fkey(name))')
+        .select('*, restaurants!promotions_restaurant_id_fkey(name), menu_items(name), promotion_menu_items(menu_items!promotion_menu_items_menu_item_id_fkey(name))')
         .eq('is_active', true).lte('starts_at', now)
         .or('ends_at.is.null,ends_at.gt.$now')
         .order('starts_at', ascending: false).limit(20);
