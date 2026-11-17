@@ -881,14 +881,21 @@ class SareeBackend {
     await client.from('notifications').update({'read_at': DateTime.now().toUtc().toIso8601String()}).eq('id', id).eq('user_id', user!.id);
   }
 
-  static Future<void> submitReview({required String orderId, required String restaurantId, required int rating, required String comment}) async {
+  static Future<void> submitReview({required String orderId, required String restaurantId, required int rating, required int courierRating, required String comment}) async {
     await client.from('reviews').upsert({
       'order_id': orderId,
       'customer_id': user!.id,
       'restaurant_id': restaurantId,
       'rating': rating,
+      'food_rating': rating,
+      'courier_rating': courierRating,
       'comment': comment.trim(),
     }, onConflict: 'order_id');
+  }
+
+  static Stream<List<Map<String, dynamic>>> notificationsStream() {
+    return client.from('notifications').stream(primaryKey: ['id'])
+      .eq('user_id', user!.id).order('created_at', ascending: false);
   }
 
   static Future<List<Map<String, dynamic>>> mySupportTickets() async {
