@@ -3676,21 +3676,29 @@ class _AdminPortalState extends State<AdminPortal> {
 
 
 Future<void> _showSareeReviewDialog(BuildContext context, Map<String, dynamic> order) async {
-  int rating = 5;
+  int foodRating = 5;
+  int courierRating = 5;
   final comment = TextEditingController();
+  Widget stars(int value, ValueChanged<int> onChanged) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: List.generate(5, (i) => IconButton(
+      onPressed: () => onChanged(i + 1),
+      icon: Icon(i < value ? Icons.star_rounded : Icons.star_border_rounded,
+        color: const Color(0xFFFFB300), size: 30),
+    )),
+  );
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
-      title: const Text('قيّم تجربتك'),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('كيف كانت تجربتك مع المطعم؟'),
-        const SizedBox(height: 12),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) => IconButton(
-          onPressed: () => setLocal(() => rating = i + 1),
-          icon: Icon(i < rating ? Icons.star_rounded : Icons.star_border_rounded, color: const Color(0xFFFFB300), size: 32),
-        ))),
-        TextField(controller: comment, maxLines: 3, decoration: const InputDecoration(labelText: 'اكتب تعليقك (اختياري)')),
-      ]),
+      title: const Text('قيّم طلبك'),
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('كيف كان الطعام؟'),
+        stars(foodRating, (v) => setLocal(() => foodRating = v)),
+        const Divider(),
+        const Text('كيف كان التوصيل والمندوب؟'),
+        stars(courierRating, (v) => setLocal(() => courierRating = v)),
+        TextField(controller: comment, maxLines: 3, decoration: const InputDecoration(labelText: 'ملاحظاتك (اختياري)')),
+      ])),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
         FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('إرسال التقييم')),
@@ -3702,10 +3710,11 @@ Future<void> _showSareeReviewDialog(BuildContext context, Map<String, dynamic> o
       await SareeBackend.submitReview(
         orderId: order['id'].toString(),
         restaurantId: order['restaurant_id'].toString(),
-        rating: rating,
+        rating: foodRating,
+        courierRating: courierRating,
         comment: comment.text,
       );
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('شكراً لك، تم إرسال تقييمك')));
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('شكراً لك، تم إرسال تقييم الطعام والتوصيل')));
     } catch (e) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إرسال التقييم: $e')));
     }
@@ -3824,26 +3833,22 @@ class CustomerNotificationsPage extends StatefulWidget {
   @override State<CustomerNotificationsPage> createState() => _CustomerNotificationsPageState();
 }
 class _CustomerNotificationsPageState extends State<CustomerNotificationsPage> {
-  late Future<List<Map<String,dynamic>>> _future;
-  @override void initState() { super.initState(); _future = SareeBackend.myNotifications(); }
-  Future<void> _refresh() async { setState(() => _future = SareeBackend.myNotifications()); await _future; }
   @override Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('الإشعارات'), actions: [IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh))]),
-    body: FutureBuilder<List<Map<String,dynamic>>>(
-      future: _future,
+    appBar: AppBar(title: const Text('الإشعارات')),
+    body: StreamBuilder<List<Map<String,dynamic>>>(
+      stream: SareeBackend.notificationsStream(),
       builder: (context,snap) {
-        if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) return const LoadingPage();
         if (snap.hasError) return Center(child: Text('تعذر تحميل الإشعارات: ${SareeBackend.arabicError(snap.error)}'));
         final rows = snap.data ?? [];
         if (rows.isEmpty) return const Center(child: Text('لا توجد إشعارات حالياً'));
         return ListView(children: rows.map((n) => Card(child: ListTile(
           leading: CircleAvatar(backgroundColor: n['read_at'] == null ? const Color(0xFFFFE6E6) : Colors.grey.shade200, child: const Icon(Icons.notifications_active_outlined)),
           title: Text(n['title'].toString(), style: const TextStyle(fontWeight: FontWeight.w800)),
-          subtitle: Text('${n['body']}\n${n['created_at']}'),
+          subtitle: Text('${n['body']}\\n${n['created_at']}'),
           isThreeLine: true,
           onTap: () async {
             if (n['read_at'] == null) await SareeBackend.markNotificationRead(n['id'].toString());
-            await _refresh();
           },
         ))).toList());
       },
