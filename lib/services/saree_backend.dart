@@ -607,7 +607,7 @@ class SareeBackend {
 
   static Future<List<Map<String, dynamic>>> managePromotions(String restaurantId) async {
     final rows = await client.from('promotions')
-        .select('*, menu_items(name), promotion_menu_items(menu_item_id, menu_items!promotion_menu_items_menu_item_id_fkey(name))')
+        .select('*, menu_items(name,image_url), promotion_menu_items(menu_item_id, menu_items!promotion_menu_items_menu_item_id_fkey(name,image_url))')
         .eq('restaurant_id', restaurantId).order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
   }
