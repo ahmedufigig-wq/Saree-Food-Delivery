@@ -1627,7 +1627,7 @@ class RestaurantMenuPage extends StatelessWidget {
                     average.toStringAsFixed(1),
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  subtitle: Text('\${reviews.length} تقييم من العملاء'),
+                  subtitle: Text('${reviews.length} تقييم من العملاء'),
                   trailing: TextButton(
                     onPressed: () {
                       showModalBottomSheet<void>(
@@ -1644,7 +1644,7 @@ class RestaurantMenuPage extends StatelessWidget {
                               ...reviews.map((review) => ListTile(
                                 leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400)),
                                 title: Text(
-                                  '\${review['rating']}/5 • \${(review['profiles'] is Map ? review['profiles']['full_name'] : null) ?? 'عميل'}',
+                                  '${review['rating']}/5 • ${(review['profiles'] is Map ? review['profiles']['full_name'] : null) ?? 'عميل'}',
                                 ),
                                 subtitle: Text(review['comment']?.toString() ?? ''),
                               )),
