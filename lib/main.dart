@@ -35,8 +35,6 @@ List<String> _mealPhotoUrls(Map<String, dynamic> item) {
 
 String _mealPhotoUrl(Map<String, dynamic> item) {
   final saved = _mealPhotoUrls(item).firstOrNull ?? '';
-
-  final saved = item['image_url']?.toString().trim() ?? '';
   final restaurantData = item['restaurants'];
   final restaurantCover = restaurantData is Map
       ? restaurantData['cover_image_url']?.toString().trim() ?? ''
@@ -1703,28 +1701,84 @@ String _promotionItemNames(Map<String, dynamic> promotion) {
 class MealPhotoGallery extends StatefulWidget {
   const MealPhotoGallery({super.key, required this.urls});
   final List<String> urls;
-  @override State<MealPhotoGallery> createState() => _MealPhotoGalleryState();
+
+  @override
+  State<MealPhotoGallery> createState() => _MealPhotoGalleryState();
 }
+
 class _MealPhotoGalleryState extends State<MealPhotoGallery> {
-  final PageController _controller = PageController();
+  late final PageController _controller = PageController();
   int _index = 0;
-  @override void dispose() { _controller.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) => Column(children: [
-    ClipRRect(borderRadius: BorderRadius.circular(26), child: SizedBox(height: 230, child: PageView.builder(
-      controller: _controller, itemCount: widget.urls.length,
-      onPageChanged: (value) => setState(() => _index = value),
-      itemBuilder: (_, index) => Image.network(widget.urls[index], fit: BoxFit.cover, width: double.infinity,
-        errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914)))),
-    ))),
-    if (widget.urls.length > 1) ...[
-      const SizedBox(height: 8),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(widget.urls.length, (index) =>
-        GestureDetector(onTap: () => _controller.animateToPage(index, duration: const Duration(milliseconds: 250), curve: Curves.easeOut),
-          child: AnimatedContainer(duration: const Duration(milliseconds: 180), margin: const EdgeInsets.symmetric(horizontal: 3),
-            width: _index == index ? 20 : 7, height: 7,
-            decoration: BoxDecoration(color: _index == index ? const Color(0xFFE50914) : const Color(0xFFB9C0CA), borderRadius: BorderRadius.circular(8))))),
-    ],
-  ]);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = widget.urls.where((url) => url.trim().isNotEmpty).toList();
+    if (photos.isEmpty) {
+      return const SizedBox(
+        height: 220,
+        child: Center(child: Icon(Icons.restaurant_rounded, size: 72)),
+      );
+    }
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: SizedBox(
+            height: 230,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: photos.length,
+              onPageChanged: (value) => setState(() => _index = value),
+              itemBuilder: (context, index) => Image.network(
+                photos[index],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                errorBuilder: (context, error, stack) => const ColoredBox(
+                  color: Color(0xFFFFF0E3),
+                  child: Center(
+                    child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (photos.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(photos.length, (index) {
+              final selected = _index == index;
+              return GestureDetector(
+                onTap: () => _controller.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                ),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: selected ? 20 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: selected ? const Color(0xFFE50914) : const Color(0xFFB9C0CA),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+}
 
 class MealDetailsPage extends StatelessWidget {
   const MealDetailsPage({super.key, required this.item, required this.restaurantId});
