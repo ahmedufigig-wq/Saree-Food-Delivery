@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,7 +15,27 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'services/saree_backend.dart';
 
 
+List<String> _mealPhotoUrls(Map<String, dynamic> item) {
+  final raw = item['image_url']?.toString().trim() ?? '';
+  if (raw.isEmpty) return [];
+  if (raw.startsWith('[')) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        final urls = decoded.map((value) => value.toString().trim())
+            .where((value) => value.startsWith('https://') || value.startsWith('http://'))
+            .toSet().toList();
+        if (urls.isNotEmpty) return urls;
+      }
+    } catch (_) {}
+  }
+  if (raw.startsWith('https://') || raw.startsWith('http://')) return [raw];
+  return [];
+}
+
 String _mealPhotoUrl(Map<String, dynamic> item) {
+  final saved = _mealPhotoUrls(item).firstOrNull ?? '';
+
   final saved = item['image_url']?.toString().trim() ?? '';
   final restaurantData = item['restaurants'];
   final restaurantCover = restaurantData is Map
@@ -1652,6 +1674,44 @@ class RestaurantMenuPage extends StatelessWidget {
   );
 }
 
+String _promotionItemNames(Map<String, dynamic> promotion) {
+  final names = <String>[];
+  final links = promotion['promotion_menu_items'];
+  if (links is List) for (final link in links.whereType<Map>()) {
+    final meal = link['menu_items'];
+    if (meal is Map && meal['name'] != null) names.add(meal['name'].toString());
+  }
+  final legacy = promotion['menu_items'];
+  if (legacy is Map && legacy['name'] != null && names.isEmpty) names.add(legacy['name'].toString());
+  return names.isEmpty ? 'عرض عام' : 'الأصناف: ${names.toSet().join('، ')}';
+}
+
+class MealPhotoGallery extends StatefulWidget {
+  const MealPhotoGallery({super.key, required this.urls});
+  final List<String> urls;
+  @override State<MealPhotoGallery> createState() => _MealPhotoGalleryState();
+}
+class _MealPhotoGalleryState extends State<MealPhotoGallery> {
+  final PageController _controller = PageController();
+  int _index = 0;
+  @override void dispose() { _controller.dispose(); super.dispose(); }
+  @override Widget build(BuildContext context) => Column(children: [
+    ClipRRect(borderRadius: BorderRadius.circular(26), child: SizedBox(height: 230, child: PageView.builder(
+      controller: _controller, itemCount: widget.urls.length,
+      onPageChanged: (value) => setState(() => _index = value),
+      itemBuilder: (_, index) => Image.network(widget.urls[index], fit: BoxFit.cover, width: double.infinity,
+        errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914)))),
+    ))),
+    if (widget.urls.length > 1) ...[
+      const SizedBox(height: 8),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(widget.urls.length, (index) =>
+        GestureDetector(onTap: () => _controller.animateToPage(index, duration: const Duration(milliseconds: 250), curve: Curves.easeOut),
+          child: AnimatedContainer(duration: const Duration(milliseconds: 180), margin: const EdgeInsets.symmetric(horizontal: 3),
+            width: _index == index ? 20 : 7, height: 7,
+            decoration: BoxDecoration(color: _index == index ? const Color(0xFFE50914) : const Color(0xFFB9C0CA), borderRadius: BorderRadius.circular(8))))),
+    ],
+  ]);
+
 class MealDetailsPage extends StatelessWidget {
   const MealDetailsPage({super.key, required this.item, required this.restaurantId});
   final Map<String, dynamic> item;
@@ -1666,13 +1726,7 @@ class MealDetailsPage extends StatelessWidget {
       final itemPromotion = _activeItemPromotion(item);
       final salePrice = _effectiveItemPrice(item);
       return ListView(padding: const EdgeInsets.all(18), children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(26),
-          child: SizedBox(
-            height: 230,
-            child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914)))),
-          ),
-        ),
+        MealPhotoGallery(urls: _mealPhotoUrls(item).isEmpty ? [imageUrl] : _mealPhotoUrls(item)),
         const SizedBox(height: 20),
         Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
         const SizedBox(height: 8),
@@ -2520,7 +2574,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             return Card(child: ListTile(
               leading: CircleAvatar(backgroundColor: const Color(0xFFFFF0E3), child: Icon(Icons.local_offer_rounded, color: item['is_active'] == true ? const Color(0xFFE50914) : const Color(0xFF8994A3))),
               title: Text(item['title']?.toString() ?? 'عرض'),
-              subtitle: Text('$discount • ${item['menu_items'] is Map ? 'الصنف: ${item['menu_items']['name']}' : 'عرض عام'} • ${item['code'] == null || item['code'].toString().isEmpty ? 'بدون كود' : 'الكود: ${item['code']}'} • ${item['is_active'] == true ? 'نشط' : 'متوقف'}'),
+              subtitle: Text('$discount • ${_promotionItemNames(item)} • ${item['code'] == null || item['code'].toString().isEmpty ? 'بدون كود' : 'الكود: ${item['code']}'} • ${item['is_active'] == true ? 'نشط' : 'متوقف'}'),
               trailing: PopupMenuButton<String>(
                 onSelected: (v) {
                   if (v == 'edit') _editPromotion(restaurantId, item);
@@ -2624,7 +2678,8 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     final description = TextEditingController(text: item?['description']?.toString() ?? '');
     final price = TextEditingController(text: item?['price_yer']?.toString() ?? '');
     final image = TextEditingController(text: item?['image_url']?.toString() ?? '');
-    XFile? selectedPhoto;
+    final selectedPhotos = <XFile>[];
+    final existingPhotos = item == null ? <String>[] : _mealPhotoUrls(item);
     bool available = item?['is_available'] != false;
     final form = GlobalKey<FormState>();
     final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
@@ -2640,28 +2695,40 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         const SizedBox(height: 6),
         Align(alignment: Alignment.centerRight, child: TextButton.icon(
           onPressed: () async {
-            final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 84, maxWidth: 1600);
-            if (picked != null) setLocal(() => selectedPhoto = picked);
+            final picked = await ImagePicker().pickMultiImage(imageQuality: 84, maxWidth: 1600, limit: 8);
+            if (picked.isNotEmpty) setLocal(() { selectedPhotos..clear()..addAll(picked.take(8)); });
           },
           icon: const Icon(Icons.photo_library_outlined),
-          label: Text(selectedPhoto == null ? 'اختيار صورة حقيقية من الهاتف' : 'تم اختيار: ${selectedPhoto!.name}'),
+          label: Text(selectedPhotos.isEmpty ? 'اختيار عدة صور للوجبة (حتى 8 صور)' : 'تم اختيار ${selectedPhotos.length} صور للوجبة'),
         )),
+        if (existingPhotos.isNotEmpty || selectedPhotos.isNotEmpty)
+          SizedBox(height: 76, child: ListView(scrollDirection: Axis.horizontal, children: [
+            ...existingPhotos.map((url) => Padding(padding: const EdgeInsets.all(4), child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(url, width: 68, height: 68, fit: BoxFit.cover)))),
+            ...selectedPhotos.map((photo) => Padding(padding: const EdgeInsets.all(4), child: FutureBuilder<Uint8List>(future: photo.readAsBytes(), builder: (_, snap) => snap.hasData ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(snap.data!, width: 68, height: 68, fit: BoxFit.cover)) : const SizedBox(width: 68, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))))),
+          ])),
         SwitchListTile(value: available, onChanged: (v) => setLocal(() => available = v), title: const Text('متاحة للطلب')),
       ]))),
       actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')), FilledButton(onPressed: () { if(form.currentState!.validate()) Navigator.pop(ctx, true); }, child: const Text('حفظ'))],
     )));
     if(ok == true) await _run(() async {
-      String? imageUrl = image.text.trim().isEmpty ? null : image.text.trim();
-      if (selectedPhoto != null) {
-        final extension = selectedPhoto!.name.contains('.') ? selectedPhoto!.name.split('.').last.toLowerCase() : 'jpg';
-        final contentType = extension == 'png' ? 'image/png' : extension == 'webp' ? 'image/webp' : 'image/jpeg';
-        imageUrl = await SareeBackend.uploadMenuPhoto(
-          restaurantId: restaurantId,
-          bytes: await selectedPhoto!.readAsBytes(),
-          extension: extension,
-          contentType: contentType,
-        );
+      final imageUrls = <String>[];
+      if (selectedPhotos.isNotEmpty) {
+        for (final photo in selectedPhotos) {
+          final extension = photo.name.contains('.') ? photo.name.split('.').last.toLowerCase() : 'jpg';
+          final contentType = extension == 'png' ? 'image/png' : extension == 'webp' ? 'image/webp' : 'image/jpeg';
+          imageUrls.add(await SareeBackend.uploadMenuPhoto(
+            restaurantId: restaurantId,
+            bytes: await photo.readAsBytes(),
+            extension: extension,
+            contentType: contentType,
+          ));
+        }
+      } else if (existingPhotos.isNotEmpty) {
+        imageUrls.addAll(existingPhotos);
+      } else if (image.text.trim().isNotEmpty) {
+        imageUrls.add(image.text.trim());
       }
+      final imageUrl = imageUrls.isEmpty ? null : jsonEncode(imageUrls);
       await SareeBackend.saveMenuItem(
         id: item?['id']?.toString(), restaurantId: restaurantId, name: name.text,
         description: description.text, price: int.parse(price.text),
@@ -2733,7 +2800,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   if(items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('لم تضف وجبات بعد. أضف أول وجبة ليراها العملاء.')),
                   ...items.map((item) => Card(child: ListTile(
                     leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 54, height: 54, child: Image.network(_mealPhotoUrl(item), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, color: Color(0xFFE50914)))))),
-                    title: Text(item['name'].toString(), style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w900)),
+                    title: Text(item['name'].toString(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 15, fontWeight: FontWeight.w900)),
                     subtitle: Text('${item['price_yer']} ريال • ${item['is_available'] == true ? 'متاحة' : 'متوقفة'}', style: const TextStyle(color: Color(0xFFE5DADD))),
                     trailing: PopupMenuButton<String>(
                       onSelected: (v) {
