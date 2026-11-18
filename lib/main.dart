@@ -1025,6 +1025,16 @@ class CustomerOffersPage extends StatelessWidget {
             }).whereType<String>().toList() : <String>[];
             final legacyMeal = promotion['menu_items'] is Map ? promotion['menu_items']['name']?.toString() : null;
             final meal = linkedNames.isNotEmpty ? linkedNames.join('، ') : legacyMeal;
+            final linkedPhotos = <String>[];
+            if (linkedItems is List) {
+              for (final link in linkedItems.whereType<Map>()) {
+                final linkedMeal = link['menu_items'];
+                if (linkedMeal is Map) linkedPhotos.addAll(_mealPhotoUrls(Map<String, dynamic>.from(linkedMeal)));
+              }
+            }
+            if (linkedPhotos.isEmpty && promotion['menu_items'] is Map) {
+              linkedPhotos.addAll(_mealPhotoUrls(Map<String, dynamic>.from(promotion['menu_items'] as Map)));
+            }
             final discountValue = promotion['discount_value'] ?? 0;
             final discount = promotion['discount_type'] == 'percentage'
                 ? 'خصم $discountValue٪'
@@ -1037,6 +1047,10 @@ class CustomerOffersPage extends StatelessWidget {
                 padding: const EdgeInsets.all(17),
                 decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF8B0008), Color(0xFF241719)])),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if (linkedPhotos.isNotEmpty) ...[
+                    MealPhotoGallery(urls: linkedPhotos.toSet().toList()),
+                    const SizedBox(height: 12),
+                  ],
                   Text(promotion['title']?.toString() ?? 'عرض خاص', style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 7),
                   Text(discount, style: const TextStyle(color: Color(0xFFFFC400), fontSize: 20, fontWeight: FontWeight.w900)),
