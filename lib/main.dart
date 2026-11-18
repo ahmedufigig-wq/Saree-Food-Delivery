@@ -1612,25 +1612,51 @@ class RestaurantMenuPage extends StatelessWidget {
             ])),
           ),
           const SizedBox(height: 12),
-          FutureBuilder<List<Map<String,dynamic>>>(
+          FutureBuilder<List<Map<String, dynamic>>>(
             future: SareeBackend.restaurantReviews(restaurant['id'].toString()),
             builder: (context, reviewSnap) {
-              final reviews = reviewSnap.data ?? [];
+              final reviews = reviewSnap.data ?? <Map<String, dynamic>>[];
               if (reviews.isEmpty) return const SizedBox.shrink();
-              final average = reviews.map((r) => (r['rating'] as num).toDouble()).reduce((a,b) => a+b) / reviews.length;
-              return Card(child: ListTile(
-                leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400), size: 30),
-                title: Text(average.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.w900)),
-                subtitle: Text('${reviews.length} تقييم من العملاء'),
-                trailing: TextButton(onPressed: () => showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => SafeArea(child: ListView(padding: const EdgeInsets.all(16), children: [
-                  const Text('تقييمات العملاء', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-                  ...reviews.map((r) => ListTile(
-                    leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400)),
-                    title: Text('${r['rating']}/5 • ${(r['profiles'] is Map ? r['profiles']['full_name'] : null) ?? 'عميل'}'),
-                    subtitle: Text(r['comment']?.toString() ?? ''),
-                  )),
-                ]))), child: const Text('عرض التقييمات')),
-              ));
+              final average = reviews
+                  .map((review) => (review['rating'] as num).toDouble())
+                  .reduce((a, b) => a + b) / reviews.length;
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400), size: 30),
+                  title: Text(
+                    average.toStringAsFixed(1),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('\${reviews.length} تقييم من العملاء'),
+                  trailing: TextButton(
+                    onPressed: () {
+                      showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (sheetContext) => SafeArea(
+                          child: ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              const Text(
+                                'تقييمات العملاء',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                              ),
+                              ...reviews.map((review) => ListTile(
+                                leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400)),
+                                title: Text(
+                                  '\${review['rating']}/5 • \${(review['profiles'] is Map ? review['profiles']['full_name'] : null) ?? 'عميل'}',
+                                ),
+                                subtitle: Text(review['comment']?.toString() ?? ''),
+                              )),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('عرض التقييمات'),
+                  ),
+                ),
+              );
             },
           ),
           const SizedBox(height: 16),
