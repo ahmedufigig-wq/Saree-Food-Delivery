@@ -284,6 +284,73 @@ class SareeFoodBackdrop extends StatelessWidget {
   ]);
 }
 
+class RotatingFoodImage extends StatefulWidget {
+  const RotatingFoodImage({
+    super.key,
+    required this.urls,
+    this.fallbackIcon = Icons.restaurant_rounded,
+  });
+
+  final List<String> urls;
+  final IconData fallbackIcon;
+
+  @override
+  State<RotatingFoodImage> createState() => _RotatingFoodImageState();
+}
+
+class _RotatingFoodImageState extends State<RotatingFoodImage> {
+  int _index = 0;
+  Timer? _timer;
+
+  List<String> get _photos => widget.urls.where((url) => url.trim().isNotEmpty).toList();
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted && _photos.length > 1) setState(() => _index = (_index + 1) % _photos.length);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant RotatingFoodImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.urls != widget.urls) _index = 0;
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = _photos;
+    if (photos.isEmpty) {
+      return ColoredBox(
+        color: const Color(0xFFFFF0E3),
+        child: Center(child: Icon(widget.fallbackIcon, size: 36, color: const Color(0xFFE50914))),
+      );
+    }
+    final index = _index % photos.length;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      child: Image.network(
+        photos[index],
+        key: ValueKey<String>(photos[index]),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) => ColoredBox(
+          color: const Color(0xFFFFF0E3),
+          child: Center(child: Icon(widget.fallbackIcon, size: 36, color: const Color(0xFFE50914))),
+        ),
+      ),
+    );
+  }
+}
+
 class FoodPhotoBanner extends StatefulWidget {
   const FoodPhotoBanner({
     super.key,
@@ -1706,7 +1773,7 @@ class RestaurantMenuPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                         child: SizedBox(
                           width: 82, height: 82,
-                          child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFFE50914)))),
+                          child: RotatingFoodImage(urls: _mealPhotoUrls(item).isEmpty ? [imageUrl] : _mealPhotoUrls(item)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -2936,7 +3003,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   ),
                   if(items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('لم تضف وجبات بعد. أضف أول وجبة ليراها العملاء.')),
                   ...items.map((item) => Card(child: ListTile(
-                    leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 54, height: 54, child: Image.network(_mealPhotoUrl(item), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFFFF0E3), child: Icon(Icons.restaurant_rounded, color: Color(0xFFE50914)))))),
+                    leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 54, height: 54, child: RotatingFoodImage(urls: _mealPhotoUrls(item).isEmpty ? [_mealPhotoUrl(item)] : _mealPhotoUrls(item)))),
                     title: Text(item['name'].toString(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 15, fontWeight: FontWeight.w900)),
                     subtitle: Text('${item['price_yer']} ريال • ${item['is_available'] == true ? 'متاحة' : 'متوقفة'}', style: const TextStyle(color: Color(0xFFE5DADD))),
                     trailing: PopupMenuButton<String>(
