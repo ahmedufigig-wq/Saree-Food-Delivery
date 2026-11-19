@@ -1124,7 +1124,7 @@ class CustomerOffersPage extends StatelessWidget {
     }
     final cart = context.read<CartController>();
     for (final item in items) { cart.add(item, restaurantId); }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة \${items.length} صنف من العرض إلى السلة')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة ${items.length} صنف من العرض إلى السلة')));
     Navigator.push(context, MaterialPageRoute(builder: (_) => checkout ? const CheckoutPage() : const CartPage()));
   }
   @override
@@ -1134,7 +1134,7 @@ class CustomerOffersPage extends StatelessWidget {
       future: SareeBackend.activePromotions(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snapshot.hasError) return Center(child: Text('تعذر تحميل العروض: \${SareeBackend.arabicError(snapshot.error)}'));
+        if (snapshot.hasError) return Center(child: Text('تعذر تحميل العروض: ${SareeBackend.arabicError(snapshot.error)}'));
         final promotions = snapshot.data ?? [];
         if (promotions.isEmpty) return const Center(child: Text('لا توجد عروض نشطة حاليًا. تابع الصفحة لمعرفة العروض الجديدة.'));
         return ListView(padding: const EdgeInsets.all(16), children: promotions.map((promotion) {
@@ -1166,7 +1166,7 @@ class CustomerOffersPage extends StatelessWidget {
               ]))),
               if (min > 0) Padding(padding: const EdgeInsets.only(top: 8), child: Text('الحد الأدنى: $min ريال', style: const TextStyle(color: Colors.white70, fontSize: 12))),
               if ((promotion['code']?.toString() ?? '').isNotEmpty)
-                Padding(padding: const EdgeInsets.only(top: 5), child: Text('كود العرض: \${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
+                Padding(padding: const EdgeInsets.only(top: 5), child: Text('كود العرض: ${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
               const SizedBox(height: 14),
               Row(children: [
                 Expanded(child: FilledButton.icon(onPressed: items.isEmpty ? null : () => _addOffer(context, promotion, checkout: true), icon: const Icon(Icons.flash_on_rounded), label: const Text('اطلب العرض الآن'))),
@@ -2346,7 +2346,7 @@ class CourierLiveMap extends StatelessWidget {
           ],
         )),
         const Padding(padding: EdgeInsets.fromLTRB(12, 8, 12, 0), child: Text('الخط الأزرق يوضح الاتجاه المباشر بين المندوب وعنوانك، وليس توجيهاً انعطافياً على الطرق.', style: TextStyle(fontSize: 11, color: Color(0xFF748094)))),
-        Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: \${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF748094)))),
+        Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: ${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF748094)))),
       ]));
     },
   );
@@ -2529,13 +2529,13 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       future: SareeBackend.restaurantCourierTeam(restaurantId),
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snap.hasError) return Center(child: Text('تعذر تحميل فريق المندوبين: \${SareeBackend.arabicError(snap.error)}'));
+        if (snap.hasError) return Center(child: Text('تعذر تحميل فريق المندوبين: ${SareeBackend.arabicError(snap.error)}'));
         final couriers = snap.data ?? [];
         return FutureBuilder<List<Map<String, dynamic>>>(
           future: SareeBackend.restaurantCourierApplications(restaurantId),
           builder: (context, docsSnap) {
             if (docsSnap.connectionState != ConnectionState.done) return const LoadingPage();
-            if (docsSnap.hasError) return Center(child: Text('تعذر تحميل مستندات المندوبين: \${SareeBackend.arabicError(docsSnap.error)}'));
+            if (docsSnap.hasError) return Center(child: Text('تعذر تحميل مستندات المندوبين: ${SareeBackend.arabicError(docsSnap.error)}'));
             final accepted = (docsSnap.data ?? []).where((a) => a['status'] == 'accepted').toList();
             return ListView(padding: const EdgeInsets.only(bottom: 16), children: [
               _courierApplicationsSection(restaurantId),
