@@ -284,7 +284,7 @@ class SareeFoodBackdrop extends StatelessWidget {
   ]);
 }
 
-class FoodPhotoBanner extends StatelessWidget {
+class FoodPhotoBanner extends StatefulWidget {
   const FoodPhotoBanner({
     super.key,
     required this.title,
@@ -296,30 +296,57 @@ class FoodPhotoBanner extends StatelessWidget {
   final String subtitle;
   final double height;
 
-  // A three-photo food strip gives the banner variety instead of a single static meal.
   static const List<String> photoUrls = [
-    'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85',
-    'https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?auto=format&fit=crop&w=900&q=85',
-    'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=88',
+    'https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?auto=format&fit=crop&w=1200&q=88',
+    'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=1200&q=88',
   ];
+
+  @override
+  State<FoodPhotoBanner> createState() => _FoodPhotoBannerState();
+}
+
+class _FoodPhotoBannerState extends State<FoodPhotoBanner> {
+  int _photoIndex = 0;
+  Timer? _photoTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _photoTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) setState(() => _photoIndex = (_photoIndex + 1) % FoodPhotoBanner.photoUrls.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _photoTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => ClipRRect(
     borderRadius: BorderRadius.circular(24),
     child: SizedBox(
-      height: height,
+      height: widget.height,
       width: double.infinity,
       child: Stack(fit: StackFit.expand, children: [
-        Row(children: photoUrls.map((url) => Expanded(
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 650),
+          switchInCurve: Curves.easeInOut,
+          switchOutCurve: Curves.easeInOut,
           child: Image.network(
-            url,
+            FoodPhotoBanner.photoUrls[_photoIndex],
+            key: ValueKey<int>(_photoIndex),
             fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
             errorBuilder: (context, error, stack) => const ColoredBox(
               color: Color(0xFF3A2024),
-              child: Center(child: Icon(Icons.restaurant_menu_rounded, size: 34, color: Color(0xFFFFC400))),
+              child: Center(child: Icon(Icons.restaurant_menu_rounded, size: 54, color: Color(0xFFFFC400))),
             ),
           ),
-        )).toList()),
+        ),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -336,12 +363,12 @@ class FoodPhotoBanner extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Text(title, style: const TextStyle(
+              Text(widget.title, style: const TextStyle(
                 color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900,
                 shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
               )),
               const SizedBox(height: 5),
-              Text(subtitle, style: const TextStyle(
+              Text(widget.subtitle, style: const TextStyle(
                 color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700,
                 shadows: [Shadow(color: Colors.black87, blurRadius: 7)],
               )),
@@ -1735,9 +1762,25 @@ class MealPhotoGallery extends StatefulWidget {
 class _MealPhotoGalleryState extends State<MealPhotoGallery> {
   late final PageController _controller = PageController();
   int _index = 0;
+  Timer? _autoSlideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      final count = widget.urls.where((url) => url.trim().isNotEmpty).length;
+      if (!mounted || count < 2 || !_controller.hasClients) return;
+      _controller.animateToPage(
+        (_index + 1) % count,
+        duration: const Duration(milliseconds: 550),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
 
   @override
   void dispose() {
+    _autoSlideTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -3325,29 +3368,34 @@ class _RestaurantAccountSettingsTabState extends State<RestaurantAccountSettings
       const SizedBox(height: 6),
       const Text('تظهر هنا بيانات المندوبين المقبولين وسجل تاريخ الموافقة. طلبات الرفض لا تظهر في حساب المطعم.', style: TextStyle(color: Colors.white70, height: 1.5)),
       FutureBuilder<List<Map<String, dynamic>>>(
-        future: SareeBackend.restaurantCourierHistory(widget.restaurantId),
+        future: SareeBackend.restaurantCourierApplications(widget.restaurantId),
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Padding(padding: EdgeInsets.all(14), child: LinearProgressIndicator());
           }
           if (snap.hasError) {
-            return Padding(padding: const EdgeInsets.all(12), child: Text('تعذر تحميل سجل المندوبين: ${SareeBackend.arabicError(snap.error)}'));
+            return Padding(padding: const EdgeInsets.all(12), child: Text('تعذر تحميل بيانات المندوبين: ${SareeBackend.arabicError(snap.error)}'));
           }
-          final accepted = (snap.data ?? []).where((entry) =>
-            entry['event_type'] == 'accepted' || entry['event_type'] == 'restored'
-          ).toList();
+          final accepted = (snap.data ?? []).where((entry) => entry['status'] == 'accepted').toList();
           if (accepted.isEmpty) {
             return const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('لا يوجد مندوبون تمت الموافقة عليهم حتى الآن.', textAlign: TextAlign.center)));
           }
           return Column(children: accepted.map((entry) {
-            final date = DateTime.tryParse(entry['event_at']?.toString() ?? '')?.toLocal();
+            final date = DateTime.tryParse(entry['created_at']?.toString() ?? '')?.toLocal();
             final dateLabel = date == null ? 'التاريخ غير متاح' : '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
             return Card(
-              child: ListTile(
+              child: ExpansionTile(
                 leading: const CircleAvatar(child: Icon(Icons.verified_user_rounded, color: Colors.green)),
-                title: Text(entry['courier_name']?.toString().trim().isNotEmpty == true ? entry['courier_name'].toString() : 'مندوب توصيل'),
-                subtitle: Text('${entry['courier_phone'] ?? 'لا يوجد رقم هاتف'}\n${entry['courier_email'] ?? 'لا يوجد بريد إلكتروني'}\nتمت الموافقة: $dateLabel'),
-                isThreeLine: true,
+                title: Text(entry['full_name']?.toString().trim().isNotEmpty == true ? entry['full_name'].toString() : 'مندوب توصيل'),
+                subtitle: Text('${entry['phone'] ?? 'لا يوجد رقم هاتف'} • تمت الموافقة على الطلب: $dateLabel'),
+                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                children: [
+                  ListTile(dense: true, leading: const Icon(Icons.phone_outlined), title: const Text('رقم الهاتف'), subtitle: SelectableText(entry['phone']?.toString() ?? 'غير متوفر')),
+                  ListTile(dense: true, leading: const Icon(Icons.email_outlined), title: const Text('البريد الإلكتروني'), subtitle: SelectableText(entry['email']?.toString() ?? 'غير متوفر')),
+                  _courierDocumentPreview('صورة الهوية – الوجه الأمامي', entry['id_front_url']?.toString()),
+                  _courierDocumentPreview('صورة الهوية – الوجه الخلفي', entry['id_back_url']?.toString()),
+                  _courierDocumentPreview('صورة المندوب مع البطاقة', entry['selfie_url']?.toString()),
+                ],
               ),
             );
           }).toList());
