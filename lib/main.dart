@@ -1095,7 +1095,38 @@ class _AuthPageState extends State<AuthPage> {
 
 class CustomerOffersPage extends StatelessWidget {
   const CustomerOffersPage({super.key});
-
+  List<Map<String, dynamic>> _itemsFor(Map<String, dynamic> promotion) {
+    final result = <Map<String, dynamic>>[];
+    final linked = promotion['promotion_menu_items'];
+    if (linked is List) for (final link in linked.whereType<Map>()) {
+      final raw = link['menu_items'];
+      if (raw is Map && raw['id'] != null && raw['is_available'] != false) {
+        final item = Map<String, dynamic>.from(raw);
+        item['promotion_menu_items'] = [{'promotions': promotion}];
+        result.add(item);
+      }
+    }
+    final legacy = promotion['menu_items'];
+    if (result.isEmpty && legacy is Map && legacy['id'] != null && legacy['is_available'] != false) {
+      final item = Map<String, dynamic>.from(legacy);
+      item['promotions'] = promotion;
+      result.add(item);
+    }
+    final seen = <String>{};
+    return result.where((item) => seen.add(item['id'].toString())).toList();
+  }
+  void _addOffer(BuildContext context, Map<String, dynamic> promotion, {required bool checkout}) {
+    final restaurantId = promotion['restaurant_id']?.toString() ?? '';
+    final items = _itemsFor(promotion);
+    if (restaurantId.isEmpty || items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أصناف هذا العرض غير متاحة حالياً')));
+      return;
+    }
+    final cart = context.read<CartController>();
+    for (final item in items) { cart.add(item, restaurantId); }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة \${items.length} صنف من العرض إلى السلة')));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => checkout ? const CheckoutPage() : const CartPage()));
+  }
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('عروض المطاعم')),
@@ -1103,62 +1134,48 @@ class CustomerOffersPage extends StatelessWidget {
       future: SareeBackend.activePromotions(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snapshot.hasError) return Center(child: Text('تعذر تحميل العروض: ${SareeBackend.arabicError(snapshot.error)}'));
+        if (snapshot.hasError) return Center(child: Text('تعذر تحميل العروض: \${SareeBackend.arabicError(snapshot.error)}'));
         final promotions = snapshot.data ?? [];
         if (promotions.isEmpty) return const Center(child: Text('لا توجد عروض نشطة حاليًا. تابع الصفحة لمعرفة العروض الجديدة.'));
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: promotions.map((promotion) {
-            final restaurant = promotion['restaurants'] is Map ? promotion['restaurants']['name']?.toString() : null;
-            final linkedItems = promotion['promotion_menu_items'];
-            final linkedNames = linkedItems is List ? linkedItems.whereType<Map>().map((link) {
-              final item = link['menu_items'];
-              return item is Map ? item['name']?.toString() : null;
-            }).whereType<String>().toList() : <String>[];
-            final legacyMeal = promotion['menu_items'] is Map ? promotion['menu_items']['name']?.toString() : null;
-            final meal = linkedNames.isNotEmpty ? linkedNames.join('، ') : legacyMeal;
-            final linkedPhotos = <String>[];
-            if (linkedItems is List) {
-              for (final link in linkedItems.whereType<Map>()) {
-                final linkedMeal = link['menu_items'];
-                if (linkedMeal is Map) linkedPhotos.addAll(_mealPhotoUrls(Map<String, dynamic>.from(linkedMeal)));
-              }
-            }
-            if (linkedPhotos.isEmpty && promotion['menu_items'] is Map) {
-              linkedPhotos.addAll(_mealPhotoUrls(Map<String, dynamic>.from(promotion['menu_items'] as Map)));
-            }
-            final discountValue = promotion['discount_value'] ?? 0;
-            final discount = promotion['discount_type'] == 'percentage'
-                ? 'خصم $discountValue٪'
-                : 'خصم $discountValue ريال';
-            final promotionCode = promotion['code']?.toString() ?? '';
-            final minimumOrder = (promotion['minimum_order_yer'] as num? ?? 0).toInt();
-            return Card(
-              clipBehavior: Clip.antiAlias,
-              child: Container(
-                padding: const EdgeInsets.all(17),
-                decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF8B0008), Color(0xFF241719)])),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  if (linkedPhotos.isNotEmpty) ...[
-                    MealPhotoGallery(urls: linkedPhotos.toSet().toList()),
-                    const SizedBox(height: 12),
-                  ],
-                  Text(promotion['title']?.toString() ?? 'عرض خاص', style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 7),
-                  Text(discount, style: const TextStyle(color: Color(0xFFFFC400), fontSize: 20, fontWeight: FontWeight.w900)),
-                  if (restaurant != null) Text('المطعم: $restaurant', style: const TextStyle(color: Colors.white)),
-                  if (meal != null) Text('العرض على صنف: $meal', style: const TextStyle(color: Colors.white)),
-                  if ((promotion['description']?.toString() ?? '').isNotEmpty)
-                    Padding(padding: const EdgeInsets.only(top: 7), child: Text(promotion['description'].toString(), style: const TextStyle(color: Colors.white70))),
-                  if (promotionCode.isNotEmpty)
-                    Padding(padding: const EdgeInsets.only(top: 8), child: Text('كود العرض: $promotionCode', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
-                  if (minimumOrder > 0)
-                    Text('الحد الأدنى للطلب: $minimumOrder ريال', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                ]),
-              ),
-            );
-          }).toList(),
-        );
+        return ListView(padding: const EdgeInsets.all(16), children: promotions.map((promotion) {
+          final restaurant = promotion['restaurants'] is Map ? promotion['restaurants']['name']?.toString() : null;
+          final items = _itemsFor(promotion);
+          final names = items.map((item) => item['name']?.toString() ?? 'صنف').toList();
+          final photos = items.expand((item) => _mealPhotoUrls(item)).toSet().toList();
+          final discountValue = promotion['discount_value'] ?? 0;
+          final discount = promotion['discount_type'] == 'percentage' ? 'خصم $discountValue٪' : 'خصم $discountValue ريال';
+          final min = (promotion['minimum_order_yer'] as num? ?? 0).toInt();
+          return Card(clipBehavior: Clip.antiAlias, child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF8B0008), Color(0xFF241719)])),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (photos.isNotEmpty) ...[MealPhotoGallery(urls: photos), const SizedBox(height: 12)],
+              Text(promotion['title']?.toString() ?? 'عرض خاص', style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 7),
+              Text(discount, style: const TextStyle(color: Color(0xFFFFC400), fontSize: 20, fontWeight: FontWeight.w900)),
+              if (restaurant != null) Text('المطعم: $restaurant', style: const TextStyle(color: Colors.white)),
+              if ((promotion['description']?.toString() ?? '').isNotEmpty)
+                Padding(padding: const EdgeInsets.only(top: 7), child: Text(promotion['description'].toString(), style: const TextStyle(color: Colors.white70))),
+              const SizedBox(height: 10),
+              const Text('الأصناف المشمولة في العرض:', style: TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w900)),
+              if (names.isEmpty) const Text('لم تُحدد أصناف متاحة لهذا العرض بعد', style: TextStyle(color: Colors.white70))
+              else ...names.map((name) => Padding(padding: const EdgeInsets.only(top: 5), child: Row(children: [
+                const Icon(Icons.check_circle_rounded, size: 17, color: Color(0xFFFFD45A)),
+                const SizedBox(width: 7),
+                Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+              ]))),
+              if (min > 0) Padding(padding: const EdgeInsets.only(top: 8), child: Text('الحد الأدنى: $min ريال', style: const TextStyle(color: Colors.white70, fontSize: 12))),
+              if ((promotion['code']?.toString() ?? '').isNotEmpty)
+                Padding(padding: const EdgeInsets.only(top: 5), child: Text('كود العرض: \${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: FilledButton.icon(onPressed: items.isEmpty ? null : () => _addOffer(context, promotion, checkout: true), icon: const Icon(Icons.flash_on_rounded), label: const Text('اطلب العرض الآن'))),
+                const SizedBox(width: 8),
+                Expanded(child: OutlinedButton.icon(onPressed: items.isEmpty ? null : () => _addOffer(context, promotion, checkout: false), icon: const Icon(Icons.add_shopping_cart_rounded), label: const Text('أضف للسلة'))),
+              ]),
+            ]),
+          ));
+        }).toList()),
       },
     ),
   );
