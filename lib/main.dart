@@ -1175,7 +1175,7 @@ class CustomerOffersPage extends StatelessWidget {
               ]),
             ]),
           ));
-        }).toList()),
+        }).toList());
       },
     ),
   );
