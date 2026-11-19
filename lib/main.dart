@@ -3279,6 +3279,32 @@ class _CourierRestaurantJoinPageState extends State<CourierRestaurantJoinPage> {
 }
 
 
+Widget _restaurantCourierDocumentPreview(String title, String? url) {
+  if (url == null || url.isEmpty) {
+    return Card(child: Padding(padding: const EdgeInsets.all(12), child: Text('$title: لم تُرفق الصورة')));
+  }
+  return Card(child: Padding(padding: const EdgeInsets.all(10), child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      const SizedBox(height: 8),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          url,
+          height: 180,
+          width: double.infinity,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const SizedBox(
+            height: 100,
+            child: Center(child: Text('تعذر عرض الصورة، حدّث الصفحة وحاول مجدداً')),
+          ),
+        ),
+      ),
+    ],
+  )));
+}
+
 class RestaurantAccountSettingsTab extends StatefulWidget {
   const RestaurantAccountSettingsTab({
     super.key,
@@ -3392,9 +3418,9 @@ class _RestaurantAccountSettingsTabState extends State<RestaurantAccountSettings
                 children: [
                   ListTile(dense: true, leading: const Icon(Icons.phone_outlined), title: const Text('رقم الهاتف'), subtitle: SelectableText(entry['phone']?.toString() ?? 'غير متوفر')),
                   ListTile(dense: true, leading: const Icon(Icons.email_outlined), title: const Text('البريد الإلكتروني'), subtitle: SelectableText(entry['email']?.toString() ?? 'غير متوفر')),
-                  _courierDocumentPreview('صورة الهوية – الوجه الأمامي', entry['id_front_url']?.toString()),
-                  _courierDocumentPreview('صورة الهوية – الوجه الخلفي', entry['id_back_url']?.toString()),
-                  _courierDocumentPreview('صورة المندوب مع البطاقة', entry['selfie_url']?.toString()),
+                  _restaurantCourierDocumentPreview('صورة الهوية – الوجه الأمامي', entry['id_front_url']?.toString()),
+                  _restaurantCourierDocumentPreview('صورة الهوية – الوجه الخلفي', entry['id_back_url']?.toString()),
+                  _restaurantCourierDocumentPreview('صورة المندوب مع البطاقة', entry['selfie_url']?.toString()),
                 ],
               ),
             );
