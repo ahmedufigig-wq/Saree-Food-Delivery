@@ -13,6 +13,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'services/saree_backend.dart';
+import 'features/cart/cart_controller.dart';
 
 
 List<String> _mealPhotoUrls(Map<String, dynamic> item) {
@@ -110,8 +111,9 @@ int _effectiveItemPrice(Map<String, dynamic> item) {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SareeBackend.initialize();
-  runApp(ChangeNotifierProvider(
-    create: (_) => CartController(),
+  final cartController = await CartController.create();
+  runApp(ChangeNotifierProvider.value(
+    value: cartController,
     child: const SareeApp(),
   ));
 }
@@ -183,54 +185,6 @@ Future<void> showRestaurantSignOutOptions(BuildContext context) async {
     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تعذر إغلاق الحساب: ${SareeBackend.arabicError(error)}')),
     );
-  }
-}
-
-class CartLine {
-  CartLine({required this.id, required this.name, required this.price, required this.quantity});
-  final String id;
-  final String name;
-  final int price;
-  int quantity;
-  int get total => price * quantity;
-}
-
-class CartController extends ChangeNotifier {
-  final List<CartLine> _items = [];
-  String? restaurantId;
-  List<CartLine> get items => List.unmodifiable(_items);
-  int get subtotal => _items.fold(0, (sum, item) => sum + item.total);
-  int get count => _items.fold(0, (sum, item) => sum + item.quantity);
-
-  void add(Map<String, dynamic> item, String ownerRestaurantId) {
-    if (restaurantId != null && restaurantId != ownerRestaurantId) _items.clear();
-    restaurantId = ownerRestaurantId;
-    final id = item['id'].toString();
-    final index = _items.indexWhere((line) => line.id == id);
-    if (index >= 0) {
-      _items[index].quantity++;
-    } else {
-      _items.add(CartLine(
-        id: id,
-        name: item['name'].toString(),
-        price: _effectiveItemPrice(item),
-        quantity: 1,
-      ));
-    }
-    notifyListeners();
-  }
-
-  void change(CartLine item, int delta) {
-    item.quantity += delta;
-    if (item.quantity <= 0) _items.remove(item);
-    if (_items.isEmpty) restaurantId = null;
-    notifyListeners();
-  }
-
-  void clear() {
-    _items.clear();
-    restaurantId = null;
-    notifyListeners();
   }
 }
 
@@ -1123,7 +1077,7 @@ class CustomerOffersPage extends StatelessWidget {
       return;
     }
     final cart = context.read<CartController>();
-    for (final item in items) { cart.add(item, restaurantId); }
+    for (final item in items) { cart.add(item, restaurantId, price: _effectiveItemPrice(item)); }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة ${items.length} صنف من العرض إلى السلة')));
     Navigator.push(context, MaterialPageRoute(builder: (_) => checkout ? const CheckoutPage() : const CartPage()));
   }
@@ -1969,7 +1923,7 @@ class MealDetailsPage extends StatelessWidget {
         if (available)
           FilledButton.icon(
             onPressed: () {
-              context.read<CartController>().add(item, restaurantId);
+              context.read<CartController>().add(item, restaurantId, price: _effectiveItemPrice(item));
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أضيفت الوجبة إلى السلة')));
             },
             icon: const Icon(Icons.add_shopping_cart_rounded),
@@ -2121,7 +2075,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         notes: _notes.text,
         items: cart.items.map((line) => {'menu_item_id': line.id, 'quantity': line.quantity}).toList(),
       );
-      cart.clear();
+      await cart.clear();
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => OrderCreatedPage(orderId: id)), (route) => route.isFirst);
     } catch (e) {
