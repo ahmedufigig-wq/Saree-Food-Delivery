@@ -3421,6 +3421,7 @@ class _RestaurantAccountSettingsTabState extends State<RestaurantAccountSettings
                   _restaurantCourierDocumentPreview('صورة الهوية – الوجه الأمامي', entry['id_front_url']?.toString()),
                   _restaurantCourierDocumentPreview('صورة الهوية – الوجه الخلفي', entry['id_back_url']?.toString()),
                   _restaurantCourierDocumentPreview('صورة المندوب مع البطاقة', entry['selfie_url']?.toString()),
+                  _restaurantCourierDocumentPreview('إثبات محل الإقامة (إن وُجد)', entry['residence_url']?.toString()),
                 ],
               ),
             );
