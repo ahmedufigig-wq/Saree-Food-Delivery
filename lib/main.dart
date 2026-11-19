@@ -2293,7 +2293,11 @@ class OrderTrackingPage extends StatelessWidget {
           }),
           Card(child: ListTile(leading: const Icon(Icons.location_on_rounded), title: const Text('عنوان التوصيل'), subtitle: Text(current['delivery_address']?.toString() ?? ''))),
           if (current['courier_id'] != null && (status == 'assigned' || status == 'picked_up'))
-            CourierLiveMap(courierId: current['courier_id'].toString()),
+            CourierLiveMap(
+              courierId: current['courier_id'].toString(),
+              deliveryLatitude: (current['delivery_latitude'] as num?)?.toDouble(),
+              deliveryLongitude: (current['delivery_longitude'] as num?)?.toDouble(),
+            ),
           if (status == 'pending')
             OutlinedButton.icon(
               onPressed: () async {
@@ -2313,9 +2317,10 @@ class OrderTrackingPage extends StatelessWidget {
 
 
 class CourierLiveMap extends StatelessWidget {
-  const CourierLiveMap({super.key, required this.courierId});
+  const CourierLiveMap({super.key, required this.courierId, this.deliveryLatitude, this.deliveryLongitude});
   final String courierId;
-
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
   @override
   Widget build(BuildContext context) => StreamBuilder<List<Map<String,dynamic>>>(
     stream: SareeBackend.courierLocation(courierId),
@@ -2324,16 +2329,24 @@ class CourierLiveMap extends StatelessWidget {
       if(snap.data == null || snap.data!.isEmpty) return const Card(child: ListTile(leading: Icon(Icons.location_searching), title: Text('بانتظار مشاركة المندوب لموقعه')));
       final row = snap.data!.first;
       final point = LatLng((row['latitude'] as num).toDouble(), (row['longitude'] as num).toDouble());
+      final destination = deliveryLatitude != null && deliveryLongitude != null ? LatLng(deliveryLatitude!, deliveryLongitude!) : null;
+      final center = destination == null ? point : LatLng((point.latitude + destination.latitude) / 2, (point.longitude + destination.longitude) / 2);
+      final route = destination == null ? <LatLng>[] : [point, destination];
       return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const ListTile(leading: Icon(Icons.map_rounded), title: Text('موقع المندوب المباشر'), subtitle: Text('تتحدث الخريطة عند وصول تحديث جديد')),
-        SizedBox(height: 230, child: FlutterMap(
-          options: MapOptions(initialCenter: point, initialZoom: 15),
+        const ListTile(leading: Icon(Icons.map_rounded), title: Text('تتبع المندوب داخل سريع'), subtitle: Text('يتحدث موقع المندوب مباشرة داخل التطبيق')),
+        SizedBox(height: 250, child: FlutterMap(
+          options: MapOptions(initialCenter: center, initialZoom: destination == null ? 15 : 13),
           children: [
             TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
-            MarkerLayer(markers: [Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFE50914), size: 44))]),
+            if (route.isNotEmpty) PolylineLayer(polylines: [Polyline(points: route, strokeWidth: 5, color: Colors.blueAccent)]),
+            MarkerLayer(markers: [
+              Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFE50914), size: 44)),
+              if (destination != null) Marker(point: destination, width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 44)),
+            ]),
           ],
         )),
-        Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: ${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF748094)))),
+        const Padding(padding: EdgeInsets.fromLTRB(12, 8, 12, 0), child: Text('الخط الأزرق يوضح الاتجاه المباشر بين المندوب وعنوانك، وليس توجيهاً انعطافياً على الطرق.', style: TextStyle(fontSize: 11, color: Color(0xFF748094)))),
+        Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: \${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF748094)))),
       ]));
     },
   );
@@ -3591,6 +3604,7 @@ class CourierPortal extends StatefulWidget {
 class _CourierPortalState extends State<CourierPortal> {
   bool _busy = false;
   bool _sharing = false;
+  Position? _lastPosition;
   late Future<List<Map<String, dynamic>>> _ordersFuture;
   StreamSubscription<Position>? _positionSub;
   StreamSubscription<List<Map<String, dynamic>>>? _assignedOrdersSubscription;
@@ -3636,10 +3650,12 @@ class _CourierPortalState extends State<CourierPortal> {
     await _positionSub?.cancel();
     const settings = LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 15);
     _positionSub = Geolocator.getPositionStream(locationSettings: settings).listen((p) async {
+      if (mounted) setState(() => _lastPosition = p);
       try { await SareeBackend.updateCourierLocation(p.latitude, p.longitude); }
       catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث الموقع: ${SareeBackend.arabicError(e)}'))); }
     });
     final now = await Geolocator.getCurrentPosition();
+    _lastPosition = now;
     await SareeBackend.updateCourierLocation(now.latitude, now.longitude);
     if(mounted) setState(() => _sharing = true);
   }
@@ -3720,6 +3736,17 @@ class _CourierPortalState extends State<CourierPortal> {
         const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.map_outlined), title: Text('موقع العميل على الخريطة')),
         SelectableText('الإحداثيات: ${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}'),
         TextButton.icon(onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new_rounded), label: const Text('فتح الاتجاهات في خرائط Google')),
+        if (_lastPosition != null) SizedBox(height: 230, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FlutterMap(
+          options: MapOptions(initialCenter: LatLng((_lastPosition!.latitude + lat) / 2, (_lastPosition!.longitude + lng) / 2), initialZoom: 13),
+          children: [
+            TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
+            PolylineLayer(polylines: [Polyline(points: [LatLng(_lastPosition!.latitude, _lastPosition!.longitude), LatLng(lat, lng)], strokeWidth: 5, color: Colors.blueAccent)]),
+            MarkerLayer(markers: [
+              Marker(point: LatLng(_lastPosition!.latitude, _lastPosition!.longitude), width: 48, height: 48, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFE50914), size: 42)),
+              Marker(point: LatLng(lat, lng), width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 42)),
+            ]),
+          ],
+        ))),
         SizedBox(height: 210, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FlutterMap(
           options: MapOptions(initialCenter: LatLng(lat, lng), initialZoom: 15),
           children: [
