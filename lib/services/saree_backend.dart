@@ -380,7 +380,7 @@ class SareeBackend {
       final item = Map<String, dynamic>.from(raw);
       // Identity images are available only while the request is pending or accepted.
       if (item['status'] == 'pending' || item['status'] == 'accepted') {
-        for (final key in ['id_front_path', 'id_back_path', 'selfie_path']) {
+        for (final key in ['id_front_path', 'id_back_path', 'selfie_path', 'residence_path']) {
           final path = item[key]?.toString();
           if (path != null && path.isNotEmpty) {
             item[key.replaceAll('_path', '_url')] =
