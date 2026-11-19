@@ -2525,31 +2525,52 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   }
 
   Widget _courierTeamTab(String restaurantId) {
-    return FutureBuilder<List<Map<String, dynamic>>>(future: SareeBackend.restaurantCourierTeam(restaurantId), builder: (context, snap) {
-      if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-      if (snap.hasError) return Center(child: Text('تعذر تحميل فريق المندوبين: ' + SareeBackend.arabicError(snap.error)));
-      final couriers = snap.data ?? [];
-      return ListView(padding: const EdgeInsets.only(bottom: 16), children: [
-        _courierApplicationsSection(restaurantId),
-        const Divider(height: 24),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Text('فريق المندوبين المقبولين', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
-        const Padding(padding: EdgeInsets.fromLTRB(14, 6, 14, 8), child: Text('يظهر هنا المندوبون الذين وافقوا على العمل مع مطعمك، ويمكنك إزالة المندوب من الفريق عند الحاجة.', style: TextStyle(color: Color(0xFF748094), height: 1.4))),
-        if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('لم يتم قبول أي مندوب في فريق المطعم بعد', textAlign: TextAlign.center))),
-        ...couriers.map((courier) {
-          final active = courier['is_active'] == true;
-          final available = courier['is_available'] == true;
-          final name = courier['full_name']?.toString().trim().isNotEmpty == true ? courier['full_name'].toString() : 'مندوب توصيل';
-          final phone = courier['phone']?.toString() ?? 'بدون رقم هاتف';
-          final status = !active ? 'موقوف' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
-          return Card(child: ListTile(
-            leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))),
-            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text('$phone • $status'),
-            trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3)),
-          ));
-        }),
-      ]);
-    });
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: SareeBackend.restaurantCourierTeam(restaurantId),
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) return const LoadingPage();
+        if (snap.hasError) return Center(child: Text('تعذر تحميل فريق المندوبين: \${SareeBackend.arabicError(snap.error)}'));
+        final couriers = snap.data ?? [];
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: SareeBackend.restaurantCourierApplications(restaurantId),
+          builder: (context, docsSnap) {
+            if (docsSnap.connectionState != ConnectionState.done) return const LoadingPage();
+            if (docsSnap.hasError) return Center(child: Text('تعذر تحميل مستندات المندوبين: \${SareeBackend.arabicError(docsSnap.error)}'));
+            final accepted = (docsSnap.data ?? []).where((a) => a['status'] == 'accepted').toList();
+            return ListView(padding: const EdgeInsets.only(bottom: 16), children: [
+              _courierApplicationsSection(restaurantId),
+              const Divider(height: 24),
+              const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Text('فريق المندوبين المقبولين', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
+              const Padding(padding: EdgeInsets.fromLTRB(14, 6, 14, 8), child: Text('افتح بطاقة أي مندوب لعرض بياناته وصور الهوية والسيلفي المرفقة بطلب الانضمام.', style: TextStyle(color: Color(0xFF748094), height: 1.4))),
+              if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('لم يتم قبول أي مندوب في فريق المطعم بعد', textAlign: TextAlign.center))),
+              ...couriers.map((courier) {
+                final active = courier['is_active'] == true;
+                final available = courier['is_available'] == true;
+                final name = courier['full_name']?.toString().trim().isNotEmpty == true ? courier['full_name'].toString() : 'مندوب توصيل';
+                final phone = courier['phone']?.toString() ?? 'بدون رقم هاتف';
+                final status = !active ? 'موقوف' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
+                final application = accepted.where((a) => a['courier_id']?.toString() == courier['courier_id']?.toString()).firstOrNull;
+                return Card(child: ExpansionTile(
+                  leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))),
+                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: Text('$phone • $status'),
+                  trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3)),
+                  childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                  children: [
+                    ListTile(dense: true, leading: const Icon(Icons.email_outlined), title: const Text('البريد الإلكتروني'), subtitle: SelectableText(application?['email']?.toString() ?? 'غير متوفر')),
+                    ListTile(dense: true, leading: const Icon(Icons.verified_user_outlined), title: const Text('حالة اعتماد الإدارة'), subtitle: Text(application?['platform_approval_status']?.toString() ?? 'غير متوفر')),
+                    _courierDocumentPreview('الهوية من الأمام', application?['id_front_url']?.toString()),
+                    _courierDocumentPreview('الهوية من الخلف', application?['id_back_url']?.toString()),
+                    _courierDocumentPreview('سيلفي المندوب مع البطاقة', application?['selfie_url']?.toString()),
+                    _courierDocumentPreview('إثبات السكن', application?['residence_url']?.toString()),
+                  ],
+                ));
+              }),
+            ]);
+          },
+        );
+      },
+    );
   }
 
   Widget _restaurantOrderDetails(Map<String, dynamic> order) {
