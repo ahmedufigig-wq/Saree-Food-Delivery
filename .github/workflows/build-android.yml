@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: saree-android-final-${{ github.ref }}
@@ -356,10 +356,17 @@ jobs:
             exit 1
           }
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      # Publish the APK as a direct GitHub Release asset. Actions artifacts are
+      # downloaded as ZIP archives, so they are intentionally not used here.
+      - name: Publish directly installable APK
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
         with:
-          name: saree-android-release
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          retention-days: 14
+          tag_name: saree-build-${{ github.run_number }}
+          name: "سريع - APK build #${{ github.run_number }}"
+          body: |
+            نسخة أندرويد جاهزة للتثبيت من تطبيق سريع.
+            Commit: ${{ github.sha }}
+          files: build/app/outputs/flutter-apk/app-release.apk
+          fail_on_unmatched_files: true
+          make_latest: true
