@@ -326,14 +326,13 @@ class SareeBackend {
   }
 
   // Full read-only history for PDF export; exporting never deletes orders.
-  static Future<List<Map<String, dynamic>>> restaurantOrderHistory() async {
+  static Future<List<Map<String, dynamic>>> restaurantOrderHistory(String restaurantId) async {
     final id = user!.id;
-    final memberships = await client.from('restaurant_members').select('restaurant_id').eq('user_id', id);
-    final ids = List<Map<String, dynamic>>.from(memberships).map((row) => row['restaurant_id'].toString()).toList();
-    if (ids.isEmpty) return [];
+    final membership = await client.from('restaurant_members').select('restaurant_id').eq('user_id', id).eq('restaurant_id', restaurantId).maybeSingle();
+    if (membership == null) throw Exception('ليس لديك صلاحية تصدير سجل هذا المطعم');
     final rows = await client.from('orders')
         .select('*, order_items(item_name, quantity, unit_price_yer, line_total_yer)')
-        .inFilter('restaurant_id', ids)
+        .eq('restaurant_id', restaurantId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
   }
