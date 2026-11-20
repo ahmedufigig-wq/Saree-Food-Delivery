@@ -318,17 +318,21 @@ class SareeBackend {
 
   static Future<List<Map<String, dynamic>>> restaurantOrders() async {
     final id = user!.id;
-    final memberships = await client
-        .from('restaurant_members')
-        .select('restaurant_id')
-        .eq('user_id', id);
-    final ids = List<Map<String, dynamic>>.from(memberships)
-        .map((row) => row['restaurant_id'].toString())
-        .toList();
+    final memberships = await client.from('restaurant_members').select('restaurant_id').eq('user_id', id);
+    final ids = List<Map<String, dynamic>>.from(memberships).map((row) => row['restaurant_id'].toString()).toList();
     if (ids.isEmpty) return [];
-    final rows = await client
-        .from('orders')
-        .select()
+    final rows = await client.from('orders').select().inFilter('restaurant_id', ids).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  // Full read-only history for PDF export; exporting never deletes orders.
+  static Future<List<Map<String, dynamic>>> restaurantOrderHistory() async {
+    final id = user!.id;
+    final memberships = await client.from('restaurant_members').select('restaurant_id').eq('user_id', id);
+    final ids = List<Map<String, dynamic>>.from(memberships).map((row) => row['restaurant_id'].toString()).toList();
+    if (ids.isEmpty) return [];
+    final rows = await client.from('orders')
+        .select('*, order_items(item_name, quantity, unit_price_yer, line_total_yer)')
         .inFilter('restaurant_id', ids)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
