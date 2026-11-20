@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -2314,6 +2318,121 @@ class RestaurantPortal extends StatefulWidget {
 class _RestaurantPortalState extends State<RestaurantPortal> {
   int _tab = 0;
   bool _busy = false;
+  final TextEditingController _orderSearchController = TextEditingController();
+  final Set<String> _archivedOrderIds = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadArchivedOrderIds();
+  }
+
+  Future<void> _loadArchivedOrderIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() => _archivedOrderIds.addAll(prefs.getStringList('saree_archived_orders_\${SareeBackend.user?.id ?? 'restaurant'}') ?? const <String>[]));
+  }
+
+  Future<void> _exportRestaurantOrdersPdf(String restaurantId) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final orders = await SareeBackend.restaurantOrderHistory();
+      if (orders.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد طلبات لتصديرها')));
+        return;
+      }
+      final arabicFont = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoNaskhArabic-Regular.ttf'));
+      final boldFont = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoNaskhArabic-Bold.ttf'));
+      final theme = pw.ThemeData.withFont(base: arabicFont, bold: boldFont);
+      final document = pw.Document();
+      final now = DateTime.now();
+      final stamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      document.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        theme: theme,
+        textDirection: pw.TextDirection.rtl,
+        header: (_) => pw.Container(
+          alignment: pw.Alignment.center,
+          margin: const pw.EdgeInsets.only(bottom: 12),
+          child: pw.Column(children: [
+            pw.Text('سريع - سجل طلبات المطعم', style: pw.TextStyle(font: boldFont, fontSize: 20)),
+            pw.Text('تاريخ التصدير: $stamp • إجمالي الطلبات: ${orders.length}', style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+            pw.Divider(),
+          ]),
+        ),
+        build: (_) => orders.map((order) {
+          final items = (order['order_items'] as List? ?? const [])
+              .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          final created = order['created_at']?.toString() ?? '';
+          final date = created.length >= 16 ? created.substring(0, 16).replaceFirst('T', ' ') : created;
+          final itemLines = items.map((item) {
+            final qty = (item['quantity'] as num?)?.toInt() ?? 0;
+            final unit = (item['unit_price_yer'] as num?)?.toInt() ?? 0;
+            final line = (item['line_total_yer'] as num?)?.toInt() ?? qty * unit;
+            return pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 3),
+              child: pw.Text('${item['item_name'] ?? 'صنف'}  •  $qty × $unit = $line ريال', style: pw.TextStyle(font: arabicFont, fontSize: 9)),
+            );
+          }).toList();
+          return pw.Container(
+            width: double.infinity,
+            margin: const pw.EdgeInsets.only(bottom: 10),
+            padding: const pw.EdgeInsets.all(9),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400), borderRadius: pw.BorderRadius.circular(5)),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+              pw.Text('طلب #${order['order_number']}  •  $date  •  الحالة: ${order['status']}', style: pw.TextStyle(font: boldFont, fontSize: 11)),
+              pw.SizedBox(height: 3),
+              pw.Text('العميل: ${order['customer_name'] ?? ''}  •  الهاتف: ${order['customer_phone'] ?? ''}', style: pw.TextStyle(font: arabicFont, fontSize: 9)),
+              pw.Text('العنوان: ${order['delivery_address'] ?? ''}', style: pw.TextStyle(font: arabicFont, fontSize: 9)),
+              if ((order['notes'] ?? '').toString().trim().isNotEmpty)
+                pw.Text('ملاحظات: ${order['notes']}', style: pw.TextStyle(font: arabicFont, fontSize: 9)),
+              pw.SizedBox(height: 4),
+              ...itemLines,
+              pw.Divider(),
+              pw.Text('قيمة الأصناف: ${order['subtotal_yer'] ?? 0} ريال  •  التوصيل: ${order['delivery_fee_yer'] ?? 0} ريال  •  الإجمالي: ${order['total_yer'] ?? 0} ريال', style: pw.TextStyle(font: boldFont, fontSize: 10)),
+            ]),
+          );
+        }).toList(),
+      ));
+      await Printing.sharePdf(bytes: await document.save(), filename: 'saree_orders_$stamp.pdf');
+      if (!mounted) return;
+      final hide = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('تم تجهيز سجل الطلبات'),
+          content: const Text('هل تريد إخفاء الطلبات المصدّرة من قائمة التطبيق؟ لن تُحذف الطلبات من قاعدة البيانات أو السجل المالي.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('الاحتفاظ بالطلبات')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('إخفاؤها من القائمة')),
+          ],
+        ),
+      );
+      if (hide == true) {
+        _archivedOrderIds.addAll(orders.map((o) => o['id'].toString()));
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('saree_archived_orders_\${SareeBackend.user?.id ?? 'restaurant'}', _archivedOrderIds.toList());
+        if (mounted) setState(() {});
+      }
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تصدير سجل الطلبات: ${SareeBackend.arabicError(error)}')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _restoreArchivedOrders() async {
+    _archivedOrderIds.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('saree_archived_orders_\${SareeBackend.user?.id ?? 'restaurant'}');
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _orderSearchController.dispose();
+    super.dispose();
+  }
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
     try { await action(); if(mounted) setState(() {}); }
@@ -3027,60 +3146,63 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                 ]);
               },
             ),
-            StreamBuilder<List<Map<String,dynamic>>>(
-              stream: SareeBackend.restaurantOrdersStream(rid),
-              builder: (context, snap) {
-                if (!snap.hasData && snap.connectionState == ConnectionState.waiting) return const LoadingPage();
-                if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
-                final orders = snap.data ?? [];
-                if(orders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
-                return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) {
-                  final status = (o['status'] ?? '').toString().trim().toLowerCase();
-                  final courierValue = o['courier_id'];
-                  final hasCourier = courierValue != null && courierValue.toString().trim().isNotEmpty;
-                  final isReadyForPickup = status == 'ready_for_pickup';
-                  final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
-                  final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
-                  return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    ListTile(
-                      title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
-                      subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
-                      isThreeLine: true,
+            Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                child: Row(children: [
+                  Expanded(child: TextField(
+                    controller: _orderSearchController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'ابحث برقم الطلب',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: IconButton(tooltip: 'مسح البحث', onPressed: () => setState(() => _orderSearchController.clear()), icon: const Icon(Icons.close)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      isDense: true,
                     ),
-                    if (next != null)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
-                            child: Text(label),
-                          ),
-                        ),
-                      )
-                    else if (isReadyForPickup && !hasCourier)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: _busy ? null : () => _assignCourier(rid, o),
-                            icon: const Icon(Icons.delivery_dining_rounded),
-                            label: const Text('اختيار مندوب'),
-                          ),
-                        ),
-                      )
-                    else if (hasCourier)
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(12, 0, 12, 10),
-                        child: Chip(label: Text('تم تعيين مندوب')),
+                    onChanged: (_) => setState(() {}),
+                  )),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(tooltip: 'تصدير سجل الطلبات PDF', onPressed: _busy ? null : () => _exportRestaurantOrdersPdf(rid), icon: const Icon(Icons.picture_as_pdf_rounded)),
+                  if (_archivedOrderIds.isNotEmpty)
+                    IconButton(tooltip: 'استعادة الطلبات المخفية', onPressed: _busy ? null : _restoreArchivedOrders, icon: const Icon(Icons.unarchive_outlined)),
+                ]),
+              ),
+              Expanded(child: StreamBuilder<List<Map<String,dynamic>>>(
+                stream: SareeBackend.restaurantOrdersStream(rid),
+                builder: (context, snap) {
+                  if (!snap.hasData && snap.connectionState == ConnectionState.waiting) return const LoadingPage();
+                  if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
+                  final allOrders = snap.data ?? [];
+                  final query = _orderSearchController.text.trim();
+                  final orders = allOrders.where((o) => !_archivedOrderIds.contains(o['id'].toString()) && (query.isEmpty || (o['order_number']?.toString() ?? '').contains(query))).toList();
+                  if(allOrders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
+                  if(orders.isEmpty) return Center(child: Text(query.isEmpty ? 'لا توجد طلبات ظاهرة. يمكنك استعادة الطلبات المخفية.' : 'لا توجد نتيجة لرقم الطلب $query'));
+                  return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) {
+                    final status = (o['status'] ?? '').toString().trim().toLowerCase();
+                    final courierValue = o['courier_id'];
+                    final hasCourier = courierValue != null && courierValue.toString().trim().isNotEmpty;
+                    final isReadyForPickup = status == 'ready_for_pickup';
+                    final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
+                    final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
+                    return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      ListTile(
+                        title: Text('طلب #${o['order_number']} • ${o['customer_name']}'),
+                        subtitle: Text('${o['delivery_address']}\n${o['total_yer']} ريال • $status'),
+                        isThreeLine: true,
                       ),
-                    // Keep the complete order information directly beneath the action button.
-                    _restaurantOrderDetails(o),
-                  ]));
-                }).toList());
-              },
-            ),
+                      if (next != null)
+                        Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label))))
+                      else if (isReadyForPickup && !hasCourier)
+                        Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _busy ? null : () => _assignCourier(rid, o), icon: const Icon(Icons.delivery_dining_rounded), label: const Text('اختيار مندوب'))))
+                      else if (hasCourier)
+                        const Padding(padding: EdgeInsets.fromLTRB(12, 0, 12, 10), child: Chip(label: Text('تم تعيين مندوب'))),
+                      _restaurantOrderDetails(o),
+                    ]));
+                  }).toList());
+                },
+              )),
+            ]),
             _courierTeamTab(rid),
             _promotionsTab(rid),
             DeliveryFeeSettingsTab(
