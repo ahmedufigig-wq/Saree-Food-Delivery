@@ -1,5 +1,7 @@
 # Saree POS Integration Contract (MVP)
 
+Current app release target: `1.2.9+27`.
+
 This is the vendor-neutral contract for connecting Saree to restaurant POS systems in Rada'a.
 
 ## Architecture
