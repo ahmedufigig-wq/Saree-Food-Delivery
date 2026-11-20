@@ -298,8 +298,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p assets/fonts
-          curl --fail --location --retry 3 "https://raw.githubusercontent.com/jenskutilek/free-fonts/master/Noto/Noto%20Naskh%20Arabic/TTF/NotoNaskhArabic-Regular.ttf" -o assets/fonts/NotoNaskhArabic-Regular.ttf
-          curl --fail --location --retry 3 "https://raw.githubusercontent.com/jenskutilek/free-fonts/master/Noto/Noto%20Naskh%20Arabic/TTF/NotoNaskhArabic-Bold.ttf" -o assets/fonts/NotoNaskhArabic-Bold.ttf
+          curl --fail --location --retry 3 "https://raw.githubusercontent.com/openmaptiles/fonts/master/noto-sans/NotoNaskhArabic-Regular.ttf" -o assets/fonts/NotoNaskhArabic-Regular.ttf
+          curl --fail --location --retry 3 "https://raw.githubusercontent.com/openmaptiles/fonts/master/noto-sans/NotoNaskhArabic-Bold.ttf" -o assets/fonts/NotoNaskhArabic-Bold.ttf
           test -s assets/fonts/NotoNaskhArabic-Regular.ttf
           test -s assets/fonts/NotoNaskhArabic-Bold.ttf
 
