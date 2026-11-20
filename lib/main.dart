@@ -156,7 +156,7 @@ Future<void> showRestaurantSignOutOptions(BuildContext context) async {
         TextButton(onPressed: () => Navigator.pop(dialogContext, 'local'), child: const Text('خروج من هذا الجهاز')),
         TextButton(onPressed: () => Navigator.pop(dialogContext, 'global'), child: const Text('خروج من جميع الأجهزة')),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9B0010)),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF065F46)),
           onPressed: () => Navigator.pop(dialogContext, 'close'),
           child: const Text('إغلاق الحساب نهائياً'),
         ),
@@ -176,7 +176,7 @@ Future<void> showRestaurantSignOutOptions(BuildContext context) async {
       actions: [
         TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('تراجع')),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9B0010)),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF065F46)),
           onPressed: () => Navigator.pop(dialogContext, true),
           child: const Text('نعم، أغلق الحساب'),
         ),
@@ -202,24 +202,36 @@ class SareeApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE50914), brightness: Brightness.dark, secondary: const Color(0xFFFFC400), surface: const Color(0xFF242020)),
-      scaffoldBackgroundColor: Colors.transparent,
-      iconTheme: const IconThemeData(color: Color(0xFFFFC400), size: 23),
-      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 0, backgroundColor: Color(0xFF20191A), foregroundColor: Colors.white, titleTextStyle: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800)),
-      cardTheme: CardThemeData(color: const Color(0xFF292223), elevation: 2, shadowColor: Color(0x66000000), margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF493438)))),
-      inputDecorationTheme: InputDecorationTheme(
-        labelStyle: const TextStyle(color: Color(0xFFE8DADD)),
-        hintStyle: const TextStyle(color: Color(0xFFB9A9AC)),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF594147))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF594147))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFFFC400), width: 1.6)),
-        filled: true, fillColor: const Color(0xFF302629), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF047857), brightness: Brightness.light,
+        primary: const Color(0xFF047857), secondary: const Color(0xFFFFD60A),
+        surface: const Color(0xFFFFF8E7), onPrimary: const Color(0xFFFFF8E7),
+        onSurface: const Color(0xFF123B2F),
       ),
-      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE50914), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Color(0xFF20191A), indicatorColor: Color(0xFF650008), labelTextStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))),
-      dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF292223), surfaceTintColor: Colors.transparent),
-      snackBarTheme: const SnackBarThemeData(backgroundColor: Color(0xFF352629), contentTextStyle: TextStyle(color: Colors.white)),
+      scaffoldBackgroundColor: const Color(0xFFFFF8E7),
+      iconTheme: const IconThemeData(color: Color(0xFF047857), size: 23),
+      textTheme: ThemeData.light().textTheme.apply(bodyColor: const Color(0xFF123B2F), displayColor: const Color(0xFF123B2F)),
+      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 0,
+        backgroundColor: Color(0xFF047857), foregroundColor: Color(0xFFFFF8E7),
+        titleTextStyle: TextStyle(color: Color(0xFFFFF8E7), fontSize: 19, fontWeight: FontWeight.w800)),
+      cardTheme: CardThemeData(color: const Color(0xFFFFFDF5), elevation: 2, shadowColor: Color(0x22065F46),
+        margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE8E1CE)))),
+      inputDecorationTheme: InputDecorationTheme(
+        labelStyle: const TextStyle(color: Color(0xFF315B4B)), hintStyle: const TextStyle(color: Color(0xFF718579)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFC9D8CC))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFC9D8CC))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF047857), width: 1.6)),
+        filled: true, fillColor: const Color(0xFFFFFDF5), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15)),
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFFD60A),
+        foregroundColor: const Color(0xFF123B2F), minimumSize: const Size.fromHeight(52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15))),
+      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Color(0xFF047857), indicatorColor: Color(0xFFFFD60A),
+        labelTextStyle: WidgetStatePropertyAll(TextStyle(color: Color(0xFFFFF8E7), fontWeight: FontWeight.w700, fontSize: 12))),
+      dialogTheme: const DialogThemeData(backgroundColor: Color(0xFFFFF8E7), surfaceTintColor: Colors.transparent),
+      snackBarTheme: const SnackBarThemeData(backgroundColor: Color(0xFF065F46), contentTextStyle: TextStyle(color: Color(0xFFFFF8E7))),
     ),
     builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: SareeFoodBackdrop(child: child ?? const SizedBox.shrink())),
     home: const BrandSplashGate(),
@@ -233,12 +245,12 @@ class SareeFoodBackdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
     const DecoratedBox(decoration: BoxDecoration(
-      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF241719), Color(0xFF171717)]),
+      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF123B2F), Color(0xFF065F46), Color(0xFF123B2F)]),
     )),
-    const Positioned(top: 115, right: 12, child: Opacity(opacity: .055, child: Icon(Icons.lunch_dining_rounded, size: 112, color: Color(0xFFFFC400)))),
-    const Positioned(top: 330, left: -18, child: Opacity(opacity: .045, child: Icon(Icons.local_pizza_rounded, size: 145, color: Color(0xFFE50914)))),
-    const Positioned(bottom: 125, right: -15, child: Opacity(opacity: .05, child: Icon(Icons.ramen_dining_rounded, size: 132, color: Color(0xFFFFC400)))),
-    const Positioned(bottom: 18, left: 75, child: Opacity(opacity: .04, child: Icon(Icons.local_cafe_rounded, size: 92, color: Color(0xFFE50914)))),
+    const Positioned(top: 115, right: 12, child: Opacity(opacity: .055, child: Icon(Icons.lunch_dining_rounded, size: 112, color: Color(0xFFFFD60A)))),
+    const Positioned(top: 330, left: -18, child: Opacity(opacity: .045, child: Icon(Icons.local_pizza_rounded, size: 145, color: Color(0xFF047857)))),
+    const Positioned(bottom: 125, right: -15, child: Opacity(opacity: .05, child: Icon(Icons.ramen_dining_rounded, size: 132, color: Color(0xFFFFD60A)))),
+    const Positioned(bottom: 18, left: 75, child: Opacity(opacity: .04, child: Icon(Icons.local_cafe_rounded, size: 92, color: Color(0xFF047857)))),
     Positioned.fill(child: child),
   ]);
 }
@@ -288,8 +300,8 @@ class _RotatingFoodImageState extends State<RotatingFoodImage> {
     final photos = _photos;
     if (photos.isEmpty) {
       return ColoredBox(
-        color: const Color(0xFFFFF0E3),
-        child: Center(child: Icon(widget.fallbackIcon, size: 36, color: const Color(0xFFE50914))),
+        color: const Color(0xFFFFF8E7),
+        child: Center(child: Icon(widget.fallbackIcon, size: 36, color: const Color(0xFF047857))),
       );
     }
     final index = _index % photos.length;
@@ -302,8 +314,8 @@ class _RotatingFoodImageState extends State<RotatingFoodImage> {
         width: double.infinity,
         height: double.infinity,
         errorBuilder: (_, __, ___) => ColoredBox(
-          color: const Color(0xFFFFF0E3),
-          child: Center(child: Icon(widget.fallbackIcon, size: 36, color: const Color(0xFFE50914))),
+          color: const Color(0xFFFFF8E7),
+          child: Center(child: Icon(widget.fallbackIcon, size: 36, color: const Color(0xFF047857))),
         ),
       ),
     );
@@ -368,8 +380,8 @@ class _FoodPhotoBannerState extends State<FoodPhotoBanner> {
             width: double.infinity,
             height: double.infinity,
             errorBuilder: (context, error, stack) => const ColoredBox(
-              color: Color(0xFF3A2024),
-              child: Center(child: Icon(Icons.restaurant_menu_rounded, size: 54, color: Color(0xFFFFC400))),
+              color: Color(0xFF065F46),
+              child: Center(child: Icon(Icons.restaurant_menu_rounded, size: 54, color: Color(0xFFFFD60A))),
             ),
           ),
         ),
@@ -418,10 +430,10 @@ class BrandMark extends StatelessWidget {
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xFFFF242D), Color(0xFFB90012), Color(0xFF650008)],
+        colors: [Color(0xFF10A879), Color(0xFF047857), Color(0xFF064E3B)],
       ),
       borderRadius: BorderRadius.circular(size * .29),
-      border: Border.all(color: const Color(0xFFFFD45A), width: size * .025),
+      border: Border.all(color: const Color(0xFFFFD60A), width: size * .025),
       boxShadow: const [
         BoxShadow(color: Color(0x55000000), blurRadius: 18, offset: Offset(0, 7)),
       ],
@@ -431,7 +443,7 @@ class BrandMark extends StatelessWidget {
         left: size * .10,
         top: size * .29,
         child: Column(children: [
-          Container(width: size * .25, height: size * .045, decoration: BoxDecoration(color: const Color(0xFFFFD45A), borderRadius: BorderRadius.circular(8))),
+          Container(width: size * .25, height: size * .045, decoration: BoxDecoration(color: const Color(0xFFFFD60A), borderRadius: BorderRadius.circular(8))),
           SizedBox(height: size * .075),
           Container(width: size * .18, height: size * .04, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8))),
         ]),
@@ -440,11 +452,11 @@ class BrandMark extends StatelessWidget {
         width: size * .68,
         height: size * .68,
         decoration: BoxDecoration(
-          color: const Color(0xFF8E0010),
+          color: const Color(0xFFFFF8E7),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: size * .045),
+          border: Border.all(color: const Color(0xFF047857), width: size * .045),
         ),
-        child: Icon(Icons.delivery_dining_rounded, color: const Color(0xFFFFD45A), size: size * .48),
+        child: Icon(Icons.delivery_dining_rounded, color: const Color(0xFFFFD60A), size: size * .48),
       ),
       Positioned(
         right: size * .08,
@@ -487,7 +499,7 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [Color(0xFFE50914), Color(0xFFA9000A), Color(0xFF171717)],
+                colors: [Color(0xFF047857), Color(0xFF047857), Color(0xFF123B2F)],
                 stops: [0, .58, 1],
               ),
             ),
@@ -504,7 +516,7 @@ class _BrandSplashGateState extends State<BrandSplashGate> {
                     width: 142,
                     height: 142,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF171717),
+                      color: const Color(0xFF123B2F),
                       borderRadius: BorderRadius.circular(42),
                       border: Border.all(color: Colors.white.withValues(alpha: .85), width: 3),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 28, offset: const Offset(0, 12))],
@@ -576,7 +588,7 @@ class AccountClosedPage extends StatelessWidget {
     body: Center(child: Padding(
       padding: const EdgeInsets.all(28),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.no_accounts_rounded, size: 64, color: Color(0xFFFFC400)),
+        const Icon(Icons.no_accounts_rounded, size: 64, color: Color(0xFFFFD60A)),
         const SizedBox(height: 16),
         const Text('تم إغلاق هذا الحساب نهائياً', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900), textAlign: TextAlign.center),
         const SizedBox(height: 10),
@@ -599,7 +611,7 @@ class PendingApprovalPage extends StatelessWidget {
       body: Center(child: Padding(
         padding: const EdgeInsets.all(28),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(rejected ? Icons.cancel_outlined : Icons.hourglass_top_rounded, size: 68, color: rejected ? Colors.red : const Color(0xFFFFA000)),
+          Icon(rejected ? Icons.cancel_outlined : Icons.hourglass_top_rounded, size: 68, color: rejected ? Colors.red : const Color(0xFFFFD60A)),
           const SizedBox(height: 16),
           Text(rejected ? 'لم تتم الموافقة على الحساب' : 'حسابك قيد المراجعة', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
@@ -630,7 +642,7 @@ class _WalletPageState extends State<WalletPage> {
         if(snap.hasError) return Text('تعذر تحميل الرصيد: ${SareeBackend.arabicError(snap.error)}');
         if(!snap.hasData) return const LinearProgressIndicator();
         final amount=(snap.data!['balance_yer'] as num?)?.toInt() ?? 0;
-        return Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFFE50914),Color(0xFFFF8A00)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        return Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF047857),Color(0xFFFFD60A)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           const Text('الرصيد الحالي',style:TextStyle(color:Colors.white70)),
           const SizedBox(height:8),
           Text('$amount ريال يمني'.replaceFirst('$amount', amount.toString()),style:const TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w900)),
@@ -662,7 +674,7 @@ class SetupRequiredPage extends StatelessWidget {
     body: Center(child: Padding(
       padding: EdgeInsets.all(28),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.cloud_off, size: 64, color: const Color(0xFFE50914)),
+        Icon(Icons.cloud_off, size: 64, color: const Color(0xFF047857)),
         SizedBox(height: 16),
         Text('سريع يحتاج إلى ربط الخادم', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
@@ -813,7 +825,7 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
     appBar: AppBar(title: const Text('إرفاق مستندات الهوية'), automaticallyImplyLeading: false,
       actions: [IconButton(tooltip: 'خيارات تسجيل الخروج', onPressed: _busy ? null : () => showAccountSignOutOptions(context), icon: const Icon(Icons.logout_rounded))]),
     body: SafeArea(child: ListView(padding: const EdgeInsets.all(18), children: [
-      const Icon(Icons.verified_user_rounded, size: 58, color: Color(0xFFFFC400)),
+      const Icon(Icons.verified_user_rounded, size: 58, color: Color(0xFFFFD60A)),
       const SizedBox(height: 12),
       const Text('أرفق مستندات هويتك للتقديم للعمل لدى مطاعم سريع', textAlign: TextAlign.center,
         style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
@@ -825,7 +837,7 @@ class _CourierVerificationPageState extends State<CourierVerificationPage> {
       _documentTile('id_back', 'الهوية الشخصية – الوجه الخلفي', 'صورة واضحة للوجه الخلفي للبطاقة', Icons.badge_rounded),
       _documentTile('selfie', 'سيلفي مباشر مع البطاقة', 'التقط صورة بالكاميرا الأمامية وأنت تحمل هويتك بجانب وجهك، مع ظهور الوجه والبطاقة بوضوح', Icons.camera_front_rounded),
       _documentTile('residence', 'إثبات محل الإقامة (اختياري)', 'يمكنك إرفاق فاتورة أو مستند يوضح محل إقامتك، ويمكنك تركه فارغًا', Icons.home_work_outlined),
-      const Padding(padding: EdgeInsets.only(top: 2, bottom: 10), child: Text('إثبات محل الإقامة اختياري تمامًا ولن يمنع إرسال طلبك إذا لم ترفقه. لا ترفع صورة شخصية منفصلة؛ المطلوب سيلفي مباشر مع البطاقة.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
+      const Padding(padding: EdgeInsets.only(top: 2, bottom: 10), child: Text('إثبات محل الإقامة اختياري تمامًا ولن يمنع إرسال طلبك إذا لم ترفقه. لا ترفع صورة شخصية منفصلة؛ المطلوب سيلفي مباشر مع البطاقة.', style: TextStyle(color: Color(0xFF536B61), height: 1.5))),
       if (_message != null) Padding(padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(_message!, textAlign: TextAlign.center,
           style: TextStyle(color: _message!.startsWith('تم') ? Colors.green : Colors.red))),
@@ -952,12 +964,12 @@ class _AuthPageState extends State<AuthPage> {
               if (_requestedRole == 'courier') ...[
                 const SizedBox(height: 10),
                 Card(
-                  color: const Color(0xFFFFF8E5),
+                  color: const Color(0xFFFFF8E7),
                   child: Padding(
                     padding: const EdgeInsets.all(14),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       const Row(children: [
-                        Icon(Icons.verified_user_outlined, color: Color(0xFF9A6700)),
+                        Icon(Icons.verified_user_outlined, color: Color(0xFF765B00)),
                         SizedBox(width: 8),
                         Expanded(child: Text('متطلبات توثيق حساب المندوب', style: TextStyle(fontWeight: FontWeight.w900))),
                       ]),
@@ -1025,7 +1037,7 @@ class _AuthPageState extends State<AuthPage> {
               label: const Text('المتابعة باستخدام Google'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
-                side: const BorderSide(color: Color(0xFFFFC400)),
+                side: const BorderSide(color: Color(0xFFFFD60A)),
                 minimumSize: const Size.fromHeight(50),
               ),
             ),
@@ -1112,17 +1124,17 @@ class CustomerOffersPage extends StatelessWidget {
           final min = (promotion['minimum_order_yer'] as num? ?? 0).toInt();
           return Card(clipBehavior: Clip.antiAlias, child: Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF8B0008), Color(0xFF241719)])),
+            decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF047857), Color(0xFF065F46)])),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (photos.isNotEmpty) ...[MealPhotoGallery(urls: photos), const SizedBox(height: 12)],
               Text(promotion['title']?.toString() ?? 'عرض خاص', style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
               const SizedBox(height: 7),
-              Text(discount, style: const TextStyle(color: Color(0xFFFFC400), fontSize: 20, fontWeight: FontWeight.w900)),
+              Text(discount, style: const TextStyle(color: Color(0xFFFFD60A), fontSize: 20, fontWeight: FontWeight.w900)),
               if (restaurant != null) Text('المطعم: $restaurant', style: const TextStyle(color: Colors.white)),
               if ((promotion['description']?.toString() ?? '').isNotEmpty)
                 Padding(padding: const EdgeInsets.only(top: 7), child: Text(promotion['description'].toString(), style: const TextStyle(color: Colors.white70))),
               const SizedBox(height: 10),
-              const Text('الأصناف المشمولة في العرض:', style: TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w900)),
+              const Text('الأصناف المشمولة في العرض:', style: TextStyle(color: Color(0xFFFFD60A), fontWeight: FontWeight.w900)),
               if (items.isEmpty) const Text('لم تُحدد أصناف متاحة لهذا العرض بعد', style: TextStyle(color: Colors.white70))
               else ...items.map((item) {
                 final base = (item['price_yer'] as num? ?? 0).toInt();
@@ -1135,7 +1147,7 @@ class CustomerOffersPage extends StatelessWidget {
                     Text(item['name']?.toString() ?? 'صنف', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
                     const SizedBox(height: 4),
                     Row(children: [
-                      Text('$sale ريال', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w900, fontSize: 15)),
+                      Text('$sale ريال', style: const TextStyle(color: Color(0xFFFFD60A), fontWeight: FontWeight.w900, fontSize: 15)),
                       const SizedBox(width: 8),
                       if (sale < base) Text('$base ريال', style: const TextStyle(color: Colors.white70, decoration: TextDecoration.lineThrough, fontSize: 12)),
                     ]),
@@ -1159,7 +1171,7 @@ class CustomerOffersPage extends StatelessWidget {
               }),
               if (min > 0) Padding(padding: const EdgeInsets.only(top: 8), child: Text('الحد الأدنى: $min ريال', style: const TextStyle(color: Colors.white70, fontSize: 12))),
               if ((promotion['code']?.toString() ?? '').isNotEmpty)
-                Padding(padding: const EdgeInsets.only(top: 5), child: Text('كود العرض: ${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
+                Padding(padding: const EdgeInsets.only(top: 5), child: Text('كود العرض: ${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD60A), fontWeight: FontWeight.w800))),
               const SizedBox(height: 14),
               Row(children: [
                 Expanded(child: FilledButton.icon(onPressed: items.isEmpty ? null : () => _addOffer(context, promotion, checkout: true), icon: const Icon(Icons.flash_on_rounded), label: const Text('اطلب العرض الآن'))),
@@ -1191,7 +1203,7 @@ class CustomerHome extends StatelessWidget {
           IconButton(tooltip: 'البحث', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSearchPage())), icon: const Icon(Icons.search_rounded)),
           Stack(children: [
             IconButton(tooltip: 'السلة', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage())), icon: const Icon(Icons.shopping_bag_outlined)),
-            if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, backgroundColor: const Color(0xFFE50914), child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)))),
+            if (cart.count > 0) Positioned(right: 5, top: 4, child: CircleAvatar(radius: 9, backgroundColor: const Color(0xFF047857), child: Text(cart.count.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)))),
           ]),
           PopupMenuButton<String>(
             tooltip: 'القائمة',
@@ -1242,12 +1254,12 @@ class CustomerHome extends StatelessWidget {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSearchPage())),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE7ECF2))),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE8E1CE))),
                   child: const Row(children: [
-                    Icon(Icons.search_rounded, color: Color(0xFFE50914)),
+                    Icon(Icons.search_rounded, color: Color(0xFF047857)),
                     SizedBox(width: 10),
-                    Expanded(child: Text('ابحث عن مطعمك أو وجبتك المفضلة', style: TextStyle(color: Color(0xFF8994A3)))),
-                    Icon(Icons.tune_rounded, color: Color(0xFF8994A3), size: 20),
+                    Expanded(child: Text('ابحث عن مطعمك أو وجبتك المفضلة', style: TextStyle(color: Color(0xFF647A70)))),
+                    Icon(Icons.tune_rounded, color: Color(0xFF647A70), size: 20),
                   ]),
                 ),
               ),
@@ -1262,54 +1274,130 @@ class CustomerHome extends StatelessWidget {
                     const SizedBox(height: 9),
                     SizedBox(height: 148, child: ListView(scrollDirection: Axis.horizontal, children: promos.map((promo) => Container(
                       width: 286, margin: const EdgeInsetsDirectional.only(end: 10), padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: const LinearGradient(colors: [Color(0xFFE50914), Color(0xFF8B0008)])),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: const LinearGradient(colors: [Color(0xFF047857), Color(0xFF047857)])),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(promo['title']?.toString() ?? 'عرض خاص', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
                         const SizedBox(height: 3),
-                        Text(promo['discount_type'] == 'percentage' ? 'خصم ${promo['discount_value']}٪' : 'خصم ${promo['discount_value']} ريال', style: const TextStyle(color: Color(0xFFFFC400), fontWeight: FontWeight.w900, fontSize: 16)),
+                        Text(promo['discount_type'] == 'percentage' ? 'خصم ${promo['discount_value']}٪' : 'خصم ${promo['discount_value']} ريال', style: const TextStyle(color: Color(0xFFFFD60A), fontWeight: FontWeight.w900, fontSize: 16)),
                         Text((promo['restaurants'] is Map ? promo['restaurants']['name'] : null)?.toString() ?? 'مطعم مشارك', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                        if (promo['menu_items'] is Map && promo['menu_items']['name'] != null) Text('على صنف: ${promo['menu_items']['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFD45A), fontSize: 11, fontWeight: FontWeight.w800)),
+                        if (promo['menu_items'] is Map && promo['menu_items']['name'] != null) Text('على صنف: ${promo['menu_items']['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFD60A), fontSize: 11, fontWeight: FontWeight.w800)),
                         Expanded(child: Text(promo['description']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12))),
-                        if ((promo['code']?.toString() ?? '').isNotEmpty) Text('كود العرض: ${promo['code']} • الحد الأدنى: ${promo['minimum_order_yer'] ?? 0} ريال', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFC400), fontWeight: FontWeight.w900, fontSize: 11)),
+                        if ((promo['code']?.toString() ?? '').isNotEmpty) Text('كود العرض: ${promo['code']} • الحد الأدنى: ${promo['minimum_order_yer'] ?? 0} ريال', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFD60A), fontWeight: FontWeight.w900, fontSize: 11)),
                       ]),
                     )).toList())),
                     const SizedBox(height: 18),
                   ]);
                 },
               ),
-              const Text('تصفح حسب القسم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+              const Text('أصناف من المطاعم', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF123B2F))),
               const SizedBox(height: 8),
-              FutureBuilder<List<Map<String,dynamic>>>(
-                future: SareeBackend.categories(),
-                builder: (context, categorySnap) {
-                  if (!categorySnap.hasData || categorySnap.data!.isEmpty) return const SizedBox.shrink();
-                  final seen = <String>{};
-                  final unique = categorySnap.data!.where((cat) => seen.add(cat['name'].toString())).toList();
-                  return SizedBox(height: 44, child: ListView(scrollDirection: Axis.horizontal, children: unique.map((cat) => Padding(
-                    padding: const EdgeInsetsDirectional.only(end: 8),
-                    child: ActionChip(
-                      avatar: const Icon(Icons.restaurant_menu_rounded, size: 17),
-                      label: Text(cat['name'].toString()),
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CustomerSearchPage(initialQuery: cat['name'].toString()))),
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: SareeBackend.featuredMenuItems(),
+                builder: (context, itemSnap) {
+                  if (itemSnap.connectionState != ConnectionState.done && !itemSnap.hasData) {
+                    return const SizedBox(height: 220, child: Center(child: CircularProgressIndicator()));
+                  }
+                  if (itemSnap.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text('تعذر تحميل الأصناف: ${SareeBackend.arabicError(itemSnap.error)}'),
+                    );
+                  }
+                  final items = itemSnap.data ?? [];
+                  if (items.isEmpty) {
+                    return const Card(child: Padding(
+                      padding: EdgeInsets.all(18),
+                      child: Text('ستظهر هنا أصناف المطاعم المتاحة للطلب.'),
+                    ));
+                  }
+                  return SizedBox(
+                    height: 286,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: items.map((item) {
+                        final restaurant = item['restaurants'];
+                        final restaurantId = item['restaurant_id']?.toString() ?? '';
+                        final restaurantName = restaurant is Map ? restaurant['name']?.toString() ?? 'مطعم' : 'مطعم';
+                        final price = _effectiveItemPrice(item);
+                        return SizedBox(
+                          width: 238,
+                          child: Card(
+                            clipBehavior: Clip.antiAlias,
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(13),
+                                    child: SizedBox(
+                                      height: 104,
+                                      child: Image.network(
+                                        _mealPhotoUrl(item),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const ColoredBox(
+                                          color: Color(0xFFE8E1CE),
+                                          child: Icon(Icons.restaurant_menu_rounded, size: 38, color: Color(0xFF047857)),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Text(item['name']?.toString() ?? 'صنف', maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF123B2F))),
+                                  Text(restaurantName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF647A70))),
+                                  const Spacer(),
+                                  Text('$price ريال', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF047857), fontSize: 15)),
+                                  const SizedBox(height: 6),
+                                  Row(children: [
+                                    Expanded(child: FilledButton(
+                                      style: FilledButton.styleFrom(minimumSize: const Size(0, 38), padding: const EdgeInsets.symmetric(horizontal: 5),
+                                        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                                      onPressed: restaurantId.isEmpty || item['is_available'] == false ? null : () {
+                                        context.read<CartController>().add(item, restaurantId, price: price);
+                                        Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutPage()));
+                                      },
+                                      child: const Text('اطلب الآن'),
+                                    )),
+                                    const SizedBox(width: 6),
+                                    Expanded(child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38), padding: const EdgeInsets.symmetric(horizontal: 4),
+                                        foregroundColor: const Color(0xFF047857), side: const BorderSide(color: Color(0xFF047857)),
+                                        textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                                      onPressed: restaurantId.isEmpty || item['is_available'] == false ? null : () {
+                                        context.read<CartController>().add(item, restaurantId, price: price);
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة ${item['name'] ?? 'الصنف'} إلى السلة')));
+                                      },
+                                      icon: const Icon(Icons.add_shopping_cart_rounded, size: 15),
+                                      label: const Text('أضف للسلة'),
+                                    )),
+                                  ]),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
-                  )).toList()));
+                  );
                 },
               ),
               const SizedBox(height: 20),
               const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('المطاعم المتاحة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
-                Icon(Icons.tune_rounded, color: Color(0xFFE50914)),
+                Text('المطاعم المتاحة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF123B2F))),
+                Icon(Icons.tune_rounded, color: Color(0xFF047857)),
               ]),
               const SizedBox(height: 10),
               if (restaurants.isEmpty)
                 const Card(child: Padding(
                   padding: EdgeInsets.all(22),
                   child: Column(children: [
-                    Icon(Icons.restaurant_menu_rounded, size: 46, color: Color(0xFFE50914)),
+                    Icon(Icons.restaurant_menu_rounded, size: 46, color: Color(0xFF047857)),
                     SizedBox(height: 10),
-                    Text('لا توجد مطاعم مفعّلة حاليًا', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF171717))),
+                    Text('لا توجد مطاعم مفعّلة حاليًا', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF123B2F))),
                     SizedBox(height: 5),
-                    Text('ستظهر المطاعم هنا بعد إضافتها واعتمادها من الإدارة.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF748094))),
+                    Text('ستظهر المطاعم هنا بعد إضافتها واعتمادها من الإدارة.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF536B61))),
                   ]),
                 ))
               else
@@ -1329,29 +1417,29 @@ class CustomerHome extends StatelessWidget {
                                     r['cover_image_url'].toString(),
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => const ColoredBox(
-                                      color: Color(0xFF3A292C),
-                                      child: Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFFFC400)),
+                                      color: Color(0xFFE8E1CE),
+                                      child: Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFFFD60A)),
                                     ),
                                   )
                                 : const ColoredBox(
-                                    color: Color(0xFF3A292C),
-                                    child: Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFFFC400)),
+                                    color: Color(0xFFE8E1CE),
+                                    child: Icon(Icons.restaurant_rounded, size: 38, color: Color(0xFFFFD60A)),
                                   ),
                           ),
                         ),
                         const SizedBox(width: 13),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFD45A))),
+                          Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFD60A))),
                           const SizedBox(height: 5),
-                          Text(r['description']?.toString() ?? 'وجبات شهية بانتظارك', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFE5DADD), fontSize: 12)),
+                          Text(r['description']?.toString() ?? 'وجبات شهية بانتظارك', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFDCE9DE), fontSize: 12)),
                           const SizedBox(height: 8),
                           Row(children: [
-                            const Icon(Icons.delivery_dining_rounded, size: 16, color: Color(0xFFE50914)),
+                            const Icon(Icons.delivery_dining_rounded, size: 16, color: Color(0xFF047857)),
                             const SizedBox(width: 4),
                             Text('رسوم التوصيل: ${r['delivery_fee_yer'] ?? '—'} ريال', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
                           ]),
                         ])),
-                        const Icon(Icons.chevron_left_rounded, color: Color(0xFF8994A3)),
+                        const Icon(Icons.chevron_left_rounded, color: Color(0xFF647A70)),
                       ]),
                     ),
                   ),
@@ -1551,7 +1639,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
                   key: _formKey,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     const Row(children: [
-                      CircleAvatar(radius: 25, backgroundColor: Color(0xFFFFE6E6), child: Icon(Icons.person_rounded, color: Color(0xFFE50914), size: 28)),
+                      CircleAvatar(radius: 25, backgroundColor: Color(0xFFE5F3EA), child: Icon(Icons.person_rounded, color: Color(0xFF047857), size: 28)),
                       SizedBox(width: 12),
                       Expanded(child: Text('البيانات الشخصية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
                     ]),
@@ -1571,7 +1659,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
                       onSaved: (v) => _phone = v?.trim() ?? '',
                     ),
                     const SizedBox(height: 8),
-                    Text('البريد الإلكتروني: ${SareeBackend.user?.email ?? '—'}', style: const TextStyle(color: Color(0xFF748094))),
+                    Text('البريد الإلكتروني: ${SareeBackend.user?.email ?? '—'}', style: const TextStyle(color: Color(0xFF536B61))),
                     const SizedBox(height: 14),
                     FilledButton(
                       onPressed: _saving ? null : _saveProfile,
@@ -1603,17 +1691,17 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
             if (rows.isEmpty) return const Card(child: Padding(
               padding: EdgeInsets.all(22),
               child: Column(children: [
-                Icon(Icons.location_off_outlined, size: 38, color: Color(0xFFE50914)),
+                Icon(Icons.location_off_outlined, size: 38, color: Color(0xFF047857)),
                 SizedBox(height: 8),
                 Text('لم تحفظ عنوان توصيل بعد', style: TextStyle(fontWeight: FontWeight.w800)),
-                Text('أضف عنوان المنزل أو العمل لتسهيل طلباتك القادمة.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF748094))),
+                Text('أضف عنوان المنزل أو العمل لتسهيل طلباتك القادمة.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF536B61))),
               ]),
             ));
             return Column(children: rows.map((row) => Card(
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: const Color(0xFFFFE6E6),
-                  child: Icon(row['label'] == 'العمل' ? Icons.work_outline : Icons.home_outlined, color: const Color(0xFFE50914)),
+                  backgroundColor: const Color(0xFFE5F3EA),
+                  child: Icon(row['label'] == 'العمل' ? Icons.work_outline : Icons.home_outlined, color: const Color(0xFF047857)),
                 ),
                 title: Row(children: [
                   Flexible(child: Text(row['label']?.toString() ?? 'عنوان', style: const TextStyle(fontWeight: FontWeight.w800))),
@@ -1668,7 +1756,7 @@ class RestaurantMenuPage extends StatelessWidget {
                 if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث المفضلة: $e')));
               }
             },
-            icon: Icon(snap.data == true ? Icons.favorite : Icons.favorite_border, color: const Color(0xFFE50914)),
+            icon: Icon(snap.data == true ? Icons.favorite : Icons.favorite_border, color: const Color(0xFF047857)),
           ),
         ),
       ],
@@ -1702,11 +1790,11 @@ class RestaurantMenuPage extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(22),
             child: SizedBox(height: 174, width: double.infinity, child: Stack(fit: StackFit.expand, children: [
-              if (coverUrl.isNotEmpty) Image.network(coverUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const DecoratedBox(decoration: BoxDecoration(color: Color(0xFF171717)))),
-              if (coverUrl.isEmpty) const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF650008)]))),
+              if (coverUrl.isNotEmpty) Image.network(coverUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const DecoratedBox(decoration: BoxDecoration(color: Color(0xFF123B2F)))),
+              if (coverUrl.isEmpty) const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF123B2F), Color(0xFF064E3B)]))),
               const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.center, end: Alignment.bottomCenter, colors: [Colors.transparent, Color(0xE6000000)]))),
               Padding(padding: const EdgeInsets.all(18), child: Row(children: [
-                const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFFC400), size: 32),
+                const Icon(Icons.restaurant_menu_rounded, color: Color(0xFFFFD60A), size: 32),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
                   Text(restaurant['name'].toString(), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
@@ -1726,7 +1814,7 @@ class RestaurantMenuPage extends StatelessWidget {
                   .reduce((a, b) => a + b) / reviews.length;
               return Card(
                 child: ListTile(
-                  leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400), size: 30),
+                  leading: const Icon(Icons.star_rounded, color: Color(0xFFFFD60A), size: 30),
                   title: Text(
                     average.toStringAsFixed(1),
                     style: const TextStyle(fontWeight: FontWeight.w900),
@@ -1746,7 +1834,7 @@ class RestaurantMenuPage extends StatelessWidget {
                                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                               ),
                               ...reviews.map((review) => ListTile(
-                                leading: const Icon(Icons.star_rounded, color: Color(0xFFFFC400)),
+                                leading: const Icon(Icons.star_rounded, color: Color(0xFFFFD60A)),
                                 title: Text(
                                   '${review['rating']}/5 • ${(review['profiles'] is Map ? review['profiles']['full_name'] : null) ?? 'عميل'}',
                                 ),
@@ -1767,7 +1855,7 @@ class RestaurantMenuPage extends StatelessWidget {
           ...orderedCategories.expand((category) => [
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
-              child: Text(category, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+              child: Text(category, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF123B2F))),
             ),
             ...grouped[category]!.map((item) {
               final available = item['is_available'] == true && (item['price_yer'] as num? ?? 0) > 0;
@@ -1788,22 +1876,22 @@ class RestaurantMenuPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFFFFD45A))),
+                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFFFFD60A))),
                         const SizedBox(height: 4),
-                        Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFE5DADD), fontSize: 12)),
+                        Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFDCE9DE), fontSize: 12)),
                         const SizedBox(height: 7),
                         if (!available)
-                          const Text('السعر والتوفر يحددهما المطعم', style: TextStyle(color: Color(0xFF8A6670), fontWeight: FontWeight.w900, fontSize: 12))
+                          const Text('السعر والتوفر يحددهما المطعم', style: TextStyle(color: Color(0xFF536B61), fontWeight: FontWeight.w900, fontSize: 12))
                         else if (_activeItemPromotion(item) != null)
                           Row(children: [
-                            Text('${_effectiveItemPrice(item)} ريال يمني', style: const TextStyle(color: Color(0xFFE50914), fontWeight: FontWeight.w900, fontSize: 12)),
+                            Text('${_effectiveItemPrice(item)} ريال يمني', style: const TextStyle(color: Color(0xFF047857), fontWeight: FontWeight.w900, fontSize: 12)),
                             const SizedBox(width: 7),
-                            Text('${item['price_yer']} ريال', style: const TextStyle(color: Color(0xFF8994A3), fontSize: 11, decoration: TextDecoration.lineThrough)),
+                            Text('${item['price_yer']} ريال', style: const TextStyle(color: Color(0xFF647A70), fontSize: 11, decoration: TextDecoration.lineThrough)),
                           ])
                         else
-                          Text('${item['price_yer']} ريال يمني', style: const TextStyle(color: Color(0xFFE50914), fontWeight: FontWeight.w900, fontSize: 12)),
+                          Text('${item['price_yer']} ريال يمني', style: const TextStyle(color: Color(0xFF047857), fontWeight: FontWeight.w900, fontSize: 12)),
                       ])),
-                      Icon(available ? Icons.chevron_left_rounded : Icons.info_outline_rounded, color: const Color(0xFF8994A3)),
+                      Icon(available ? Icons.chevron_left_rounded : Icons.info_outline_rounded, color: const Color(0xFF647A70)),
                     ]),
                   ),
                 ),
@@ -1886,9 +1974,9 @@ class _MealPhotoGalleryState extends State<MealPhotoGallery> {
                 fit: BoxFit.cover,
                 width: double.infinity,
                 errorBuilder: (context, error, stack) => const ColoredBox(
-                  color: Color(0xFFFFF0E3),
+                  color: Color(0xFFFFF8E7),
                   child: Center(
-                    child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFFE50914)),
+                    child: Icon(Icons.restaurant_rounded, size: 90, color: Color(0xFF047857)),
                   ),
                 ),
               ),
@@ -1913,7 +2001,7 @@ class _MealPhotoGalleryState extends State<MealPhotoGallery> {
                   width: selected ? 20 : 7,
                   height: 7,
                   decoration: BoxDecoration(
-                    color: selected ? const Color(0xFFE50914) : const Color(0xFFB9C0CA),
+                    color: selected ? const Color(0xFF047857) : const Color(0xFF647A70),
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
@@ -1944,17 +2032,17 @@ class MealDetailsPage extends StatelessWidget {
         const SizedBox(height: 20),
         Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
         const SizedBox(height: 8),
-        Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF748094))),
+        Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF536B61))),
         const SizedBox(height: 18),
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE7ECF2))),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE8E1CE))),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF748094))),
+            const Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF536B61))),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(available ? '$salePrice ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFFE50914))),
+              Text(available ? '$salePrice ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF047857))),
               if (available && itemPromotion != null)
-                Text('${item['price_yer']} ريال قبل الخصم', style: const TextStyle(fontSize: 12, color: Color(0xFF8994A3), decoration: TextDecoration.lineThrough)),
+                Text('${item['price_yer']} ريال قبل الخصم', style: const TextStyle(fontSize: 12, color: Color(0xFF647A70), decoration: TextDecoration.lineThrough)),
             ]),
           ]),
         ),
@@ -1971,7 +2059,7 @@ class MealDetailsPage extends StatelessWidget {
         else
           const Padding(
             padding: EdgeInsets.all(12),
-            child: Text('هذا الصنف معروض في المنيو، وسيصبح متاحاً للطلب بعد تأكيد السعر والتوفر من المطعم.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8A6670), fontWeight: FontWeight.w700)),
+            child: Text('هذا الصنف معروض في المنيو، وسيصبح متاحاً للطلب بعد تأكيد السعر والتوفر من المطعم.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF536B61), fontWeight: FontWeight.w700)),
           ),
       ]);
     }),
@@ -2225,7 +2313,7 @@ class CustomerOrdersPage extends StatelessWidget {
             title: Text('طلب #${order['order_number']}'),
             subtitle: Text('${statusLabel(order['status'].toString())}\nالإجمالي: ${order['total_yer']} ريال'),
             isThreeLine: true,
-            trailing: order['status'] == 'delivered' ? IconButton(tooltip: 'قيّم المطعم', onPressed: () => _showSareeReviewDialog(context, order), icon: const Icon(Icons.star_rate_rounded, color: Color(0xFFFFB300))) : null,
+            trailing: order['status'] == 'delivered' ? IconButton(tooltip: 'قيّم المطعم', onPressed: () => _showSareeReviewDialog(context, order), icon: const Icon(Icons.star_rate_rounded, color: Color(0xFFFFD60A))) : null,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderTrackingPage(order: order))),
           ),
         )).toList());
@@ -2262,7 +2350,7 @@ class OrderTrackingPage extends StatelessWidget {
         return ListView(padding: const EdgeInsets.all(18), children: [
           Container(
             padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: const Color(0xFF171717), borderRadius: BorderRadius.circular(22)),
+            decoration: BoxDecoration(color: const Color(0xFF123B2F), borderRadius: BorderRadius.circular(22)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('حالة طلبك الآن', style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 8),
@@ -2278,10 +2366,10 @@ class OrderTrackingPage extends StatelessWidget {
             final done = !cancelled && index > entry.key;
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor: active ? const Color(0xFFFFE6E6) : const Color(0xFFE7ECF2),
-                child: Icon(done ? Icons.check_rounded : entry.value.$3, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3)),
+                backgroundColor: active ? const Color(0xFFE5F3EA) : const Color(0xFFE8E1CE),
+                child: Icon(done ? Icons.check_rounded : entry.value.$3, color: active ? const Color(0xFF047857) : const Color(0xFF647A70)),
               ),
-              title: Text(entry.value.$2, style: TextStyle(fontWeight: active ? FontWeight.w900 : FontWeight.w500, color: active ? const Color(0xFF171717) : const Color(0xFF8994A3))),
+              title: Text(entry.value.$2, style: TextStyle(fontWeight: active ? FontWeight.w900 : FontWeight.w500, color: active ? const Color(0xFF123B2F) : const Color(0xFF647A70))),
             );
           }),
           Card(child: ListTile(leading: const Icon(Icons.location_on_rounded), title: const Text('عنوان التوصيل'), subtitle: Text(current['delivery_address']?.toString() ?? ''))),
@@ -2301,7 +2389,7 @@ class OrderTrackingPage extends StatelessWidget {
               },
               icon: const Icon(Icons.cancel_outlined), label: const Text('إلغاء الطلب'),
             ),
-          const Padding(padding: EdgeInsets.only(top: 10), child: Text('تتحدث حالة الطلب تلقائيًا. عند مشاركة المندوب لموقعه مع السماح بإذن GPS أثناء استخدام التطبيق، ستظهر حركته هنا على الخريطة.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
+          const Padding(padding: EdgeInsets.only(top: 10), child: Text('تتحدث حالة الطلب تلقائيًا. عند مشاركة المندوب لموقعه مع السماح بإذن GPS أثناء استخدام التطبيق، ستظهر حركته هنا على الخريطة.', style: TextStyle(color: Color(0xFF536B61), height: 1.5))),
         ]);
       },
     ),
@@ -2333,13 +2421,13 @@ class CourierLiveMap extends StatelessWidget {
             TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
             if (route.isNotEmpty) PolylineLayer(polylines: [Polyline(points: route, strokeWidth: 5, color: Colors.blueAccent)]),
             MarkerLayer(markers: [
-              Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFE50914), size: 44)),
+              Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 44)),
               if (destination != null) Marker(point: destination, width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 44)),
             ]),
           ],
         )),
-        const Padding(padding: EdgeInsets.fromLTRB(12, 8, 12, 0), child: Text('الخط الأزرق يوضح الاتجاه المباشر بين المندوب وعنوانك، وليس توجيهاً انعطافياً على الطرق.', style: TextStyle(fontSize: 11, color: Color(0xFF748094)))),
-        Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: ${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF748094)))),
+        const Padding(padding: EdgeInsets.fromLTRB(12, 8, 12, 0), child: Text('الخط الأزرق يوضح الاتجاه المباشر بين المندوب وعنوانك، وليس توجيهاً انعطافياً على الطرق.', style: TextStyle(fontSize: 11, color: Color(0xFF536B61)))),
+        Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: ${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF536B61)))),
       ]));
     },
   );
@@ -2649,7 +2737,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               _courierApplicationsSection(restaurantId),
               const Divider(height: 24),
               const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Text('فريق المندوبين المقبولين', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
-              const Padding(padding: EdgeInsets.fromLTRB(14, 6, 14, 8), child: Text('افتح بطاقة أي مندوب لعرض بياناته وصور الهوية والسيلفي المرفقة بطلب الانضمام.', style: TextStyle(color: Color(0xFF748094), height: 1.4))),
+              const Padding(padding: EdgeInsets.fromLTRB(14, 6, 14, 8), child: Text('افتح بطاقة أي مندوب لعرض بياناته وصور الهوية والسيلفي المرفقة بطلب الانضمام.', style: TextStyle(color: Color(0xFF536B61), height: 1.4))),
               if (couriers.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('لم يتم قبول أي مندوب في فريق المطعم بعد', textAlign: TextAlign.center))),
               ...couriers.map((courier) {
                 final active = courier['is_active'] == true;
@@ -2659,10 +2747,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                 final status = !active ? 'موقوف' : available ? 'متاح الآن' : 'غير متصل أو لا يشارك موقعه';
                 final application = accepted.where((a) => a['courier_id']?.toString() == courier['courier_id']?.toString()).firstOrNull;
                 return Card(child: ExpansionTile(
-                  leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF0E3) : const Color(0xFFE7ECF2), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFFE50914) : const Color(0xFF8994A3))),
+                  leading: CircleAvatar(backgroundColor: active ? const Color(0xFFFFF8E7) : const Color(0xFFE8E1CE), child: Icon(Icons.delivery_dining_rounded, color: active ? const Color(0xFF047857) : const Color(0xFF647A70))),
                   title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
                   subtitle: Text('$phone • $status'),
-                  trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF8994A3)),
+                  trailing: active ? IconButton(tooltip: 'إزالة من الفريق', onPressed: _busy ? null : () => _removeCourier(restaurantId, courier), icon: const Icon(Icons.person_remove_alt_1_rounded, color: Colors.red)) : const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFF647A70)),
                   childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
                   children: [
                     ListTile(dense: true, leading: const Icon(Icons.email_outlined), title: const Text('البريد الإلكتروني'), subtitle: SelectableText(application?['email']?.toString() ?? 'غير متوفر')),
@@ -2694,20 +2782,20 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF211B1C),
+        color: const Color(0xFF065F46),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ready ? const Color(0xFFFFC400) : const Color(0xFF493438), width: ready ? 1.5 : 1),
+        border: Border.all(color: ready ? const Color(0xFFFFD60A) : const Color(0xFFD5E3D8), width: ready ? 1.5 : 1),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Icon(Icons.receipt_long_rounded, color: ready ? const Color(0xFFFFC400) : Colors.white70),
+          Icon(Icons.receipt_long_rounded, color: ready ? const Color(0xFFFFD60A) : Colors.white70),
           const SizedBox(width: 8),
           const Expanded(child: Text('تفاصيل الطلب كاملة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900))),
           if (ready) const Chip(
             visualDensity: VisualDensity.compact,
             label: Text('جاهز للاستلام', style: TextStyle(fontWeight: FontWeight.w800)),
-            backgroundColor: Color(0xFFFFC400),
-            labelStyle: TextStyle(color: Color(0xFF171717)),
+            backgroundColor: Color(0xFFFFD60A),
+            labelStyle: TextStyle(color: Color(0xFF123B2F)),
             side: BorderSide.none,
           ),
         ]),
@@ -2718,7 +2806,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         if ((order['notes'] ?? '').toString().trim().isNotEmpty)
           _orderInfoRow(Icons.notes_rounded, 'ملاحظات العميل', order['notes'].toString()),
         const SizedBox(height: 10),
-        const Text('الأصناف المطلوبة والكميات', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFFC400))),
+        const Text('الأصناف المطلوبة والكميات', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFFD60A))),
         FutureBuilder<List<Map<String, dynamic>>>(
           future: SareeBackend.courierOrderItems(order['id'].toString()),
           builder: (context, itemsSnap) {
@@ -2737,7 +2825,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               return Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Icon(Icons.restaurant_menu_rounded, size: 18, color: Color(0xFFFFC400)),
+                  const Icon(Icons.restaurant_menu_rounded, size: 18, color: Color(0xFFFFD60A)),
                   const SizedBox(width: 8),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(item['item_name']?.toString() ?? 'صنف', style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -2755,10 +2843,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
         Container(
           margin: const EdgeInsets.only(top: 8),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(color: const Color(0xFF650008), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: const Color(0xFF064E3B), borderRadius: BorderRadius.circular(12)),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             const Text('الإجمالي المطلوب من العميل', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
-            Text('$total ريال يمني', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFFC400), fontSize: 16)),
+            Text('$total ريال يمني', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFFD60A), fontSize: 16)),
           ]),
         ),
         const SizedBox(height: 8),
@@ -2776,7 +2864,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   Widget _orderInfoRow(IconData icon, String label, String value) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(icon, size: 18, color: const Color(0xFFFFC400)),
+      Icon(icon, size: 18, color: const Color(0xFFFFD60A)),
       const SizedBox(width: 8),
       SizedBox(width: 105, child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12))),
       Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
@@ -2825,7 +2913,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
           const SizedBox(height: 6),
           Container(
             constraints: const BoxConstraints(maxHeight: 220),
-            decoration: BoxDecoration(border: Border.all(color: const Color(0xFF594147)), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(border: Border.all(color: const Color(0xFFC9D8CC)), borderRadius: BorderRadius.circular(12)),
             child: ListView(
               shrinkWrap: true,
               children: [
@@ -2926,16 +3014,16 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
           const SizedBox(height: 8),
           const Align(
             alignment: Alignment.centerRight,
-            child: Text('عروض وتخفيضات المطعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFFFFD45A))),
+            child: Text('عروض وتخفيضات المطعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFFFFD60A))),
           ),
-          const Padding(padding: EdgeInsets.only(top: 6, bottom: 12), child: Text('العروض النشطة تظهر تلقائيًا للعملاء في الصفحة الرئيسية مع كود العرض وشروطه.', style: TextStyle(color: Color(0xFF748094), height: 1.5))),
+          const Padding(padding: EdgeInsets.only(top: 6, bottom: 12), child: Text('العروض النشطة تظهر تلقائيًا للعملاء في الصفحة الرئيسية مع كود العرض وشروطه.', style: TextStyle(color: Color(0xFF536B61), height: 1.5))),
           if (promotions.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('لم تضف عروضًا بعد. أنشئ أول تخفيض ليظهر لعملائك.', textAlign: TextAlign.center))),
           ...promotions.map((item) {
             final discount = item['discount_type'] == 'percentage'
                 ? '${item['discount_value']}٪ خصم'
                 : '${item['discount_value']} ريال خصم';
             return Card(child: ListTile(
-              leading: CircleAvatar(backgroundColor: const Color(0xFFFFF0E3), child: Icon(Icons.local_offer_rounded, color: item['is_active'] == true ? const Color(0xFFE50914) : const Color(0xFF8994A3))),
+              leading: CircleAvatar(backgroundColor: const Color(0xFFFFF8E7), child: Icon(Icons.local_offer_rounded, color: item['is_active'] == true ? const Color(0xFF047857) : const Color(0xFF647A70))),
               title: Text(item['title']?.toString() ?? 'عرض'),
               subtitle: Text('$discount • ${_promotionItemNames(item)} • ${item['code'] == null || item['code'].toString().isEmpty ? 'بدون كود' : 'الكود: ${item['code']}'} • ${item['is_active'] == true ? 'نشط' : 'متوقف'}'),
               trailing: PopupMenuButton<String>(
@@ -2981,7 +3069,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Text('اكتب كل صنف في سطر مستقل بهذا الترتيب: الاسم | السعر | الوصف | القسم. الوصف والقسم اختياريان.', style: TextStyle(height: 1.6)),
               const SizedBox(height: 10),
-              const Text('مثال:\nبرجر لحم | 1800 | لحم وجبن | البرجر\nبيتزا خضار | 2200 | خضار وجبن | البيتزا\nعصير مانجو | 700 | عصير طازج | المشروبات', style: TextStyle(color: Color(0xFFFFD45A), fontSize: 12, height: 1.7)),
+              const Text('مثال:\nبرجر لحم | 1800 | لحم وجبن | البرجر\nبيتزا خضار | 2200 | خضار وجبن | البيتزا\nعصير مانجو | 700 | عصير طازج | المشروبات', style: TextStyle(color: Color(0xFFFFD60A), fontSize: 12, height: 1.7)),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
@@ -3125,19 +3213,19 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
           Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 4), child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF171717), Color(0xFF650008)]),
+              gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF123B2F), Color(0xFF064E3B)]),
               borderRadius: BorderRadius.circular(22),
               boxShadow: const [BoxShadow(color: Color(0x1F171717), blurRadius: 16, offset: Offset(0, 7))],
             ),
             child: Row(children: [
-              Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFFFFC400), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.storefront_rounded, color: Color(0xFF171717), size: 27)),
+              Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFFFFD60A), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.storefront_rounded, color: Color(0xFF123B2F), size: 27)),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(restaurant['name'].toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
                 const SizedBox(height: 3),
                 const Text('إدارة الطلبات والوجبات وفريق التوصيل', style: TextStyle(fontSize: 11, color: Colors.white70)),
               ])),
-              const Icon(Icons.verified_rounded, color: Color(0xFFFFC400), size: 22),
+              const Icon(Icons.verified_rounded, color: Color(0xFFFFD60A), size: 22),
             ]),
           )),
           Expanded(child: IndexedStack(index: _tab, children: [
@@ -3164,7 +3252,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   ...items.map((item) => Card(child: ListTile(
                     leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 54, height: 54, child: RotatingFoodImage(urls: _mealPhotoUrls(item).isEmpty ? [_mealPhotoUrl(item)] : _mealPhotoUrls(item)))),
                     title: Text(item['name'].toString(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 15, fontWeight: FontWeight.w900)),
-                    subtitle: Text('${item['price_yer']} ريال • ${item['is_available'] == true ? 'متاحة' : 'متوقفة'}', style: const TextStyle(color: Color(0xFFE5DADD))),
+                    subtitle: Text('${item['price_yer']} ريال • ${item['is_available'] == true ? 'متاحة' : 'متوقفة'}', style: const TextStyle(color: Color(0xFFDCE9DE))),
                     trailing: PopupMenuButton<String>(
                       onSelected: (v) {
                         if(v == 'edit') _editMeal(rid, item);
@@ -3342,7 +3430,7 @@ class _DeliveryFeeSettingsTabState extends State<DeliveryFeeSettingsTab> {
       Card(child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Icon(Icons.delivery_dining_rounded, size: 52, color: Color(0xFFFFC400)),
+          const Icon(Icons.delivery_dining_rounded, size: 52, color: Color(0xFFFFD60A)),
           const SizedBox(height: 12),
           const Text('تحديد رسوم توصيل المطعم',
             textAlign: TextAlign.center,
@@ -3366,7 +3454,7 @@ class _DeliveryFeeSettingsTabState extends State<DeliveryFeeSettingsTab> {
           ),
           const SizedBox(height: 8),
           const Text('يمكنك كتابة 0 إذا كان التوصيل مجانيًا.',
-            style: TextStyle(color: Color(0xFFFFC400), fontSize: 12)),
+            style: TextStyle(color: Color(0xFFFFD60A), fontSize: 12)),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _saving ? null : _save,
@@ -3435,7 +3523,7 @@ class _CourierRestaurantJoinPageState extends State<CourierRestaurantJoinPage> {
 
   Color _statusColor(String value) => value == 'accepted'
       ? const Color(0xFF16834A)
-      : value == 'rejected' ? const Color(0xFFCC3030) : const Color(0xFFB7791F);
+      : value == 'rejected' ? const Color(0xFF047857) : const Color(0xFF9A7B00);
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -3716,7 +3804,7 @@ class _RestaurantBrandingTabState extends State<RestaurantBrandingTab> {
     const SizedBox(height: 16),
     ClipRRect(borderRadius: BorderRadius.circular(20), child: SizedBox(height: 190, width: double.infinity,
       child: _coverUrl == null || _coverUrl!.isEmpty
-        ? const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF171717), Color(0xFF650008)])), child: Center(child: Icon(Icons.wallpaper_rounded, size: 54, color: Color(0xFFFFC400))))
+        ? const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF123B2F), Color(0xFF064E3B)])), child: Center(child: Icon(Icons.wallpaper_rounded, size: 54, color: Color(0xFFFFD60A))))
         : Image.network(_coverUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined, size: 48))),
     )),
     const SizedBox(height: 14),
@@ -3873,7 +3961,7 @@ class _CourierPortalState extends State<CourierPortal> {
             TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
             PolylineLayer(polylines: [Polyline(points: [LatLng(_lastPosition!.latitude, _lastPosition!.longitude), LatLng(lat, lng)], strokeWidth: 5, color: Colors.blueAccent)]),
             MarkerLayer(markers: [
-              Marker(point: LatLng(_lastPosition!.latitude, _lastPosition!.longitude), width: 48, height: 48, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFFE50914), size: 42)),
+              Marker(point: LatLng(_lastPosition!.latitude, _lastPosition!.longitude), width: 48, height: 48, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 42)),
               Marker(point: LatLng(lat, lng), width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 42)),
             ]),
           ],
@@ -4073,18 +4161,18 @@ class _AdminPortalState extends State<AdminPortal> {
           final rows = snap.data ?? [];
           return ListView(padding: const EdgeInsets.all(14), children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('إدارة المطاعم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+              const Text('إدارة المطاعم', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF123B2F))),
               FilledButton.icon(onPressed: _createRestaurant, icon: const Icon(Icons.add), label: const Text('إضافة')),
             ]),
             const SizedBox(height: 8),
             if (rows.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('لم تتم إضافة مطاعم بعد. أضف مطعمًا للبدء.'))),
             ...rows.map((r) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                const CircleAvatar(backgroundColor: Color(0xFFFFE6E6), child: Icon(Icons.restaurant_rounded)),
+                const CircleAvatar(backgroundColor: Color(0xFFE5F3EA), child: Icon(Icons.restaurant_rounded)),
                 const SizedBox(width: 10),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(r['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF171717))),
-                  Text(r['address']?.toString() ?? '', style: const TextStyle(color: Color(0xFF748094), fontSize: 12)),
+                  Text(r['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF123B2F))),
+                  Text(r['address']?.toString() ?? '', style: const TextStyle(color: Color(0xFF536B61), fontSize: 12)),
                 ])),
                 Switch(value: r['is_active'] == true, onChanged: (v) async {
                   try { await SareeBackend.setRestaurantActive(r['id'].toString(), v); await _refresh(); }
@@ -4108,7 +4196,7 @@ class _AdminPortalState extends State<AdminPortal> {
           final profiles = snap.data ?? [];
           const labels = {'customer':'عميل','restaurant_owner':'صاحب مطعم','courier':'مندوب','admin':'مدير'};
           return ListView(padding: const EdgeInsets.all(14), children: [
-            const Text('الحسابات والصلاحيات', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF171717))),
+            const Text('الحسابات والصلاحيات', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF123B2F))),
             const SizedBox(height: 8),
             ...profiles.map((p) {
               final approvalLabels = {'approved': 'معتمد', 'pending': 'بانتظار اعتماد الإدارة', 'rejected': 'مرفوض'};
@@ -4156,7 +4244,7 @@ Future<void> _showSareeReviewDialog(BuildContext context, Map<String, dynamic> o
     children: List.generate(5, (i) => IconButton(
       onPressed: () => onChanged(i + 1),
       icon: Icon(i < value ? Icons.star_rounded : Icons.star_border_rounded,
-        color: const Color(0xFFFFB300), size: 30),
+        color: const Color(0xFFFFD60A), size: 30),
     )),
   );
   final ok = await showDialog<bool>(
@@ -4253,7 +4341,7 @@ class _CustomerSearchPageState extends State<CustomerSearchPage> {
                 final isRestaurant = row['_kind'] == 'restaurant';
                 final restaurant = isRestaurant ? row : Map<String,dynamic>.from(row['restaurants'] as Map);
                 return Card(child: ListTile(
-                  leading: CircleAvatar(backgroundColor: const Color(0xFFFFE6E6), child: Icon(isRestaurant ? Icons.restaurant_rounded : Icons.fastfood_rounded)),
+                  leading: CircleAvatar(backgroundColor: const Color(0xFFE5F3EA), child: Icon(isRestaurant ? Icons.restaurant_rounded : Icons.fastfood_rounded)),
                   title: Text(isRestaurant ? row['name'].toString() : row['name'].toString()),
                   subtitle: Text(isRestaurant ? (row['description'] ?? 'مطعم') .toString() : '${row['price_yer']} ريال • ${restaurant['name']}'),
                   trailing: const Icon(Icons.chevron_left_rounded),
@@ -4286,7 +4374,7 @@ class _CustomerFavoritesPageState extends State<CustomerFavoritesPage> {
         final rows = snap.data ?? [];
         if (rows.isEmpty) return const Center(child: Text('لم تضف مطاعم إلى المفضلة بعد'));
         return ListView(children: rows.map((r) => Card(child: ListTile(
-          leading: const Icon(Icons.favorite_rounded, color: Color(0xFFE50914)),
+          leading: const Icon(Icons.favorite_rounded, color: Color(0xFF047857)),
           title: Text(r['name'].toString()),
           subtitle: Text(r['address']?.toString() ?? ''),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantMenuPage(restaurant: r))),
@@ -4315,7 +4403,7 @@ class _CustomerNotificationsPageState extends State<CustomerNotificationsPage> {
         final rows = snap.data ?? [];
         if (rows.isEmpty) return const Center(child: Text('لا توجد إشعارات حالياً'));
         return ListView(children: rows.map((n) => Card(child: ListTile(
-          leading: CircleAvatar(backgroundColor: n['read_at'] == null ? const Color(0xFFFFE6E6) : Colors.grey.shade200, child: const Icon(Icons.notifications_active_outlined)),
+          leading: CircleAvatar(backgroundColor: n['read_at'] == null ? const Color(0xFFE5F3EA) : Colors.grey.shade200, child: const Icon(Icons.notifications_active_outlined)),
           title: Text(n['title'].toString(), style: const TextStyle(fontWeight: FontWeight.w800)),
           subtitle: Text('${n['body']}\\n${n['created_at']}'),
           isThreeLine: true,
@@ -4428,9 +4516,9 @@ class AdminReportsPage extends StatelessWidget {
     },
   );
   Widget _reportCard(String label, String value, IconData icon) => Card(child: Padding(padding: const EdgeInsets.all(13), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-    Icon(icon, color: const Color(0xFFE50914)),
+    Icon(icon, color: const Color(0xFF047857)),
     Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-    Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF748094))),
+    Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF536B61))),
   ])));
 }
 
