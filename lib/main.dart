@@ -1074,6 +1074,13 @@ class CustomerOffersPage extends StatelessWidget {
     final seen = <String>{};
     return result.where((item) => seen.add(item['id'].toString())).toList();
   }
+  void _addSingleItem(BuildContext context, Map<String, dynamic> promotion, Map<String, dynamic> item, {required bool checkout}) {
+    final restaurantId = promotion['restaurant_id']?.toString() ?? '';
+    if (restaurantId.isEmpty || item['id'] == null) return;
+    context.read<CartController>().add(item, restaurantId, price: _effectiveItemPrice(item));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة ${item['name'] ?? 'الصنف'} إلى السلة')));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => checkout ? const CheckoutPage() : const CartPage()));
+  }
   void _addOffer(BuildContext context, Map<String, dynamic> promotion, {required bool checkout}) {
     final restaurantId = promotion['restaurant_id']?.toString() ?? '';
     final items = _itemsFor(promotion);
@@ -1117,12 +1124,40 @@ class CustomerOffersPage extends StatelessWidget {
                 Padding(padding: const EdgeInsets.only(top: 7), child: Text(promotion['description'].toString(), style: const TextStyle(color: Colors.white70))),
               const SizedBox(height: 10),
               const Text('الأصناف المشمولة في العرض:', style: TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w900)),
-              if (names.isEmpty) const Text('لم تُحدد أصناف متاحة لهذا العرض بعد', style: TextStyle(color: Colors.white70))
-              else ...names.map((name) => Padding(padding: const EdgeInsets.only(top: 5), child: Row(children: [
-                const Icon(Icons.check_circle_rounded, size: 17, color: Color(0xFFFFD45A)),
-                const SizedBox(width: 7),
-                Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
-              ]))),
+              if (items.isEmpty) const Text('لم تُحدد أصناف متاحة لهذا العرض بعد', style: TextStyle(color: Colors.white70))
+              else ...items.map((item) {
+                final base = (item['price_yer'] as num? ?? 0).toInt();
+                final sale = _effectiveItemPrice(item);
+                return Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white24)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text(item['name']?.toString() ?? 'صنف', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Text('$sale ريال', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w900, fontSize: 15)),
+                      const SizedBox(width: 8),
+                      if (sale < base) Text('$base ريال', style: const TextStyle(color: Colors.white70, decoration: TextDecoration.lineThrough, fontSize: 12)),
+                    ]),
+                    const SizedBox(height: 7),
+                    Row(children: [
+                      Expanded(child: FilledButton.tonalIcon(
+                        onPressed: () => _addSingleItem(context, promotion, item, checkout: true),
+                        icon: const Icon(Icons.flash_on_rounded, size: 17),
+                        label: const Text('اطلب الآن'),
+                      )),
+                      const SizedBox(width: 7),
+                      Expanded(child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white54)),
+                        onPressed: () => _addSingleItem(context, promotion, item, checkout: false),
+                        icon: const Icon(Icons.add_shopping_cart_rounded, size: 17),
+                        label: const Text('أضف للسلة'),
+                      )),
+                    ]),
+                  ]),
+                );
+              }),
               if (min > 0) Padding(padding: const EdgeInsets.only(top: 8), child: Text('الحد الأدنى: $min ريال', style: const TextStyle(color: Colors.white70, fontSize: 12))),
               if ((promotion['code']?.toString() ?? '').isNotEmpty)
                 Padding(padding: const EdgeInsets.only(top: 5), child: Text('كود العرض: ${promotion['code']}', style: const TextStyle(color: Color(0xFFFFD45A), fontWeight: FontWeight.w800))),
