@@ -835,12 +835,74 @@ class SareeBackend {
 
   static Future<List<Map<String, dynamic>>> activePromotions() async {
     final now = DateTime.now().toUtc().toIso8601String();
-    final rows = await client.from('promotions')
-        .select('*, restaurants!promotions_restaurant_id_fkey(name), menu_items!promotions_menu_item_id_fkey(id,name,description,price_yer,image_url,is_available), promotion_menu_items(menu_items!promotion_menu_items_menu_item_id_fkey(id,name,description,price_yer,image_url,is_available))')
-        .eq('is_active', true).lte('starts_at', now)
+
+    // Load promotions first, then resolve their menu links independently.
+    // This avoids losing all offer data when PostgREST cannot embed one nested relation.
+    final rawPromotions = await client.from('promotions')
+        .select('*')
+        .eq('is_active', true)
+        .lte('starts_at', now)
         .or('ends_at.is.null,ends_at.gt.$now')
-        .order('starts_at', ascending: false).limit(20);
-    return List<Map<String, dynamic>>.from(rows);
+        .order('starts_at', ascending: false)
+        .limit(50);
+    final promotions = List<Map<String, dynamic>>.from(rawPromotions);
+    if (promotions.isEmpty) return promotions;
+
+    final promotionIds = promotions.map((p) => p['id'].toString()).toList();
+    final restaurantIds = promotions.map((p) => p['restaurant_id'].toString()).toSet().toList();
+    final legacyItemIds = promotions
+        .map((p) => p['menu_item_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty).toSet().toList();
+
+    final linkRows = await client.from('promotion_menu_items')
+        .select('promotion_id,menu_item_id')
+        .inFilter('promotion_id', promotionIds);
+    final links = List<Map<String, dynamic>>.from(linkRows);
+    final allItemIds = <String>{
+      ...links.map((row) => row['menu_item_id'].toString()),
+      ...legacyItemIds,
+    }.toList();
+
+    final Map<String, Map<String, dynamic>> itemsById = {};
+    if (allItemIds.isNotEmpty) {
+      final rawItems = await client.from('menu_items')
+          .select('id,restaurant_id,name,description,price_yer,image_url,is_available')
+          .inFilter('id', allItemIds);
+      for (final item in List<Map<String, dynamic>>.from(rawItems)) {
+        itemsById[item['id'].toString()] = item;
+      }
+    }
+
+    final Map<String, Map<String, dynamic>> restaurantsById = {};
+    if (restaurantIds.isNotEmpty) {
+      final rawRestaurants = await client.from('restaurants')
+          .select('id,name')
+          .inFilter('id', restaurantIds);
+      for (final restaurant in List<Map<String, dynamic>>.from(rawRestaurants)) {
+        restaurantsById[restaurant['id'].toString()] = restaurant;
+      }
+    }
+
+    final linksByPromotion = <String, List<Map<String, dynamic>>>{};
+    for (final link in links) {
+      final promotionId = link['promotion_id'].toString();
+      final item = itemsById[link['menu_item_id'].toString()];
+      if (item == null || item['is_available'] == false) continue;
+      linksByPromotion.putIfAbsent(promotionId, () => []).add({
+        'menu_item_id': link['menu_item_id'],
+        'menu_items': item,
+      });
+    }
+
+    for (final promotion in promotions) {
+      final id = promotion['id'].toString();
+      final restaurantId = promotion['restaurant_id'].toString();
+      promotion['restaurants'] = restaurantsById[restaurantId];
+      promotion['promotion_menu_items'] = linksByPromotion[id] ?? <Map<String, dynamic>>[];
+      final legacyId = promotion['menu_item_id']?.toString();
+      promotion['menu_items'] = legacyId == null ? null : itemsById[legacyId];
+    }
+    return promotions;
   }
 
   static Future<List<Map<String, dynamic>>> restaurantReviews(String restaurantId) async {
