@@ -4824,7 +4824,6 @@ class _CashierJoinPageState extends State<CashierJoinPage> {
             final id = r['id'].toString();
             final application = byRestaurant[id];
             final status = application?['status']?.toString();
-            final label = status == 'accepted' ? 'تم قبولك' : status == 'rejected' ? 'تم رفض الطلب' : status == 'pending' ? 'بانتظار الموافقة' : 'إرسال طلب الانضمام';
             return Card(child: ListTile(
               leading: const CircleAvatar(child: Icon(Icons.storefront_rounded)),
               title: Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontWeight: FontWeight.w900)),
