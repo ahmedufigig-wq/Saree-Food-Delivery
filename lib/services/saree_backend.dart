@@ -910,6 +910,17 @@ class SareeBackend {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  static Future<List<Map<String, dynamic>>> featuredMenuItems() async {
+    final rows = await client
+        .from('menu_items')
+        .select('*, restaurants!inner(id,name,is_active), menu_categories(name)')
+        .eq('is_available', true)
+        .eq('restaurants.is_active', true)
+        .order('created_at', ascending: false)
+        .limit(16);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   static Future<List<Map<String, dynamic>>> categories() async {
     final rows = await client.from('menu_categories').select('id,name,sort_order,restaurant_id').eq('is_active', true).order('sort_order').limit(40);
     return List<Map<String, dynamic>>.from(rows);
