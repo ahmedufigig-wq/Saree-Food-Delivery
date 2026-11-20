@@ -1106,7 +1106,6 @@ class CustomerOffersPage extends StatelessWidget {
         return ListView(padding: const EdgeInsets.all(16), children: promotions.map((promotion) {
           final restaurant = promotion['restaurants'] is Map ? promotion['restaurants']['name']?.toString() : null;
           final items = _itemsFor(promotion);
-          final names = items.map((item) => item['name']?.toString() ?? 'صنف').toList();
           final photos = items.expand((item) => _mealPhotoUrls(item)).toSet().toList();
           final discountValue = promotion['discount_value'] ?? 0;
           final discount = promotion['discount_type'] == 'percentage' ? 'خصم $discountValue٪' : 'خصم $discountValue ريال';
