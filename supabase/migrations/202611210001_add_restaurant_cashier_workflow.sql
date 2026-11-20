@@ -1,0 +1,3 @@
+-- Add a secure cashier join and restaurant staff workflow.
+-- Applied to Supabase project through the add_restaurant_cashier_membership
+-- and secure_cashier_application_profile_snapshot migrations.
