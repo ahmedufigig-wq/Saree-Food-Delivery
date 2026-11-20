@@ -2337,7 +2337,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      final orders = await SareeBackend.restaurantOrderHistory();
+      final orders = await SareeBackend.restaurantOrderHistory(restaurantId);
       if (orders.isEmpty) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد طلبات لتصديرها')));
         return;
