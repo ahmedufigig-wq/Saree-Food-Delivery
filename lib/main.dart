@@ -2330,7 +2330,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   Future<void> _loadArchivedOrderIds() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    setState(() => _archivedOrderIds.addAll(prefs.getStringList('saree_archived_orders_\${SareeBackend.user?.id ?? 'restaurant'}') ?? const <String>[]));
+    setState(() => _archivedOrderIds.addAll(prefs.getStringList('saree_archived_orders_${SareeBackend.user?.id ?? 'restaurant'}') ?? const <String>[]));
   }
 
   Future<void> _exportRestaurantOrdersPdf(String restaurantId) async {
@@ -2411,7 +2411,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       if (hide == true) {
         _archivedOrderIds.addAll(orders.map((o) => o['id'].toString()));
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setStringList('saree_archived_orders_\${SareeBackend.user?.id ?? 'restaurant'}', _archivedOrderIds.toList());
+        await prefs.setStringList('saree_archived_orders_${SareeBackend.user?.id ?? 'restaurant'}', _archivedOrderIds.toList());
         if (mounted) setState(() {});
       }
     } catch (error) {
@@ -2424,7 +2424,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   Future<void> _restoreArchivedOrders() async {
     _archivedOrderIds.clear();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('saree_archived_orders_\${SareeBackend.user?.id ?? 'restaurant'}');
+    await prefs.remove('saree_archived_orders_${SareeBackend.user?.id ?? 'restaurant'}');
     if (mounted) setState(() {});
   }
 
