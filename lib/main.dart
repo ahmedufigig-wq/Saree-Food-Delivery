@@ -245,7 +245,7 @@ class SareeFoodBackdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
     const DecoratedBox(decoration: BoxDecoration(
-      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF123B2F), Color(0xFF065F46), Color(0xFF123B2F)]),
+      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFFFFF8E7), Color(0xFFFFFDF5), Color(0xFFEAF3E9)]),
     )),
     const Positioned(top: 115, right: 12, child: Opacity(opacity: .055, child: Icon(Icons.lunch_dining_rounded, size: 112, color: Color(0xFFFFD60A)))),
     const Positioned(top: 330, left: -18, child: Opacity(opacity: .045, child: Icon(Icons.local_pizza_rounded, size: 145, color: Color(0xFF047857)))),
