@@ -4806,7 +4806,10 @@ class _CashierJoinPageState extends State<CashierJoinPage> {
         if (snap.hasError) return Center(child: Text('تعذر تحميل المطاعم والطلبات: ${SareeBackend.arabicError(snap.error)}'));
         final restaurants = List<Map<String, dynamic>>.from(snap.data?['restaurants'] ?? []);
         final applications = List<Map<String, dynamic>>.from(snap.data?['applications'] ?? []);
-        final byRestaurant = {for (final a in applications) a['restaurant_id'].toString(): a};
+        final byRestaurant = <String, Map<String, dynamic>>{};
+        for (final application in applications) {
+          byRestaurant.putIfAbsent(application['restaurant_id'].toString(), () => application);
+        }
         return ListView(padding: const EdgeInsets.all(16), children: [
           Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Icon(Icons.point_of_sale_rounded, size: 42, color: Color(0xFF047857)),
