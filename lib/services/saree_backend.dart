@@ -256,62 +256,6 @@ class SareeBackend {
   }
 
 
-  static Future<Map<String, dynamic>?> cashierRestaurant() async {
-    if (user == null) return null;
-    final row = await client.from('restaurant_members')
-        .select('restaurant_id, restaurants(*)')
-        .eq('user_id', user!.id)
-        .eq('member_role', 'staff')
-        .limit(1)
-        .maybeSingle();
-    if (row == null || row['restaurants'] is! Map) return null;
-    return Map<String, dynamic>.from(row['restaurants'] as Map);
-  }
-
-  static Future<List<Map<String, dynamic>>> myCashierApplications() async {
-    final rows = await client.from('restaurant_cashier_applications')
-        .select('id, restaurant_id, status, created_at, restaurants(name)')
-        .eq('applicant_id', user!.id)
-        .order('created_at', ascending: false);
-    return List<Map<String, dynamic>>.from(rows);
-  }
-
-  static Future<void> submitCashierApplication(String restaurantId) async {
-    await client.from('restaurant_cashier_applications').insert({
-      'restaurant_id': restaurantId,
-      'applicant_id': user!.id,
-      'status': 'pending',
-    });
-  }
-
-  static Future<List<Map<String, dynamic>>> restaurantCashierApplications(String restaurantId) async {
-    final rows = await client.from('restaurant_cashier_applications')
-        .select('id, applicant_id, full_name, phone, status, created_at, reviewed_at')
-        .eq('restaurant_id', restaurantId)
-        .order('created_at', ascending: false);
-    return List<Map<String, dynamic>>.from(rows);
-  }
-
-  static Future<void> reviewCashierApplication({
-    required String applicationId,
-    required String decision,
-  }) async {
-    if (!['accepted', 'rejected'].contains(decision)) {
-      throw ArgumentError('قرار مراجعة غير صالح');
-    }
-    await client.from('restaurant_cashier_applications').update({
-      'status': decision,
-      'reviewed_by': user!.id,
-    }).eq('id', applicationId);
-  }
-
-  static Future<void> cashierSetOrderStatus(String orderId, String nextStatus) async {
-    await client.rpc('cashier_set_order_status', params: {
-      'p_order_id': orderId,
-      'p_status': nextStatus,
-    });
-  }
-
   static Future<List<Map<String, dynamic>>> restaurants() async {
     final rows = await client
         .from('restaurants')

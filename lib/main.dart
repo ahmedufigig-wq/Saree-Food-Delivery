@@ -552,15 +552,7 @@ class SareeGate extends StatelessWidget {
             if (approval != 'approved' && role != 'admin') return PendingApprovalPage(status: approval, note: profile.data?['approval_note']?.toString());
             if (role == 'restaurant_owner') return const RestaurantPortal();
             if (role == 'admin') return const AdminPortal();
-            return FutureBuilder<Map<String, dynamic>?>(
-              future: SareeBackend.cashierRestaurant(),
-              builder: (context, cashier) {
-                if (cashier.connectionState != ConnectionState.done) return const LoadingPage();
-                if (cashier.hasError) return ErrorPage(message: SareeBackend.arabicError(cashier.error));
-                if (cashier.data != null) return CashierPortal(restaurant: cashier.data!);
-                return const CustomerHome();
-              },
-            );
+            return const CustomerHome();
           },
         );
       },
@@ -1256,7 +1248,6 @@ class CustomerHome extends StatelessWidget {
                 'wallet' => const WalletPage(),
                 'support' => const CustomerSupportPage(),
                 'offers' => const CustomerOffersPage(),
-                'cashier_join' => const CashierJoinPage(),
                 _ => null,
               };
               if (page != null) Navigator.push(context, MaterialPageRoute(builder: (_) => page));
@@ -1270,7 +1261,6 @@ class CustomerHome extends StatelessWidget {
               PopupMenuItem(value: 'wallet', child: ListTile(dense: true, leading: Icon(Icons.account_balance_wallet_outlined), title: Text('محفظتي'))),
               PopupMenuItem(value: 'support', child: ListTile(dense: true, leading: Icon(Icons.support_agent), title: Text('الدعم والمساعدة'))),
               PopupMenuItem(value: 'offers', child: ListTile(dense: true, leading: Icon(Icons.local_offer_outlined), title: Text('عروض المطاعم'))),
-              PopupMenuItem(value: 'cashier_join', child: ListTile(dense: true, leading: Icon(Icons.point_of_sale_rounded), title: Text('الانضمام ككاشير لمطعم'))),
               PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout), title: Text('تسجيل الخروج'))),
             ],
           ),
@@ -2973,62 +2963,6 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   }
 
 
-  Widget _cashierManagementTab(String restaurantId) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: SareeBackend.restaurantCashierApplications(restaurantId),
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snap.hasError) return Center(child: Text('تعذر تحميل طلبات الكاشيرين: ${SareeBackend.arabicError(snap.error)}'));
-        final requests = snap.data ?? [];
-        final pending = requests.where((r) => r['status'] == 'pending').toList();
-        final accepted = requests.where((r) => r['status'] == 'accepted').toList();
-        return ListView(padding: const EdgeInsets.all(12), children: [
-          Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('إدارة الكاشيرين', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            const Text('هنا تظهر طلبات الموظفين الذين يريدون العمل ككاشير في مطعمك. قبول الطلب يربط حسابه بالمطعم تلقائياً.'),
-            const SizedBox(height: 10),
-            Wrap(spacing: 8, children: [
-              Chip(label: Text('طلبات معلقة: ${pending.length}')),
-              Chip(label: Text('كاشيرون مقبولون: ${accepted.length}')),
-            ]),
-          ]))),
-          if (requests.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('لا توجد طلبات كاشير حتى الآن. اطلب من الموظف إنشاء حساب عميل ثم إرسال طلب الانضمام من القائمة الرئيسية.'))),
-          ...requests.map((r) {
-            final status = r['status']?.toString() ?? 'pending';
-            final isPending = status == 'pending';
-            final statusLabel = status == 'accepted' ? 'مقبول ويستطيع الدخول ككاشير' : status == 'rejected' ? 'مرفوض' : 'بانتظار مراجعة المطعم';
-            return Card(child: ExpansionTile(
-              leading: CircleAvatar(child: Icon(Icons.point_of_sale_rounded, color: status == 'accepted' ? const Color(0xFF047857) : status == 'rejected' ? Colors.red : Colors.orange)),
-              title: Text(r['full_name']?.toString().trim().isNotEmpty == true ? r['full_name'].toString() : 'كاشير جديد', style: const TextStyle(fontWeight: FontWeight.w900)),
-              subtitle: Text('${r['phone'] ?? 'بدون هاتف'} • $statusLabel'),
-              children: [
-                ListTile(dense: true, leading: const Icon(Icons.phone), title: const Text('رقم الهاتف'), subtitle: SelectableText(r['phone']?.toString() ?? 'غير مسجل')),
-                if (isPending) Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: Row(children: [
-                  Expanded(child: OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _run(() async {
-                      await SareeBackend.reviewCashierApplication(applicationId: r['id'].toString(), decision: 'rejected');
-                    }),
-                    icon: const Icon(Icons.close_rounded, color: Colors.red), label: const Text('رفض'),
-                  )),
-                  const SizedBox(width: 8),
-                  Expanded(child: FilledButton.icon(
-                    onPressed: _busy ? null : () => _run(() async {
-                      await SareeBackend.reviewCashierApplication(applicationId: r['id'].toString(), decision: 'accepted');
-                    }),
-                    icon: const Icon(Icons.check_rounded), label: const Text('قبول وربط'),
-                  )),
-                ])),
-              ],
-            ));
-          }),
-          const SizedBox(height: 18),
-          OutlinedButton.icon(onPressed: () => setState(() {}), icon: const Icon(Icons.refresh), label: const Text('تحديث الطلبات')),
-        ]);
-      },
-    );
-  }
-
   Widget _courierTeamTab(String restaurantId) {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: SareeBackend.restaurantCourierTeam(restaurantId),
@@ -3636,7 +3570,6 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               )),
             ]),
             _courierTeamTab(rid),
-            _cashierManagementTab(rid),
             _promotionsTab(rid),
             DeliveryFeeSettingsTab(
               restaurantId: rid,
@@ -3656,7 +3589,6 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined), label: 'الوجبات'),
       NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'الطلبات'),
       NavigationDestination(icon: Icon(Icons.delivery_dining_outlined), label: 'المندوبون'),
-      NavigationDestination(icon: Icon(Icons.point_of_sale_rounded), label: 'الكاشيرون'),
       NavigationDestination(icon: Icon(Icons.local_offer_outlined), label: 'العروض'),
       NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'رسوم التوصيل'),
       NavigationDestination(icon: Icon(Icons.wallpaper_outlined), label: 'خلفية المطعم'),
@@ -5002,152 +4934,4 @@ class _AdminMenuManagementPageState extends State<AdminMenuManagementPage> {
       ]);
     },
   );
-}
-
-
-class CashierJoinPage extends StatefulWidget {
-  const CashierJoinPage({super.key});
-  @override
-  State<CashierJoinPage> createState() => _CashierJoinPageState();
-}
-
-class _CashierJoinPageState extends State<CashierJoinPage> {
-  bool _busy = false;
-  int _reload = 0;
-
-  Future<Map<String, dynamic>> _load() async {
-    final results = await Future.wait([
-      SareeBackend.restaurants(),
-      SareeBackend.myCashierApplications(),
-    ]);
-    return {'restaurants': results[0], 'applications': results[1]};
-  }
-
-  Future<void> _apply(String restaurantId) async {
-    setState(() => _busy = true);
-    try {
-      await SareeBackend.submitCashierApplication(restaurantId);
-      if (!mounted) return;
-      setState(() => _reload++);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال طلب الانضمام إلى المطعم. انتظر موافقة صاحب المطعم.')));
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إرسال الطلب: ${SareeBackend.arabicError(e)}')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('الانضمام ككاشير')),
-    body: FutureBuilder<Map<String, dynamic>>(
-      key: ValueKey(_reload),
-      future: _load(),
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) return const LoadingPage();
-        if (snap.hasError) return Center(child: Text('تعذر تحميل المطاعم والطلبات: ${SareeBackend.arabicError(snap.error)}'));
-        final restaurants = List<Map<String, dynamic>>.from(snap.data?['restaurants'] ?? []);
-        final applications = List<Map<String, dynamic>>.from(snap.data?['applications'] ?? []);
-        final byRestaurant = <String, Map<String, dynamic>>{};
-        for (final application in applications) {
-          byRestaurant.putIfAbsent(application['restaurant_id'].toString(), () => application);
-        }
-        return ListView(padding: const EdgeInsets.all(16), children: [
-          Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.point_of_sale_rounded, size: 42, color: Color(0xFF047857)),
-            const SizedBox(height: 8),
-            const Text('اربط حسابك بمطعمك', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            const Text('اختر المطعم الذي تعمل لديه وأرسل طلب انضمام. لن تتمكن من رؤية طلبات المطعم إلا بعد موافقة صاحبه.'),
-          ]))),
-          const SizedBox(height: 10),
-          if (restaurants.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('لا توجد مطاعم متاحة للانضمام حالياً.'))),
-          ...restaurants.map((r) {
-            final id = r['id'].toString();
-            final application = byRestaurant[id];
-            final status = application?['status']?.toString();
-            return Card(child: ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.storefront_rounded)),
-              title: Text(r['name']?.toString() ?? 'مطعم', style: const TextStyle(fontWeight: FontWeight.w900)),
-              subtitle: Text(r['address']?.toString() ?? 'رداع'),
-              trailing: status == 'accepted'
-                ? const Icon(Icons.verified_rounded, color: Color(0xFF047857))
-                : status == 'pending'
-                  ? const Chip(label: Text('قيد المراجعة'))
-                  : FilledButton(
-                      onPressed: _busy ? null : () => _apply(id),
-                      child: Text(status == 'rejected' ? 'إعادة الطلب' : 'انضمام'),
-                    ),
-              onTap: status == 'accepted' ? () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CashierPortal(restaurant: r))) : null,
-            ));
-          }),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(onPressed: () => setState(() => _reload++), icon: const Icon(Icons.refresh), label: const Text('تحديث حالة الطلب')),
-        ]);
-      },
-    ),
-  );
-}
-
-class CashierPortal extends StatelessWidget {
-  const CashierPortal({super.key, required this.restaurant});
-  final Map<String, dynamic> restaurant;
-
-  @override
-  Widget build(BuildContext context) {
-    final restaurantId = restaurant['id'].toString();
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('كاشير • ${restaurant['name'] ?? 'المطعم'}'),
-        actions: [IconButton(tooltip: 'تسجيل الخروج', onPressed: () => showAccountSignOutOptions(context), icon: const Icon(Icons.logout_rounded))],
-      ),
-      body: Column(children: [
-        Padding(padding: const EdgeInsets.all(12), child: Card(child: ListTile(
-          leading: const CircleAvatar(child: Icon(Icons.point_of_sale_rounded)),
-          title: Text(restaurant['name']?.toString() ?? 'المطعم', style: const TextStyle(fontWeight: FontWeight.w900)),
-          subtitle: const Text('حساب كاشير مرتبط بهذا المطعم'),
-        ))),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Align(alignment: Alignment.centerRight, child: Text('طلبات المطعم', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)))),
-        Expanded(child: StreamBuilder<List<Map<String, dynamic>>>(
-          stream: SareeBackend.restaurantOrdersStream(restaurantId),
-          builder: (context, snap) {
-            if (!snap.hasData && snap.connectionState == ConnectionState.waiting) return const LoadingPage();
-            if (snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
-            final orders = snap.data ?? [];
-            if (orders.isEmpty) return const Center(child: Text('لا توجد طلبات حالياً'));
-            return ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: orders.length,
-              itemBuilder: (context, index) {
-                final order = orders[index];
-                final status = order['status']?.toString() ?? '';
-                final next = status == 'pending' ? 'accepted' : status == 'accepted' ? 'preparing' : status == 'preparing' ? 'ready_for_pickup' : null;
-                final label = next == 'accepted' ? 'قبول الطلب' : next == 'preparing' ? 'بدء التحضير' : 'جاهز للاستلام';
-                return Card(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  ListTile(
-                    leading: const Icon(Icons.receipt_long_rounded, color: Color(0xFF047857)),
-                    title: Text('طلب #${order['order_number']} • ${order['customer_name'] ?? 'عميل'}', style: const TextStyle(fontWeight: FontWeight.w900)),
-                    subtitle: Text('${order['customer_phone'] ?? ''}\n${order['delivery_address'] ?? ''}\nالإجمالي: ${order['total_yer'] ?? 0} ريال • $status'),
-                    isThreeLine: true,
-                  ),
-                  if (next != null) Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), child: FilledButton(
-                    onPressed: () async {
-                      try {
-                        await SareeBackend.cashierSetOrderStatus(order['id'].toString(), next);
-                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث حالة الطلب')));
-                      } catch (e) {
-                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SareeBackend.arabicError(e))));
-                      }
-                    },
-                    child: Text(label),
-                  )),
-                  if (status == 'ready_for_pickup') const Padding(padding: EdgeInsets.fromLTRB(12, 0, 12, 12), child: Chip(label: Text('الطلب جاهز لاستلام المندوب'))),
-                ]));
-              },
-            );
-          },
-        )),
-      ]),
-    );
-  }
 }

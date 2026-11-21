@@ -19,6 +19,3 @@ This repository change alone does not prove production capacity. A measured test
 
 ## Push notifications
 The app currently stores and streams in-app notifications. True Android push notifications require Firebase Cloud Messaging credentials, Android Firebase configuration, and a trusted server/Edge Function to send messages. Those credentials are not present in this repository context, so no fake push-delivery success is claimed.
-
-## POS integration
-No POS vendor, API documentation, credentials, or network endpoint has been provided. POS integration cannot safely be implemented generically. Once the restaurant's POS provider and API contract are known, implement a server-side adapter with idempotency keys and order reconciliation; never expose POS secrets in the Android app.
