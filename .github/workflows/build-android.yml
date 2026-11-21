@@ -51,10 +51,10 @@ jobs:
 
           path = Path("android/settings.gradle.kts")
           source = path.read_text()
-          match = re.search(r"pluginManagement\\s*\\{", source)
+          match = re.search(r"pluginManagement\s*\{", source)
           if not match:
               raise SystemExit("Gradle settings has no pluginManagement block")
-          repo_match = re.search(r"repositories\\s*\\{", source[match.end():])
+          repo_match = re.search(r"repositories\s*\{", source[match.end():])
           if not repo_match:
               raise SystemExit("Gradle pluginManagement has no repositories block")
           brace_start = match.end() + repo_match.end() - 1
@@ -74,7 +74,7 @@ jobs:
           required = ["google()", "mavenCentral()", "gradlePluginPortal()"]
           missing = [repo for repo in required if repo not in block]
           if missing:
-              block = "\\n" + "".join(f"    {repo}\\n" for repo in missing) + block
+              block = "\n" + "".join(f"    {repo}\n" for repo in missing) + block
               source = source[:brace_start + 1] + block + source[end:]
               path.write_text(source)
           print("Gradle plugin repositories:", ", ".join(required))
@@ -412,8 +412,8 @@ jobs:
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/zipalign" -c -v 4 build/app/outputs/flutter-apk/app-release.apk
           BADGING="$("$BUILD_TOOLS/aapt" dump badging build/app/outputs/flutter-apk/app-release.apk)"
-          printf '%s\\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
-          printf '%s\\n' "$BADGING" | grep -q "^sdkVersion:'21'$" || {
+          printf '%s\n' "$BADGING" | grep -E "^(package:|sdkVersion:|targetSdkVersion:)"
+          printf '%s\n' "$BADGING" | grep -q "^sdkVersion:'21'$" || {
             echo "APK minimum SDK is not 21; refusing to publish an incompatible package." >&2
             exit 1
           }
