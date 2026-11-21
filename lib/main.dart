@@ -214,16 +214,25 @@ class SareeFoodBackdrop extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
-    const DecoratedBox(decoration: BoxDecoration(
-      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFFFFF8E7), Color(0xFFFFFDF5), Color(0xFFEAF3E9)]),
-    )),
-    const Positioned(top: 115, right: 12, child: Opacity(opacity: .055, child: Icon(Icons.lunch_dining_rounded, size: 112, color: Color(0xFFFFD60A)))),
-    const Positioned(top: 330, left: -18, child: Opacity(opacity: .045, child: Icon(Icons.local_pizza_rounded, size: 145, color: Color(0xFF047857)))),
-    const Positioned(bottom: 125, right: -15, child: Opacity(opacity: .05, child: Icon(Icons.ramen_dining_rounded, size: 132, color: Color(0xFFFFD60A)))),
-    const Positioned(bottom: 18, left: 75, child: Opacity(opacity: .04, child: Icon(Icons.local_cafe_rounded, size: 92, color: Color(0xFF047857)))),
-    Positioned.fill(child: child),
-  ]);
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Stack(fit: StackFit.expand, children: [
+      DecoratedBox(decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: isDark
+              ? const [Color(0xFF101B17), Color(0xFF14231D), Color(0xFF182820)]
+              : const [Color(0xFFFFF8E7), Color(0xFFFFFDF5), Color(0xFFEAF3E9)],
+        ),
+      )),
+      Positioned(top: 115, right: 12, child: Opacity(opacity: isDark ? .035 : .055, child: const Icon(Icons.lunch_dining_rounded, size: 112, color: Color(0xFFFFD60A)))),
+      Positioned(top: 330, left: -18, child: Opacity(opacity: isDark ? .025 : .045, child: const Icon(Icons.local_pizza_rounded, size: 145, color: Color(0xFF047857)))),
+      Positioned(bottom: 125, right: -15, child: Opacity(opacity: isDark ? .03 : .05, child: const Icon(Icons.ramen_dining_rounded, size: 132, color: Color(0xFFFFD60A)))),
+      Positioned(bottom: 18, left: 75, child: Opacity(opacity: isDark ? .025 : .04, child: const Icon(Icons.local_cafe_rounded, size: 92, color: Color(0xFF047857)))),
+      Positioned.fill(child: child),
+    ]);
+  }
 }
 
 class RotatingFoodImage extends StatefulWidget {
@@ -1165,6 +1174,58 @@ class CustomerOffersPage extends StatelessWidget {
   );
 }
 
+/// عناصر هيكلية خفيفة تُعرض أثناء تحميل المطاعم بدل شاشة فارغة أو مؤشر وحيد.
+class _RestaurantLoadingSkeleton extends StatelessWidget {
+  const _RestaurantLoadingSkeleton();
+
+  Widget _block(double height, {double? width}) => Container(
+    height: height,
+    width: width,
+    decoration: BoxDecoration(
+      color: const Color(0xFFE5EDE6),
+      borderRadius: BorderRadius.circular(16),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    physics: const NeverScrollableScrollPhysics(),
+    padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+    children: [
+      _block(190),
+      const SizedBox(height: 16),
+      _block(52),
+      const SizedBox(height: 18),
+      Row(children: [
+        _block(78, height: 86),
+        const SizedBox(width: 10),
+        _block(78, height: 86),
+        const SizedBox(width: 10),
+        _block(78, height: 86),
+        const SizedBox(width: 10),
+        _block(78, height: 86),
+      ]),
+      const SizedBox(height: 22),
+      _block(22, width: 150),
+      const SizedBox(height: 12),
+      ...List.generate(3, (_) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(children: [
+          _block(88, width: 92),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _block(16, width: 150),
+            const SizedBox(height: 9),
+            _block(12, width: 210),
+            const SizedBox(height: 9),
+            _block(12, width: 90),
+          ])),
+        ]),
+      )),
+    ],
+  );
+}
+
 class CustomerHome extends StatelessWidget {
   const CustomerHome({super.key});
 
@@ -1218,7 +1279,7 @@ class CustomerHome extends StatelessWidget {
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: SareeBackend.restaurants(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
+          if (snapshot.connectionState != ConnectionState.done) return const _RestaurantLoadingSkeleton();
           if (snapshot.hasError) return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
