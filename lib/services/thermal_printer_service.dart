@@ -372,7 +372,7 @@ class _ThermalPrinterSettingsTabState extends State<ThermalPrinterSettingsTab> {
         label: const Text('حفظ واختبار الطباعة'),
       ),
       const SizedBox(height: 10),
-      const Text('ملاحظة: طابعات Bluetooth يجب إقرانها أولاً من إعدادات الهاتف. طباعة الشبكة تستخدم بروتوكول ESC/POS عبر TCP والمنفذ 9100 افتراضياً.', style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.5)),
+      const Text('ملاحظة: طابعات Bluetooth يجب إقرانها أولاً من إعدادات الهاتف. طباعة الشبكة تستخدم بروتوكول ESC/POS عبر TCP والمنفذ 9100 افتراضياً.', style: TextStyle(fontSize: 12, color: Color(0xFFDCE9DE), height: 1.5)),
     ],
   );
 }
