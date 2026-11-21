@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThermalPrinterService {
@@ -209,9 +210,13 @@ class _ThermalPrinterSettingsTabState extends State<ThermalPrinterSettingsTab> {
   Future<void> _scan() async {
     setState(() => _busy = true);
     try {
-      final granted = await PrintBluetoothThermal.isPermissionBluetoothGranted;
-      if (!granted) {
-        throw Exception('فعّل صلاحية Bluetooth للأجهزة القريبة من إعدادات الهاتف ثم أعد المحاولة');
+      final permissions = await [
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+      ].request();
+      final granted = permissions.values.every((status) => status.isGranted);
+      if (!granted || !await PrintBluetoothThermal.isPermissionBluetoothGranted) {
+        throw Exception('اسمح للتطبيق بالوصول إلى أجهزة Bluetooth القريبة ثم أعد المحاولة');
       }
       final enabled = await PrintBluetoothThermal.bluetoothEnabled;
       if (!enabled) throw Exception('شغّل Bluetooth في الهاتف أولاً');
