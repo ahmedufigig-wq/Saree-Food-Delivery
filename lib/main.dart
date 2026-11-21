@@ -11,7 +11,6 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatf
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geolocator_android/geolocator_android.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -3561,10 +3560,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                         isThreeLine: true,
                       ),
                       if (next != null)
-                        Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton(onPressed: _busy ? null : () => _run(() async {
-                  await SareeBackend.transition(o['id'].toString(), next);
-                  if (next == 'delivered') await _stopSharing();
-                }), child: Text(label))))
+                        Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label))))
                       else if (isReadyForPickup && !hasCourier)
                         Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _busy ? null : () => _assignCourier(rid, o), icon: const Icon(Icons.delivery_dining_rounded), label: const Text('اختيار مندوب'))))
                       else if (hasCourier)
@@ -4335,7 +4331,10 @@ class _CourierPortalState extends State<CourierPortal> {
               ListTile(title: Text('طلب #${o['order_number']}'), subtitle: Text(status == 'assigned' ? 'تم إسناده إليك - بانتظار الاستلام' : 'تم استلام الطلب')),
               _courierOrderDetails(o),
               Padding(padding: const EdgeInsets.all(12), child: FilledButton.icon(
-                onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)),
+                onPressed: _busy ? null : () => _run(() async {
+                  await SareeBackend.transition(o['id'].toString(), next);
+                  if (next == 'delivered') await _stopSharing();
+                }),
                 icon: Icon(status == 'assigned' ? Icons.inventory_2_rounded : Icons.check_circle_outline),
                 label: Text(label),
               )),
