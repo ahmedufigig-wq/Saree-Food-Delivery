@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
@@ -32,6 +31,7 @@ class ThermalPrinterService {
   }
 
   static Future<void> save({
+    required String restaurantId,
     required String kind,
     required String address,
     required String name,
@@ -88,7 +88,7 @@ class ThermalPrinterService {
     ];
     final text = lines.join('\n');
     final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, width, 3000));
+    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, width, 12000));
     canvas.drawColor(Colors.white, BlendMode.src);
     final painter = TextPainter(
       text: TextSpan(
