@@ -7,9 +7,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geolocator_android/geolocator_android.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -20,6 +22,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'services/saree_backend.dart';
 import 'theme/saree_design_system.dart';
 import 'features/cart/cart_controller.dart';
+import 'features/courier/courier_tracking_policy.dart';
 
 
 List<String> _mealPhotoUrls(Map<String, dynamic> item) {
@@ -3558,7 +3561,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                         isThreeLine: true,
                       ),
                       if (next != null)
-                        Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton(onPressed: _busy ? null : () => _run(() => SareeBackend.transition(o['id'].toString(), next)), child: Text(label))))
+                        Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton(onPressed: _busy ? null : () => _run(() async {
+                  await SareeBackend.transition(o['id'].toString(), next);
+                  if (next == 'delivered') await _stopSharing();
+                }), child: Text(label))))
                       else if (isReadyForPickup && !hasCourier)
                         Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _busy ? null : () => _assignCourier(rid, o), icon: const Icon(Icons.delivery_dining_rounded), label: const Text('اختيار مندوب'))))
                       else if (hasCourier)
@@ -4101,36 +4107,108 @@ class _CourierPortalState extends State<CourierPortal> {
   Future<void> _refreshOrders() async {
     final future = _loadOrders();
     if (mounted) setState(() => _ordersFuture = future);
-    await future;
+    final orders = await future;
+    if (_sharing && !CourierTrackingPolicy.canShare(orders)) {
+      await _stopSharing();
+    }
   }
 
   Future<void> _startSharing() async {
+    final activeOrders = await SareeBackend.courierOrders();
+    if (!CourierTrackingPolicy.canShare(activeOrders)) {
+      throw Exception('لا يمكن مشاركة الموقع قبل إسناد طلب توصيل نشط إليك');
+    }
+
     final enabled = await Geolocator.isLocationServiceEnabled();
-    if(!enabled) throw Exception('فعّل خدمة الموقع GPS أولاً');
+    if (!enabled) throw Exception('فعّل خدمة الموقع GPS أولاً');
     var permission = await Geolocator.checkPermission();
-    if(permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
-    if(permission == LocationPermission.denied || permission == LocationPermission.deniedForever) throw Exception('اسمح للتطبيق بالوصول إلى الموقع من إعدادات الهاتف');
-    await _positionSub?.cancel();
-    const settings = LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 15);
-    _positionSub = Geolocator.getPositionStream(locationSettings: settings).listen((p) async {
-      if (mounted) setState(() => _lastPosition = p);
-      try { await SareeBackend.updateCourierLocation(p.latitude, p.longitude); }
-      catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث الموقع: ${SareeBackend.arabicError(e)}'))); }
-    });
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      throw Exception('اسمح للتطبيق بالوصول إلى الموقع من إعدادات الهاتف');
+    }
+
     final now = await Geolocator.getCurrentPosition();
-    _lastPosition = now;
     await SareeBackend.updateCourierLocation(now.latitude, now.longitude);
-    if(mounted) setState(() => _sharing = true);
+    _lastPosition = now;
+
+    final LocationSettings settings =
+        defaultTargetPlatform == TargetPlatform.android
+            ? const AndroidSettings(
+                accuracy: LocationAccuracy.high,
+                distanceFilter: 15,
+                intervalDuration: Duration(seconds: 15),
+                foregroundNotificationConfig: ForegroundNotificationConfig(
+                  notificationTitle: 'سريع - مشاركة موقع المندوب',
+                  notificationText: 'يتم تحديث موقعك للعميل أثناء مهمة توصيل نشطة',
+                  notificationChannelName: 'تتبع التوصيل',
+                  notificationIcon: AndroidResource(
+                    name: 'ic_launcher',
+                    defType: 'mipmap',
+                  ),
+                  setOngoing: true,
+                ),
+              )
+            : const LocationSettings(
+                accuracy: LocationAccuracy.high,
+                distanceFilter: 15,
+              );
+
+    await _positionSub?.cancel();
+    _positionSub = Geolocator.getPositionStream(
+      locationSettings: settings,
+    ).listen((position) {
+      if (mounted) setState(() => _lastPosition = position);
+      unawaited(
+        SareeBackend.updateCourierLocation(
+          position.latitude,
+          position.longitude,
+        ).catchError((Object error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'تعذر تحديث الموقع: ${SareeBackend.arabicError(error)}',
+                ),
+              ),
+            );
+          }
+        }),
+      );
+    }, onError: (Object error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('توقف استقبال الموقع: ${SareeBackend.arabicError(error)}')),
+        );
+      }
+      unawaited(_stopSharing());
+    });
+
+    if (mounted) setState(() => _sharing = true);
   }
 
   Future<void> _stopSharing() async {
-    await _positionSub?.cancel();
+    final subscription = _positionSub;
     _positionSub = null;
-    if(mounted) setState(() => _sharing = false);
+    await subscription?.cancel();
+    try {
+      await SareeBackend.stopCourierLocation();
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
 
   @override
-  void dispose() { _positionSub?.cancel(); _assignedOrdersSubscription?.cancel(); super.dispose(); }
+  void dispose() {
+    final subscription = _positionSub;
+    _positionSub = null;
+    if (subscription != null) unawaited(subscription.cancel());
+    if (_sharing) unawaited(SareeBackend.stopCourierLocation());
+    _assignedOrdersSubscription?.cancel();
+    super.dispose();
+  }
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
@@ -4244,7 +4322,7 @@ class _CourierPortalState extends State<CourierPortal> {
             value: _sharing,
             onChanged: (v) => _run(() => v ? _startSharing() : _stopSharing()),
             title: const Text('مشاركة موقعي مع العميل'),
-            subtitle: Text(_sharing ? 'الموقع يتحدث أثناء فتح التطبيق' : 'فعّلها بعد استلام الطلب ليتمكن العميل من رؤية موقعك'),
+            subtitle: Text(_sharing ? 'مشاركة الموقع تعمل بإشعار دائم أثناء المهمة النشطة' : 'فعّلها بعد إسناد مهمة توصيل نشطة ليتمكن العميل من متابعة موقعك'),
             secondary: const Icon(Icons.my_location_rounded),
           )),
           const Padding(padding: EdgeInsets.all(8), child: Text('مهامك الحالية', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
