@@ -288,8 +288,16 @@ jobs:
           if ! grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"; then
             sed -i '/<application/i\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />' "$MANIFEST"
           fi
+          for permission in FOREGROUND_SERVICE FOREGROUND_SERVICE_LOCATION POST_NOTIFICATIONS; do
+            if ! grep -q "android.permission.$permission" "$MANIFEST"; then
+              sed -i "/<application/i\\    <uses-permission android:name=\"android.permission.$permission\" />" "$MANIFEST"
+            fi
+          done
           grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
           grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
+          grep -q 'android.permission.FOREGROUND_SERVICE' "$MANIFEST"
+          grep -q 'android.permission.FOREGROUND_SERVICE_LOCATION' "$MANIFEST"
+          grep -q 'android.permission.POST_NOTIFICATIONS' "$MANIFEST"
           # Deep-link callback is added by the v2 embedding setup step.
           grep -q 'com.saree.delivery' "$MANIFEST"
 
