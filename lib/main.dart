@@ -474,7 +474,7 @@ class _BrandSplashGateState extends State<BrandSplashGate>
               ),
               child: SafeArea(
                 child: LayoutBuilder(builder: (context, constraints) {
-                  final bikeWidth = (constraints.maxWidth * .86).clamp(250.0, 390.0);
+                  final bikeWidth = (constraints.maxWidth * .86).clamp(250.0, 390.0).toDouble();
                   return Column(
                     children: [
                       const Spacer(flex: 5),
