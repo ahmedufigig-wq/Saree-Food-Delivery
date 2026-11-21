@@ -20,6 +20,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'services/saree_backend.dart';
 import 'theme/saree_design_system.dart';
 import 'features/cart/cart_controller.dart';
+import 'services/thermal_printer_service.dart';
 
 
 List<String> _mealPhotoUrls(Map<String, dynamic> item) {
@@ -2685,6 +2686,8 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   bool _busy = false;
   final TextEditingController _orderSearchController = TextEditingController();
   final Set<String> _archivedOrderIds = <String>{};
+  final Map<String, String> _knownOrderStatuses = <String, String>{};
+  bool _ordersStreamInitialized = false;
 
   @override
   void initState() {
@@ -2696,6 +2699,70 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() => _archivedOrderIds.addAll(prefs.getStringList('saree_archived_orders_${SareeBackend.user?.id ?? 'restaurant'}') ?? const <String>[]));
+  }
+
+  Future<void> _printRestaurantOrder(Map<String, dynamic> order, String restaurantName) async {
+    try {
+      final items = await SareeBackend.courierOrderItems(order['id'].toString());
+      await ThermalPrinterService.printOrder(
+        order: order,
+        items: items,
+        restaurantName: restaurantName,
+      );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم إرسال فاتورة الطلب #${order['order_number']} للطابعة')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذرت طباعة الفاتورة: ${SareeBackend.arabicError(error)}')),
+      );
+    }
+  }
+
+  void _observeRestaurantOrders(List<Map<String, dynamic>> rows, String restaurantName) {
+    if (!_ordersStreamInitialized) {
+      for (final row in rows) {
+        _knownOrderStatuses[row['id'].toString()] =
+            (row['status'] ?? '').toString().trim().toLowerCase();
+      }
+      _ordersStreamInitialized = true;
+      return;
+    }
+    for (final row in rows) {
+      final id = row['id'].toString();
+      final status = (row['status'] ?? '').toString().trim().toLowerCase();
+      final previous = _knownOrderStatuses[id];
+      if ((status == 'cancelled' || status == 'canceled') &&
+          previous != null && previous != 'cancelled' && previous != 'canceled') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تم إلغاء الطلب #${row['order_number']} من العميل. لن يظهر ضمن الطلبات النشطة.')),
+          );
+        });
+      }
+      if (previous == null && status == 'pending') {
+        unawaited(() async {
+          try {
+            if (await ThermalPrinterService.autoPrint) {
+              final items = await SareeBackend.courierOrderItems(id);
+              await ThermalPrinterService.printOrder(
+                order: row,
+                items: items,
+                restaurantName: restaurantName,
+              );
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('وصل طلب #${row['order_number']} وطُبعت الفاتورة تلقائياً')),
+              );
+            }
+          } catch (error) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('وصل طلب جديد، لكن تعذرت الطباعة التلقائية: ${SareeBackend.arabicError(error)}')),
+            );
+          }
+        }());
+      }
+      _knownOrderStatuses[id] = status;
+    }
   }
 
   Future<void> _exportRestaurantOrdersPdf(String restaurantId) async {
@@ -3540,8 +3607,15 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   if (!snap.hasData && snap.connectionState == ConnectionState.waiting) return const LoadingPage();
                   if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
                   final allOrders = snap.data ?? [];
+                  _observeRestaurantOrders(allOrders, restaurant['name']?.toString() ?? 'المطعم');
                   final query = _orderSearchController.text.trim();
-                  final orders = allOrders.where((o) => !_archivedOrderIds.contains(o['id'].toString()) && (query.isEmpty || (o['order_number']?.toString() ?? '').contains(query))).toList();
+                  final orders = allOrders.where((o) {
+                    final status = (o['status'] ?? '').toString().trim().toLowerCase();
+                    final cancelled = status == 'cancelled' || status == 'canceled';
+                    return !cancelled &&
+                        !_archivedOrderIds.contains(o['id'].toString()) &&
+                        (query.isEmpty || (o['order_number']?.toString() ?? '').contains(query));
+                  }).toList();
                   if(allOrders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
                   if(orders.isEmpty) return Center(child: Text(query.isEmpty ? 'لا توجد طلبات ظاهرة. يمكنك استعادة الطلبات المخفية.' : 'لا توجد نتيجة لرقم الطلب $query'));
                   return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) {
@@ -3563,6 +3637,14 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                         Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _busy ? null : () => _assignCourier(rid, o), icon: const Icon(Icons.delivery_dining_rounded), label: const Text('اختيار مندوب'))))
                       else if (hasCourier)
                         const Padding(padding: EdgeInsets.fromLTRB(12, 0, 12, 10), child: Chip(label: Text('تم تعيين مندوب'))),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : () => _printRestaurantOrder(o, restaurant['name']?.toString() ?? 'المطعم'),
+                          icon: const Icon(Icons.print_outlined),
+                          label: const Text('طباعة الفاتورة'),
+                        ),
+                      ),
                       _restaurantOrderDetails(o),
                     ]));
                   }).toList());
@@ -3581,19 +3663,29 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               initialName: restaurant['name']?.toString() ?? '',
               initialPhone: restaurant['phone']?.toString() ?? '',
             ),
+            ThermalPrinterSettingsTab(
+              restaurantName: restaurant['name']?.toString() ?? 'المطعم',
+            ),
           ])),
         ]);
       },
     ),
-    bottomNavigationBar: NavigationBar(selectedIndex: _tab, onDestinationSelected: (v) => setState(() => _tab = v), destinations: const [
-      NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined), label: 'الوجبات'),
-      NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'الطلبات'),
-      NavigationDestination(icon: Icon(Icons.delivery_dining_outlined), label: 'المندوبون'),
-      NavigationDestination(icon: Icon(Icons.local_offer_outlined), label: 'العروض'),
-      NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'رسوم التوصيل'),
-      NavigationDestination(icon: Icon(Icons.wallpaper_outlined), label: 'خلفية المطعم'),
-      NavigationDestination(icon: Icon(Icons.manage_accounts_outlined), label: 'إعدادات الحساب'),
-    ]),
+    bottomNavigationBar: NavigationBar(
+      height: 72,
+      labelBehavior: NavigationBarLabelBehavior.alwaysShow,
+      selectedIndex: _tab,
+      onDestinationSelected: (v) => setState(() => _tab = v),
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined, size: 21), selectedIcon: Icon(Icons.restaurant_menu_rounded, size: 22), label: 'الوجبات'),
+        NavigationDestination(icon: Icon(Icons.receipt_long_outlined, size: 21), selectedIcon: Icon(Icons.receipt_long_rounded, size: 22), label: 'الطلبات'),
+        NavigationDestination(icon: Icon(Icons.delivery_dining_outlined, size: 21), selectedIcon: Icon(Icons.delivery_dining_rounded, size: 22), label: 'المندوبون'),
+        NavigationDestination(icon: Icon(Icons.local_offer_outlined, size: 21), selectedIcon: Icon(Icons.local_offer_rounded, size: 22), label: 'العروض'),
+        NavigationDestination(icon: Icon(Icons.payments_outlined, size: 21), selectedIcon: Icon(Icons.payments_rounded, size: 22), label: 'الرسوم'),
+        NavigationDestination(icon: Icon(Icons.wallpaper_outlined, size: 21), selectedIcon: Icon(Icons.wallpaper_rounded, size: 22), label: 'الخلفية'),
+        NavigationDestination(icon: Icon(Icons.manage_accounts_outlined, size: 21), selectedIcon: Icon(Icons.manage_accounts_rounded, size: 22), label: 'الحساب'),
+        NavigationDestination(icon: Icon(Icons.print_outlined, size: 21), selectedIcon: Icon(Icons.print_rounded, size: 22), label: 'الطابعة'),
+      ],
+    ),
   );
 }
 
