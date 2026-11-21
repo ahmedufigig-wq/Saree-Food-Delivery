@@ -18,6 +18,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'services/saree_backend.dart';
+import 'theme/saree_design_system.dart';
 import 'features/cart/cart_controller.dart';
 
 
@@ -200,39 +201,9 @@ class SareeApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'سريع',
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF047857), brightness: Brightness.light,
-        primary: const Color(0xFF047857), secondary: const Color(0xFFFFD60A),
-        surface: const Color(0xFFFFF8E7), onPrimary: const Color(0xFFFFF8E7),
-        onSurface: const Color(0xFF123B2F),
-      ),
-      scaffoldBackgroundColor: const Color(0xFFFFF8E7),
-      iconTheme: const IconThemeData(color: Color(0xFF047857), size: 23),
-      textTheme: ThemeData.light().textTheme.apply(bodyColor: const Color(0xFF123B2F), displayColor: const Color(0xFF123B2F)),
-      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0, scrolledUnderElevation: 0,
-        backgroundColor: Color(0xFF047857), foregroundColor: Color(0xFFFFF8E7),
-        titleTextStyle: TextStyle(color: Color(0xFFFFF8E7), fontSize: 19, fontWeight: FontWeight.w800)),
-      cardTheme: CardThemeData(color: const Color(0xFFFFFDF5), elevation: 2, shadowColor: Color(0x22065F46),
-        margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE8E1CE)))),
-      inputDecorationTheme: InputDecorationTheme(
-        labelStyle: const TextStyle(color: Color(0xFF315B4B)), hintStyle: const TextStyle(color: Color(0xFF718579)),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFC9D8CC))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFC9D8CC))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF047857), width: 1.6)),
-        filled: true, fillColor: const Color(0xFFFFFDF5), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15)),
-      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFFD60A),
-        foregroundColor: const Color(0xFF123B2F), minimumSize: const Size.fromHeight(52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15))),
-      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Color(0xFF047857), indicatorColor: Color(0xFFFFD60A),
-        labelTextStyle: WidgetStatePropertyAll(TextStyle(color: Color(0xFFFFF8E7), fontWeight: FontWeight.w700, fontSize: 12))),
-      dialogTheme: const DialogThemeData(backgroundColor: Color(0xFFFFF8E7), surfaceTintColor: Colors.transparent),
-      snackBarTheme: const SnackBarThemeData(backgroundColor: Color(0xFF065F46), contentTextStyle: TextStyle(color: Color(0xFFFFF8E7))),
-    ),
+    theme: SareeDesignSystem.lightTheme,
+    darkTheme: SareeDesignSystem.darkTheme,
+    themeMode: ThemeMode.system,
     builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: SareeFoodBackdrop(child: child ?? const SizedBox.shrink())),
     home: const BrandSplashGate(),
   );
@@ -243,16 +214,25 @@ class SareeFoodBackdrop extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
-    const DecoratedBox(decoration: BoxDecoration(
-      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFFFFF8E7), Color(0xFFFFFDF5), Color(0xFFEAF3E9)]),
-    )),
-    const Positioned(top: 115, right: 12, child: Opacity(opacity: .055, child: Icon(Icons.lunch_dining_rounded, size: 112, color: Color(0xFFFFD60A)))),
-    const Positioned(top: 330, left: -18, child: Opacity(opacity: .045, child: Icon(Icons.local_pizza_rounded, size: 145, color: Color(0xFF047857)))),
-    const Positioned(bottom: 125, right: -15, child: Opacity(opacity: .05, child: Icon(Icons.ramen_dining_rounded, size: 132, color: Color(0xFFFFD60A)))),
-    const Positioned(bottom: 18, left: 75, child: Opacity(opacity: .04, child: Icon(Icons.local_cafe_rounded, size: 92, color: Color(0xFF047857)))),
-    Positioned.fill(child: child),
-  ]);
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Stack(fit: StackFit.expand, children: [
+      DecoratedBox(decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: isDark
+              ? const [Color(0xFF101B17), Color(0xFF14231D), Color(0xFF182820)]
+              : const [Color(0xFFFFF8E7), Color(0xFFFFFDF5), Color(0xFFEAF3E9)],
+        ),
+      )),
+      Positioned(top: 115, right: 12, child: Opacity(opacity: isDark ? .035 : .055, child: const Icon(Icons.lunch_dining_rounded, size: 112, color: Color(0xFFFFD60A)))),
+      Positioned(top: 330, left: -18, child: Opacity(opacity: isDark ? .025 : .045, child: const Icon(Icons.local_pizza_rounded, size: 145, color: Color(0xFF047857)))),
+      Positioned(bottom: 125, right: -15, child: Opacity(opacity: isDark ? .03 : .05, child: const Icon(Icons.ramen_dining_rounded, size: 132, color: Color(0xFFFFD60A)))),
+      Positioned(bottom: 18, left: 75, child: Opacity(opacity: isDark ? .025 : .04, child: const Icon(Icons.local_cafe_rounded, size: 92, color: Color(0xFF047857)))),
+      Positioned.fill(child: child),
+    ]);
+  }
 }
 
 class RotatingFoodImage extends StatefulWidget {
@@ -1194,6 +1174,58 @@ class CustomerOffersPage extends StatelessWidget {
   );
 }
 
+/// عناصر هيكلية خفيفة تُعرض أثناء تحميل المطاعم بدل شاشة فارغة أو مؤشر وحيد.
+class _RestaurantLoadingSkeleton extends StatelessWidget {
+  const _RestaurantLoadingSkeleton();
+
+  Widget _block(double height, {double? width}) => Container(
+    height: height,
+    width: width,
+    decoration: BoxDecoration(
+      color: const Color(0xFFE5EDE6),
+      borderRadius: BorderRadius.circular(16),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    physics: const NeverScrollableScrollPhysics(),
+    padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+    children: [
+      _block(190),
+      const SizedBox(height: 16),
+      _block(52),
+      const SizedBox(height: 18),
+      Row(children: [
+        _block(86, width: 78),
+        const SizedBox(width: 10),
+        _block(86, width: 78),
+        const SizedBox(width: 10),
+        _block(86, width: 78),
+        const SizedBox(width: 10),
+        _block(86, width: 78),
+      ]),
+      const SizedBox(height: 22),
+      _block(22, width: 150),
+      const SizedBox(height: 12),
+      ...List.generate(3, (_) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(children: [
+          _block(88, width: 92),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _block(16, width: 150),
+            const SizedBox(height: 9),
+            _block(12, width: 210),
+            const SizedBox(height: 9),
+            _block(12, width: 90),
+          ])),
+        ]),
+      )),
+    ],
+  );
+}
+
 class CustomerHome extends StatelessWidget {
   const CustomerHome({super.key});
 
@@ -1247,8 +1279,28 @@ class CustomerHome extends StatelessWidget {
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: SareeBackend.restaurants(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) return const LoadingPage();
-          if (snapshot.hasError) return Center(child: Text('تعذر تحميل المطاعم: ${SareeBackend.arabicError(snapshot.error)}'));
+          if (snapshot.connectionState != ConnectionState.done) return const _RestaurantLoadingSkeleton();
+          if (snapshot.hasError) return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_rounded, size: 54, color: Color(0xFF047857)),
+                  const SizedBox(height: 12),
+                  const Text('لم نتمكن من تحميل المطاعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 6),
+                  Text(SareeBackend.arabicError(snapshot.error), textAlign: TextAlign.center),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const CustomerHome())),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            ),
+          );
           final restaurants = snapshot.data ?? [];
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
@@ -1274,6 +1326,23 @@ class CustomerHome extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
+              const Text('تصفح حسب النوع', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF123B2F))),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 94,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: const [
+                    _FoodCategoryShortcut(label: 'وجبات', query: 'وجبات', icon: Icons.lunch_dining_rounded),
+                    _FoodCategoryShortcut(label: 'برجر', query: 'برجر', icon: Icons.fastfood_rounded),
+                    _FoodCategoryShortcut(label: 'بيتزا', query: 'بيتزا', icon: Icons.local_pizza_rounded),
+                    _FoodCategoryShortcut(label: 'مشروبات', query: 'عصائر', icon: Icons.local_cafe_rounded),
+                    _FoodCategoryShortcut(label: 'حلويات', query: 'حلويات', icon: Icons.cake_rounded),
+                    _FoodCategoryShortcut(label: 'مندي', query: 'مندي', icon: Icons.rice_bowl_rounded),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               FutureBuilder<List<Map<String,dynamic>>>(
                 future: SareeBackend.activePromotions(),
                 builder: (context, promoSnap) {
@@ -1482,6 +1551,62 @@ class CustomerHome extends StatelessWidget {
   }
 }
 
+
+
+/// اختصار بصري لفئات الطعام؛ يفتح البحث مع تعبئة اسم الفئة تلقائياً.
+class _FoodCategoryShortcut extends StatelessWidget {
+  const _FoodCategoryShortcut({
+    required this.label,
+    required this.query,
+    required this.icon,
+  });
+
+  final String label;
+  final String query;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(end: 10),
+    child: Semantics(
+      button: true,
+      label: 'تصفح فئة $label',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => CustomerSearchPage(initialQuery: query)),
+        ),
+        child: Container(
+          width: 78,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color ?? const Color(0xFFFFFDF5),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE8E1CE)),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5F3EA),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: const Color(0xFF047857), size: 23),
+              ),
+              const SizedBox(height: 5),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
 class CustomerAccountPage extends StatefulWidget {
   const CustomerAccountPage({super.key});
@@ -1886,9 +2011,9 @@ class RestaurantMenuPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFFFFD60A))),
+                        Text(item['name'].toString(), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)), 
                         const SizedBox(height: 4),
-                        Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFDCE9DE), fontSize: 12)),
+                        Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .72), fontSize: 12)), 
                         const SizedBox(height: 7),
                         if (!available)
                           const Text('السعر والتوفر يحددهما المطعم', style: TextStyle(color: Color(0xFF536B61), fontWeight: FontWeight.w900, fontSize: 12))
@@ -2040,17 +2165,17 @@ class MealDetailsPage extends StatelessWidget {
       return ListView(padding: const EdgeInsets.all(18), children: [
         MealPhotoGallery(urls: _mealPhotoUrls(item).isEmpty ? [imageUrl] : _mealPhotoUrls(item)),
         const SizedBox(height: 20),
-        Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
+        Text(item['name'].toString(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)), 
         const SizedBox(height: 8),
-        Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF536B61))),
+        Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: TextStyle(fontSize: 14, height: 1.7, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .75))), 
         const SizedBox(height: 18),
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE8E1CE))),
+          decoration: BoxDecoration(color: Theme.of(context).cardTheme.color ?? Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: Theme.of(context).dividerColor)), 
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF536B61))),
+            Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .7))), 
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(available ? '$salePrice ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF047857))),
+              Text(available ? '$salePrice ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF047857))), 
               if (available && itemPromotion != null)
                 Text('${item['price_yer']} ريال قبل الخصم', style: const TextStyle(fontSize: 12, color: Color(0xFF647A70), decoration: TextDecoration.lineThrough)),
             ]),
@@ -2078,28 +2203,145 @@ class MealDetailsPage extends StatelessWidget {
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartController>();
     return Scaffold(
       appBar: AppBar(title: const Text('سلة الطلب')),
-      body: cart.items.isEmpty ? const Center(child: Text('السلة فارغة')) : Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(children: [
-          Expanded(child: ListView(children: cart.items.map((item) => ListTile(
-            title: Text(item.name),
-            subtitle: Text('${item.total} ريال'),
-            leading: IconButton(onPressed: () => cart.change(item, -1), icon: const Icon(Icons.remove_circle_outline)),
-            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(item.quantity.toString()),
-              IconButton(onPressed: () => cart.change(item, 1), icon: const Icon(Icons.add_circle_outline)),
-            ]),
-          )).toList())),
-          Text('المجموع قبل التوصيل: ${cart.subtotal} ريال', style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutPage())), child: const Text('إتمام الطلب')),
-        ]),
-      ),
+      body: cart.items.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 112,
+                      height: 112,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE5F3EA),
+                        borderRadius: BorderRadius.circular(34),
+                      ),
+                      child: const Icon(Icons.shopping_bag_outlined, size: 58, color: Color(0xFF047857)),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text('سلتك فارغة حالياً', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 7),
+                    const Text('اكتشف المطاعم واختر وجباتك المفضلة، وستظهر هنا قبل إتمام الطلب.',
+                      textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF536B61), height: 1.5)),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerSearchPage())),
+                      icon: const Icon(Icons.search_rounded),
+                      label: const Text('اكتشف الوجبات'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                    itemCount: cart.items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final item = cart.items[index];
+                      return Card(
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE5F3EA),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(Icons.restaurant_rounded, color: Color(0xFF047857)),
+                              ),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                                    const SizedBox(height: 4),
+                                    Text('${item.total} ريال يمني',
+                                      style: const TextStyle(color: Color(0xFF047857), fontWeight: FontWeight.w900)),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE5F3EA),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'تقليل الكمية',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () => cart.change(item, -1),
+                                      icon: const Icon(Icons.remove_rounded, size: 19),
+                                    ),
+                                    Text(item.quantity.toString(), style: const TextStyle(fontWeight: FontWeight.w900)),
+                                    IconButton(
+                                      tooltip: 'زيادة الكمية',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () => cart.change(item, 1),
+                                      icon: const Icon(Icons.add_rounded, size: 19),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(18, 15, 18, 16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardTheme.color ?? Colors.white,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 18, offset: Offset(0, -4))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('المجموع الفرعي', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF536B61))),
+                            Text('${cart.subtotal} ريال يمني', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        const Text('تُعرض رسوم التوصيل وأي خصومات مستحقة في صفحة تأكيد الطلب.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF647A70))),
+                        const SizedBox(height: 13),
+                        FilledButton.icon(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutPage())),
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                          label: const Text('متابعة لإتمام الطلب'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

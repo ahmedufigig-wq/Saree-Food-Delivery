@@ -1,7 +1,7 @@
 name: saree
 description: Food delivery platform for Rada'a, Yemen
 publish_to: 'none'
-version: 1.2.11+29
+version: 1.2.12+30
 environment:
   sdk: '>=3.3.0 <4.0.0'
 dependencies:
@@ -28,6 +28,13 @@ flutter:
   uses-material-design: true
   assets:
     - assets/fonts/
+  fonts:
+    - family: SareeArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoNaskhArabic-Bold.ttf
+          weight: 700
 
 dev_dependencies:
   flutter_lints: ^6.0.0
