@@ -407,7 +407,7 @@ jobs:
           "$BUILD_TOOLS/apksigner" sign --ks "$NORMALIZED_KEYSTORE" --ks-type PKCS12 \
             --ks-pass env:SAREE_NORMALIZED_PASSWORD --key-pass env:SAREE_NORMALIZED_PASSWORD \
             --ks-key-alias "$SAREE_KEY_ALIAS" --v1-signing-enabled true \
-            --v2-signing-enabled true --v3-signing-enabled true \
+            --v2-signing-enabled true --v3-signing-enabled false \
             build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
           "$BUILD_TOOLS/zipalign" -c -v 4 build/app/outputs/flutter-apk/app-release.apk
