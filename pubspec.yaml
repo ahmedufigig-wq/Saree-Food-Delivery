@@ -20,6 +20,9 @@ dependencies:
   google_mlkit_face_detection: ^0.14.0
   pdf: ^3.11.3
   printing: ^5.14.2
+  print_bluetooth_thermal: ^1.2.5
+  esc_pos_utils_plus: ^2.0.4
+  image: ^4.5.4
 
 dependency_overrides:
   # Keep the image picker Android implementation compatible with Flutter 3.32 / API 21.
