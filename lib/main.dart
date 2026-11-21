@@ -2701,10 +2701,11 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     setState(() => _archivedOrderIds.addAll(prefs.getStringList('saree_archived_orders_${SareeBackend.user?.id ?? 'restaurant'}') ?? const <String>[]));
   }
 
-  Future<void> _printRestaurantOrder(Map<String, dynamic> order, String restaurantName) async {
+  Future<void> _printRestaurantOrder(String restaurantId, Map<String, dynamic> order, String restaurantName) async {
     try {
       final items = await SareeBackend.courierOrderItems(order['id'].toString());
       await ThermalPrinterService.printOrder(
+        restaurantId: restaurantId,
         order: order,
         items: items,
         restaurantName: restaurantName,
@@ -2719,7 +2720,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     }
   }
 
-  void _observeRestaurantOrders(List<Map<String, dynamic>> rows, String restaurantName) {
+  void _observeRestaurantOrders(List<Map<String, dynamic>> rows, String restaurantId, String restaurantName) {
     if (!_ordersStreamInitialized) {
       for (final row in rows) {
         _knownOrderStatuses[row['id'].toString()] =
@@ -2743,9 +2744,10 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       if (previous == null && status == 'pending') {
         unawaited(() async {
           try {
-            if (await ThermalPrinterService.autoPrint) {
+            if (await ThermalPrinterService.autoPrint(restaurantId)) {
               final items = await SareeBackend.courierOrderItems(id);
               await ThermalPrinterService.printOrder(
+                restaurantId: restaurantId,
                 order: row,
                 items: items,
                 restaurantName: restaurantName,
@@ -3607,7 +3609,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                   if (!snap.hasData && snap.connectionState == ConnectionState.waiting) return const LoadingPage();
                   if(snap.hasError) return Center(child: Text('تعذر تحميل الطلبات: ${SareeBackend.arabicError(snap.error)}'));
                   final allOrders = snap.data ?? [];
-                  _observeRestaurantOrders(allOrders, restaurant['name']?.toString() ?? 'المطعم');
+                  _observeRestaurantOrders(allOrders, rid, restaurant['name']?.toString() ?? 'المطعم');
                   final query = _orderSearchController.text.trim();
                   final orders = allOrders.where((o) {
                     final status = (o['status'] ?? '').toString().trim().toLowerCase();
@@ -3617,7 +3619,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                         (query.isEmpty || (o['order_number']?.toString() ?? '').contains(query));
                   }).toList();
                   if(allOrders.isEmpty) return const Center(child: Text('لا توجد طلبات حتى الآن'));
-                  if(orders.isEmpty) return Center(child: Text(query.isEmpty ? 'لا توجد طلبات ظاهرة. يمكنك استعادة الطلبات المخفية.' : 'لا توجد نتيجة لرقم الطلب $query'));
+                  if(orders.isEmpty) return Center(child: Text(query.isEmpty ? (_archivedOrderIds.isNotEmpty ? 'لا توجد طلبات ظاهرة. يمكنك استعادة الطلبات المخفية.' : 'لا توجد طلبات نشطة حالياً') : 'لا توجد نتيجة لرقم الطلب $query'));
                   return ListView(padding: const EdgeInsets.all(12), children: orders.map((o) {
                     final status = (o['status'] ?? '').toString().trim().toLowerCase();
                     final courierValue = o['courier_id'];
@@ -3640,7 +3642,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
                         child: OutlinedButton.icon(
-                          onPressed: _busy ? null : () => _printRestaurantOrder(o, restaurant['name']?.toString() ?? 'المطعم'),
+                          onPressed: _busy ? null : () => _printRestaurantOrder(rid, o, restaurant['name']?.toString() ?? 'المطعم'),
                           icon: const Icon(Icons.print_outlined),
                           label: const Text('طباعة الفاتورة'),
                         ),
@@ -3664,6 +3666,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
               initialPhone: restaurant['phone']?.toString() ?? '',
             ),
             ThermalPrinterSettingsTab(
+              restaurantId: rid,
               restaurantName: restaurant['name']?.toString() ?? 'المطعم',
             ),
           ])),
