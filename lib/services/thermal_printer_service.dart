@@ -17,15 +17,17 @@ class ThermalPrinterService {
   static const _paperKey = 'saree_printer_paper';
   static const _autoKey = 'saree_printer_auto';
 
-  static Future<Map<String, dynamic>> settings() async {
+  static String _key(String base, String restaurantId) => '${base}_${restaurantId}';
+
+  static Future<Map<String, dynamic>> settings(String restaurantId) async {
     final p = await SharedPreferences.getInstance();
     return {
-      'kind': p.getString(_kindKey) ?? 'bluetooth',
-      'address': p.getString(_addressKey) ?? '',
-      'name': p.getString(_nameKey) ?? '',
-      'port': p.getInt(_portKey) ?? 9100,
-      'paper': p.getInt(_paperKey) ?? 80,
-      'auto': p.getBool(_autoKey) ?? false,
+      'kind': p.getString(_key(_kindKey, restaurantId)) ?? 'bluetooth',
+      'address': p.getString(_key(_addressKey, restaurantId)) ?? '',
+      'name': p.getString(_key(_nameKey, restaurantId)) ?? '',
+      'port': p.getInt(_key(_portKey, restaurantId)) ?? 9100,
+      'paper': p.getInt(_key(_paperKey, restaurantId)) ?? 80,
+      'auto': p.getBool(_key(_autoKey, restaurantId)) ?? false,
     };
   }
 
@@ -38,16 +40,16 @@ class ThermalPrinterService {
     required bool auto,
   }) async {
     final p = await SharedPreferences.getInstance();
-    await p.setString(_kindKey, kind);
-    await p.setString(_addressKey, address.trim());
-    await p.setString(_nameKey, name.trim());
-    await p.setInt(_portKey, port);
-    await p.setInt(_paperKey, paper);
-    await p.setBool(_autoKey, auto);
+    await p.setString(_key(_kindKey, restaurantId), kind);
+    await p.setString(_key(_addressKey, restaurantId), address.trim());
+    await p.setString(_key(_nameKey, restaurantId), name.trim());
+    await p.setInt(_key(_portKey, restaurantId), port);
+    await p.setInt(_key(_paperKey, restaurantId), paper);
+    await p.setBool(_key(_autoKey, restaurantId), auto);
   }
 
-  static Future<bool> get autoPrint async =>
-      (await settings())['auto'] == true;
+  static Future<bool> autoPrint(String restaurantId) async =>
+      (await settings(restaurantId))['auto'] == true;
 
   static Future<List<int>> _receiptBytes({
     required Map<String, dynamic> order,
@@ -126,11 +128,12 @@ class ThermalPrinterService {
   }
 
   static Future<void> printOrder({
+    required String restaurantId,
     required Map<String, dynamic> order,
     required List<Map<String, dynamic>> items,
     required String restaurantName,
   }) async {
-    final config = await settings();
+    final config = await settings(restaurantId);
     final address = (config['address'] as String).trim();
     if (address.isEmpty) throw Exception('اضبط الطابعة أولاً من إعدادات الطباعة');
     final bytes = await _receiptBytes(
@@ -166,8 +169,9 @@ class ThermalPrinterService {
 }
 
 class ThermalPrinterSettingsTab extends StatefulWidget {
-  const ThermalPrinterSettingsTab({super.key, required this.restaurantName});
+  const ThermalPrinterSettingsTab({super.key, required this.restaurantName, required this.restaurantId});
   final String restaurantName;
+  final String restaurantId;
 
   @override
   State<ThermalPrinterSettingsTab> createState() => _ThermalPrinterSettingsTabState();
@@ -190,7 +194,7 @@ class _ThermalPrinterSettingsTabState extends State<ThermalPrinterSettingsTab> {
   }
 
   Future<void> _load() async {
-    final s = await ThermalPrinterService.settings();
+    final s = await ThermalPrinterService.settings(widget.restaurantId);
     if (!mounted) return;
     setState(() {
       _kind = s['kind'] as String;
@@ -239,6 +243,7 @@ class _ThermalPrinterSettingsTabState extends State<ThermalPrinterSettingsTab> {
     setState(() => _busy = true);
     try {
       await ThermalPrinterService.save(
+        restaurantId: widget.restaurantId,
         kind: _kind,
         address: _address.text,
         name: _name,
@@ -258,6 +263,7 @@ class _ThermalPrinterSettingsTabState extends State<ThermalPrinterSettingsTab> {
     try {
       await _save();
       await ThermalPrinterService.printOrder(
+        restaurantId: widget.restaurantId,
         order: {
           'order_number': 'TEST',
           'customer_name': 'عميل تجريبي',
