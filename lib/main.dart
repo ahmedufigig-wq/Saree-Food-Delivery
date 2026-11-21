@@ -3676,7 +3676,7 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
     bottomNavigationBar: NavigationBar(
       height: 72,
       indicatorColor: Color(0xFFFFD60A),
-      labelBehavior: NavigationBarLabelBehavior.alwaysShow,
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       selectedIndex: _tab,
       onDestinationSelected: (v) => setState(() => _tab = v),
       destinations: const [
