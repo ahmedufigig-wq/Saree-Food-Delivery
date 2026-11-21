@@ -42,6 +42,44 @@ jobs:
             flutter create --platforms=android --org com.saree.delivery --project-name saree .
           fi
 
+      - name: Ensure Gradle plugin repositories
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("android/settings.gradle.kts")
+          source = path.read_text()
+          match = re.search(r"pluginManagement\\s*\\{", source)
+          if not match:
+              raise SystemExit("Gradle settings has no pluginManagement block")
+          repo_match = re.search(r"repositories\\s*\\{", source[match.end():])
+          if not repo_match:
+              raise SystemExit("Gradle pluginManagement has no repositories block")
+          brace_start = match.end() + repo_match.end() - 1
+          depth = 0
+          end = None
+          for index in range(brace_start, len(source)):
+              if source[index] == "{":
+                  depth += 1
+              elif source[index] == "}":
+                  depth -= 1
+                  if depth == 0:
+                      end = index
+                      break
+          if end is None:
+              raise SystemExit("Could not parse Gradle plugin repositories block")
+          block = source[brace_start + 1:end]
+          required = ["google()", "mavenCentral()", "gradlePluginPortal()"]
+          missing = [repo for repo in required if repo not in block]
+          if missing:
+              block = "\\n" + "".join(f"    {repo}\\n" for repo in missing) + block
+              source = source[:brace_start + 1] + block + source[end:]
+              path.write_text(source)
+          print("Gradle plugin repositories:", ", ".join(required))
+          PY
+
       - name: Ensure Android v2 embedding and Google callback activity
         run: |
           set -euo pipefail
