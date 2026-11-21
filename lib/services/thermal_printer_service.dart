@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -17,7 +16,7 @@ class ThermalPrinterService {
   static const _paperKey = 'saree_printer_paper';
   static const _autoKey = 'saree_printer_auto';
 
-  static String _key(String base, String restaurantId) => '${base}_${restaurantId}';
+  static String _key(String base, String restaurantId) => '${base}_$restaurantId';
 
   static Future<Map<String, dynamic>> settings(String restaurantId) async {
     final p = await SharedPreferences.getInstance();
