@@ -2634,7 +2634,7 @@ class OrderTrackingPage extends StatelessWidget {
               },
               icon: const Icon(Icons.cancel_outlined), label: const Text('إلغاء الطلب'),
             ),
-          const Padding(padding: EdgeInsets.only(top: 10), child: Text('تتحدث حالة الطلب تلقائيًا. عند مشاركة المندوب لموقعه مع السماح بإذن GPS أثناء استخدام التطبيق، ستظهر حركته هنا على الخريطة.', style: TextStyle(color: Color(0xFF536B61), height: 1.5))),
+          const Padding(padding: EdgeInsets.only(top: 10), child: Text('تتحدث حالة الطلب تلقائيًا. عند تفعيل المندوب مشاركة الموقع بإشعار مستمر، ستظهر حركته هنا على الخريطة أثناء التوصيل.', style: TextStyle(color: Color(0xFF536B61), height: 1.5))),
         ]);
       },
     ),
