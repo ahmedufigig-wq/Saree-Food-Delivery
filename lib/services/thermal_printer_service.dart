@@ -101,6 +101,8 @@ class ThermalPrinterService {
       textDirection: TextDirection.rtl,
       textAlign: TextAlign.right,
     )..layout(maxWidth: width - 24);
+    canvas.translate(12, 12);
+    painter.paint(canvas, Offset.zero);
     final actualHeight = painter.height + 28;
     final picture = recorder.endRecording();
     final image = await picture.toImage(width.toInt(), actualHeight.ceil());
