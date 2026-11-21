@@ -290,6 +290,21 @@ jobs:
           fi
           grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
           grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
+          # ESC/POS Bluetooth printers (Android 12+) and local network printers.
+          if ! grep -q 'android.permission.BLUETOOTH_CONNECT' "$MANIFEST"; then
+            sed -i '/<application/i\\    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />' "$MANIFEST"
+          fi
+          if ! grep -q 'android.permission.BLUETOOTH_SCAN' "$MANIFEST"; then
+            sed -i '/<application/i\\    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />' "$MANIFEST"
+          fi
+          if ! grep -q 'android.permission.BLUETOOTH' "$MANIFEST"; then
+            sed -i '/<application/i\\    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />' "$MANIFEST"
+          fi
+          if ! grep -q 'android.permission.BLUETOOTH_ADMIN' "$MANIFEST"; then
+            sed -i '/<application/i\\    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />' "$MANIFEST"
+          fi
+          grep -q 'android.permission.BLUETOOTH_CONNECT' "$MANIFEST"
+          grep -q 'android.permission.BLUETOOTH_SCAN' "$MANIFEST"
           # Deep-link callback is added by the v2 embedding setup step.
           grep -q 'com.saree.delivery' "$MANIFEST"
 
