@@ -4136,7 +4136,7 @@ class _CourierPortalState extends State<CourierPortal> {
 
     final LocationSettings settings =
         defaultTargetPlatform == TargetPlatform.android
-            ? const AndroidSettings(
+            ? AndroidSettings(
                 accuracy: LocationAccuracy.high,
                 distanceFilter: 15,
                 intervalDuration: Duration(seconds: 15),
