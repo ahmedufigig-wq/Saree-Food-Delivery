@@ -2011,9 +2011,9 @@ class RestaurantMenuPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(item['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFFFFD60A))),
+                        Text(item['name'].toString(), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)), 
                         const SizedBox(height: 4),
-                        Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFDCE9DE), fontSize: 12)),
+                        Text(item['description']?.toString() ?? 'وجبة شهية', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .72), fontSize: 12)), 
                         const SizedBox(height: 7),
                         if (!available)
                           const Text('السعر والتوفر يحددهما المطعم', style: TextStyle(color: Color(0xFF536B61), fontWeight: FontWeight.w900, fontSize: 12))
@@ -2165,17 +2165,17 @@ class MealDetailsPage extends StatelessWidget {
       return ListView(padding: const EdgeInsets.all(18), children: [
         MealPhotoGallery(urls: _mealPhotoUrls(item).isEmpty ? [imageUrl] : _mealPhotoUrls(item)),
         const SizedBox(height: 20),
-        Text(item['name'].toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
+        Text(item['name'].toString(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)), 
         const SizedBox(height: 8),
-        Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF536B61))),
+        Text(item['description']?.toString() ?? 'وجبة شهية محضرة بعناية.', style: TextStyle(fontSize: 14, height: 1.7, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .75))), 
         const SizedBox(height: 18),
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE8E1CE))),
+          decoration: BoxDecoration(color: Theme.of(context).cardTheme.color ?? Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: Theme.of(context).dividerColor)), 
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF536B61))),
+            Text('السعر', style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .7))), 
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(available ? '$salePrice ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF047857))),
+              Text(available ? '$salePrice ريال يمني' : 'يُحدد من المطعم', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF047857))), 
               if (available && itemPromotion != null)
                 Text('${item['price_yer']} ريال قبل الخصم', style: const TextStyle(fontSize: 12, color: Color(0xFF647A70), decoration: TextDecoration.lineThrough)),
             ]),
