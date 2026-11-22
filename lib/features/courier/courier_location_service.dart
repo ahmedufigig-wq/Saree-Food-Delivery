@@ -10,6 +10,8 @@ import 'courier_tracking_policy.dart';
 /// Owns the courier's foreground location stream and its server availability flag.
 class CourierLocationService {
   StreamSubscription<Position>? _subscription;
+  Timer? _heartbeatTimer;
+  bool _heartbeatRunning = false;
 
   bool get isRunning => _subscription != null;
 
@@ -103,9 +105,56 @@ class CourierLocationService {
           unawaited(stop().catchError(onUploadError));
         },
       );
+      // Refresh the server timestamp even when the courier is stationary.
+      _heartbeatTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+        if (_heartbeatRunning || _subscription == null) return;
+        _heartbeatRunning = true;
+        unawaited(
+          _refreshHeartbeat(onPosition, onUploadError).whenComplete(() {
+            _heartbeatRunning = false;
+          }),
+        );
+      });
     } catch (_) {
       await SareeBackend.stopCourierLocation();
       rethrow;
+    }
+  }
+
+  Future<void> _refreshHeartbeat(
+    void Function(Position position) onPosition,
+    void Function(Object error) onUploadError,
+  ) async {
+    try {
+      final orders = await SareeBackend.courierOrders();
+      if (!CourierTrackingPolicy.canShare(orders)) {
+        await stop();
+        return;
+      }
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        await stop();
+        return;
+      }
+      final permission = await Geolocator.checkPermission();
+      if (permission != LocationPermission.whileInUse &&
+          permission != LocationPermission.always) {
+        await stop();
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+      if (_subscription == null) return;
+      onPosition(position);
+      await SareeBackend.updateCourierLocation(
+        position.latitude,
+        position.longitude,
+      );
+    } catch (error) {
+      onUploadError(error);
     }
   }
 
@@ -126,6 +175,8 @@ class CourierLocationService {
   Future<void> stop() async {
     final subscription = _subscription;
     _subscription = null;
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
     await subscription?.cancel();
     await SareeBackend.stopCourierLocation();
   }
