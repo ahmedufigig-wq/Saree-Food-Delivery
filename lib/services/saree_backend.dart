@@ -808,6 +808,16 @@ class SareeBackend {
     });
   }
 
+  /// Marks the last known courier position unavailable without creating a new row.
+  static Future<void> stopCourierLocation() async {
+    final currentUser = user;
+    if (currentUser == null) return;
+    await client.from('courier_locations').update({
+      'is_available': false,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('courier_id', currentUser.id);
+  }
+
   static Stream<List<Map<String, dynamic>>> courierLocation(String courierId) {
     return client.from('courier_locations').stream(primaryKey: ['courier_id']).eq('courier_id', courierId);
   }
