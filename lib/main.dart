@@ -17,6 +17,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
+import 'widgets/brand_mark.dart';
 import 'services/saree_backend.dart';
 import 'theme/saree_design_system.dart';
 import 'features/cart/cart_controller.dart';
@@ -399,124 +400,189 @@ class _FoodPhotoBannerState extends State<FoodPhotoBanner> {
   );
 }
 
-class BrandMark extends StatelessWidget {
-  const BrandMark({super.key, this.size = 88});
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF10A879), Color(0xFF047857), Color(0xFF064E3B)],
-      ),
-      borderRadius: BorderRadius.circular(size * .29),
-      border: Border.all(color: const Color(0xFFFFD60A), width: size * .025),
-      boxShadow: const [
-        BoxShadow(color: Color(0x55000000), blurRadius: 18, offset: Offset(0, 7)),
-      ],
-    ),
-    child: Stack(alignment: Alignment.center, children: [
-      Positioned(
-        left: size * .10,
-        top: size * .29,
-        child: Column(children: [
-          Container(width: size * .25, height: size * .045, decoration: BoxDecoration(color: const Color(0xFFFFD60A), borderRadius: BorderRadius.circular(8))),
-          SizedBox(height: size * .075),
-          Container(width: size * .18, height: size * .04, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8))),
-        ]),
-      ),
-      Container(
-        width: size * .68,
-        height: size * .68,
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E7),
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFF047857), width: size * .045),
-        ),
-        child: Icon(Icons.delivery_dining_rounded, color: const Color(0xFFFFD60A), size: size * .48),
-      ),
-      Positioned(
-        right: size * .08,
-        bottom: size * .10,
-        child: Icon(Icons.bolt_rounded, color: Colors.white, size: size * .25),
-      ),
-    ]),
-  );
-}
-
 class BrandSplashGate extends StatefulWidget {
   const BrandSplashGate({super.key});
   @override
   State<BrandSplashGate> createState() => _BrandSplashGateState();
 }
 
-class _BrandSplashGateState extends State<BrandSplashGate> {
+class _BrandSplashGateState extends State<BrandSplashGate>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _bikeSlide;
+  late final Animation<double> _brandFade;
+  late final Animation<Offset> _brandRise;
   bool _finished = false;
 
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1900), () {
-      if (mounted) setState(() => _finished = true);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2450),
+    );
+    _bikeSlide = Tween<Offset>(
+      begin: const Offset(-1.45, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.66, curve: Curves.easeOutCubic),
+    ));
+    _brandFade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.58, 0.96, curve: Curves.easeOut),
+    );
+    _brandRise = Tween<Offset>(
+      begin: const Offset(0, .32),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.58, 0.96, curve: Curves.easeOutCubic),
+    ));
+    _controller.forward().whenComplete(() {
+      if (!mounted) return;
+      Future<void>.delayed(const Duration(milliseconds: 180), () {
+        if (mounted) setState(() => _finished = true);
+      });
     });
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => AnimatedSwitcher(
-    duration: const Duration(milliseconds: 450),
+    duration: const Duration(milliseconds: 320),
     switchInCurve: Curves.easeOutCubic,
     switchOutCurve: Curves.easeInCubic,
     child: _finished
       ? const SareeGate(key: ValueKey('app'))
       : Scaffold(
           key: const ValueKey('splash'),
-          body: Container(
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [Color(0xFF047857), Color(0xFF047857), Color(0xFF123B2F)],
-                stops: [0, .58, 1],
+          backgroundColor: const Color(0xFF047857),
+          body: SizedBox.expand(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [Color(0xFF047857), Color(0xFF047857), Color(0xFF123B2F)],
+                  stops: [0, .62, 1],
+                ),
               ),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.65, end: 1),
-                    duration: const Duration(milliseconds: 850),
-                    curve: Curves.elasticOut,
-                    builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
-                    child: Container(
-                    width: 142,
-                    height: 142,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF123B2F),
-                      borderRadius: BorderRadius.circular(42),
-                      border: Border.all(color: Colors.white.withValues(alpha: .85), width: 3),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 28, offset: const Offset(0, 12))],
-                    ),
-                    child: const BrandMark(size: 112),
-                  ),
-                  ),
-                  const SizedBox(height: 22),
-                  const Text('سريع', style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: 1)),
-                  const SizedBox(height: 6),
-                  const Text('طعامك يصل إليك', style: TextStyle(color: Colors.white70, fontSize: 17, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 34),
-                  const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)),
-                ],
+              child: SafeArea(
+                child: LayoutBuilder(builder: (context, constraints) {
+                  final bikeWidth = (constraints.maxWidth * .86).clamp(250.0, 390.0).toDouble();
+                  return Column(
+                    children: [
+                      const Spacer(flex: 5),
+                      SlideTransition(
+                        position: _bikeSlide,
+                        child: SizedBox(
+                          width: bikeWidth,
+                          height: bikeWidth * .66,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned.fill(
+                                child: CustomPaint(
+                                  painter: _SareeSpeedLinesPainter(
+                                    animation: _controller,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.motorcycle_rounded,
+                                size: bikeWidth * .70,
+                                color: const Color(0xFFFFD60A),
+                                shadows: const [
+                                  Shadow(color: Color(0x55000000), blurRadius: 16, offset: Offset(0, 8)),
+                                ],
+                              ),
+                              Positioned(
+                                bottom: bikeWidth * .02,
+                                child: Text(
+                                  'سريع',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: bikeWidth * .105,
+                                    fontWeight: FontWeight.w900,
+                                    shadows: const [Shadow(color: Color(0x55000000), blurRadius: 8)],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      FadeTransition(
+                        opacity: _brandFade,
+                        child: SlideTransition(
+                          position: _brandRise,
+                          child: Column(
+                            children: const [
+                              Text(
+                                'سريع',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 46,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              SizedBox(height: 7),
+                              Text(
+                                'طعامك يصل إليك',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const Spacer(flex: 4),
+                    ],
+                  );
+                }),
               ),
             ),
           ),
         ),
   );
+}
+
+class _SareeSpeedLinesPainter extends CustomPainter {
+  _SareeSpeedLinesPainter({required this.animation}) : super(repaint: animation);
+  final Animation<double> animation;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final progress = animation.value;
+    final paint = Paint()
+      ..color = const Color(0xFFFFD60A).withValues(alpha: .72 * (1 - progress * .35))
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 4;
+    for (var i = 0; i < 3; i++) {
+      final y = size.height * (.35 + i * .16);
+      final length = size.width * (.18 + i * .035);
+      canvas.drawLine(
+        Offset(size.width * .04, y),
+        Offset(size.width * .04 + length, y),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SareeSpeedLinesPainter oldDelegate) =>
+      oldDelegate.animation != animation;
 }
 
 class SareeGate extends StatelessWidget {
