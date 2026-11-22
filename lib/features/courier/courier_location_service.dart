@@ -82,6 +82,7 @@ class CourierLocationService {
                 defType: 'mipmap',
               ),
               setOngoing: true,
+              enableWakeLock: true,
             ),
           )
         : const LocationSettings(
