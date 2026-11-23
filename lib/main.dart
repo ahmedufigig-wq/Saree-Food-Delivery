@@ -2765,6 +2765,7 @@ class CourierLiveMap extends StatelessWidget {
         const ListTile(leading: Icon(Icons.map_rounded), title: Text('تتبع المندوب داخل سريع'), subtitle: Text('المسار الأزرق يتبع الشوارع والمنعطفات ويتحدث مع موقع المندوب')),
         SizedBox(height: 250, child: routeFuture == null
           ? FlutterMap(
+              key: ValueKey('customer-route-${point.latitude}-${point.longitude}'),
               options: MapOptions(initialCenter: center, initialZoom: 15),
               children: [
                 TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
@@ -2774,6 +2775,7 @@ class CourierLiveMap extends StatelessWidget {
           : FutureBuilder<List<LatLng>>(
               future: routeFuture,
               builder: (context, routeSnap) => FlutterMap(
+                key: ValueKey('customer-route-${point.latitude}-${point.longitude}'),
                 options: MapOptions(initialCenter: center, initialZoom: 13),
                 children: [
                   TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
@@ -4413,6 +4415,7 @@ class _CourierPortalState extends State<CourierPortal> {
         if (_lastPosition != null) SizedBox(height: 230, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FutureBuilder<List<LatLng>>(
           future: _fetchRoadRoute(LatLng(_lastPosition!.latitude, _lastPosition!.longitude), LatLng(lat, lng)),
           builder: (context, routeSnap) => FlutterMap(
+            key: ValueKey('courier-route-${_lastPosition!.latitude}-${_lastPosition!.longitude}'),
             options: MapOptions(initialCenter: LatLng((_lastPosition!.latitude + lat) / 2, (_lastPosition!.longitude + lng) / 2), initialZoom: 13),
             children: [
               TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
