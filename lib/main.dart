@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -2412,6 +2413,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _address = TextEditingController();
+  final _landmark = TextEditingController();
   final _notes = TextEditingController();
   bool _busy = false;
   bool _locating = false;
@@ -2457,7 +2459,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   @override
-  void dispose() { _name.dispose(); _phone.dispose(); _address.dispose(); _notes.dispose(); super.dispose(); }
+  void dispose() { _name.dispose(); _phone.dispose(); _address.dispose(); _landmark.dispose(); _notes.dispose(); super.dispose(); }
 
   Future<void> _captureDeliveryLocation() async {
     if (_locating) return;
@@ -2487,6 +2489,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(() { _busy = true; _error = null; });
     try {
       var deliveryAddress = _address.text.trim();
+      if (_landmark.text.trim().isNotEmpty) {
+        deliveryAddress = '$deliveryAddress\\nمعلم قريب: ${_landmark.text.trim()}';
+      }
       double? deliveryLatitude = _deliveryLatitude;
       double? deliveryLongitude = _deliveryLongitude;
       final selectedAddresses = _savedAddresses.where((a) => a['id']?.toString() == _selectedAddressId);
@@ -2556,6 +2561,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         const SizedBox(height: 12),
       ],
       TextField(controller: _address, maxLines: 2, decoration: const InputDecoration(labelText: 'عنوان التوصيل بالتفصيل')),
+      const SizedBox(height: 8),
+      TextField(controller: _landmark, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'معلم قريب لتأكيد الموقع (اختياري)', hintText: 'مثال: بجوار مدرسة الوحدة أو مقابل مستشفى رداع', prefixIcon: Icon(Icons.place_outlined))),
       const SizedBox(height: 8),
       OutlinedButton.icon(onPressed: _locating ? null : _captureDeliveryLocation, icon: _locating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.my_location_rounded), label: Text(_locating ? 'جارٍ تحديد موقعك...' : 'تحديد موقعي بدقة GPS')),
       if (_deliveryLatitude != null && _deliveryLongitude != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('تم حفظ الموقع: ${_deliveryLatitude!.toStringAsFixed(6)}, ${_deliveryLongitude!.toStringAsFixed(6)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w700))),
@@ -2706,6 +2713,38 @@ class OrderTrackingPage extends StatelessWidget {
 }
 
 
+
+/// Fetch a real road-following route from the public OSRM routing service.
+/// The map falls back to a straight segment if routing is temporarily unavailable.
+Future<List<LatLng>> _fetchRoadRoute(LatLng origin, LatLng destination) async {
+  final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+  try {
+    final uri = Uri.parse(
+      'https://router.project-osrm.org/route/v1/driving/'
+      '${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}'
+      '?overview=full&geometries=geojson&steps=true',
+    );
+    final request = await client.getUrl(uri).timeout(const Duration(seconds: 10));
+    request.headers.set(HttpHeaders.userAgentHeader, 'SareeFoodDelivery/1.2');
+    final response = await request.close().timeout(const Duration(seconds: 12));
+    if (response.statusCode != HttpStatus.ok) throw HttpException('Routing service unavailable');
+    final payload = jsonDecode(await response.transform(utf8.decoder).join()) as Map<String, dynamic>;
+    final routes = payload['routes'] as List? ?? const [];
+    if (routes.isEmpty) throw const FormatException('No road route returned');
+    final geometry = (routes.first as Map)['geometry'] as Map<String, dynamic>;
+    final coordinates = geometry['coordinates'] as List? ?? const [];
+    final points = coordinates.whereType<List>().where((pair) => pair.length >= 2)
+        .map((pair) => LatLng((pair[1] as num).toDouble(), (pair[0] as num).toDouble()))
+        .toList(growable: false);
+    if (points.length < 2) throw const FormatException('Incomplete road route');
+    return points;
+  } catch (_) {
+    return [origin, destination];
+  } finally {
+    client.close(force: true);
+  }
+}
+
 class CourierLiveMap extends StatelessWidget {
   const CourierLiveMap({super.key, required this.courierId, this.deliveryLatitude, this.deliveryLongitude});
   final String courierId;
@@ -2721,20 +2760,31 @@ class CourierLiveMap extends StatelessWidget {
       final point = LatLng((row['latitude'] as num).toDouble(), (row['longitude'] as num).toDouble());
       final destination = deliveryLatitude != null && deliveryLongitude != null ? LatLng(deliveryLatitude!, deliveryLongitude!) : null;
       final center = destination == null ? point : LatLng((point.latitude + destination.latitude) / 2, (point.longitude + destination.longitude) / 2);
-      final route = destination == null ? <LatLng>[] : [point, destination];
+      final routeFuture = destination == null ? null : _fetchRoadRoute(point, destination);
       return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const ListTile(leading: Icon(Icons.map_rounded), title: Text('تتبع المندوب داخل سريع'), subtitle: Text('يتحدث موقع المندوب مباشرة داخل التطبيق')),
-        SizedBox(height: 250, child: FlutterMap(
-          options: MapOptions(initialCenter: center, initialZoom: destination == null ? 15 : 13),
-          children: [
-            TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
-            if (route.isNotEmpty) PolylineLayer(polylines: [Polyline(points: route, strokeWidth: 5, color: Colors.blueAccent)]),
-            MarkerLayer(markers: [
-              Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 44)),
-              if (destination != null) Marker(point: destination, width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 44)),
-            ]),
-          ],
-        )),
+        const ListTile(leading: Icon(Icons.map_rounded), title: Text('تتبع المندوب داخل سريع'), subtitle: Text('المسار الأزرق يتبع الشوارع والمنعطفات ويتحدث مع موقع المندوب')),
+        SizedBox(height: 250, child: routeFuture == null
+          ? FlutterMap(
+              options: MapOptions(initialCenter: center, initialZoom: 15),
+              children: [
+                TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
+                MarkerLayer(markers: [Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 44))]),
+              ],
+            )
+          : FutureBuilder<List<LatLng>>(
+              future: routeFuture,
+              builder: (context, routeSnap) => FlutterMap(
+                options: MapOptions(initialCenter: center, initialZoom: 13),
+                children: [
+                  TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
+                  if (routeSnap.hasData) PolylineLayer(polylines: [Polyline(points: routeSnap.data!, strokeWidth: 5, color: Colors.blueAccent)]),
+                  MarkerLayer(markers: [
+                    Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 44)),
+                    Marker(point: destination, width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 44)),
+                  ]),
+                ],
+              ),
+            )),
         const Padding(padding: EdgeInsets.fromLTRB(12, 8, 12, 0), child: Text('الخط الأزرق يوضح الاتجاه المباشر بين المندوب وعنوانك، وليس توجيهاً انعطافياً على الطرق.', style: TextStyle(fontSize: 11, color: Color(0xFF536B61)))),
         Padding(padding: const EdgeInsets.all(10), child: Text('آخر تحديث: ${row['updated_at'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFF536B61)))),
       ]));
@@ -4360,16 +4410,19 @@ class _CourierPortalState extends State<CourierPortal> {
       if (hasLocation) Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.map_outlined), title: Text('موقع العميل على الخريطة')),
         SelectableText('الإحداثيات: ${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}'),
-        if (_lastPosition != null) SizedBox(height: 230, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FlutterMap(
-          options: MapOptions(initialCenter: LatLng((_lastPosition!.latitude + lat) / 2, (_lastPosition!.longitude + lng) / 2), initialZoom: 13),
-          children: [
-            TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
-            PolylineLayer(polylines: [Polyline(points: [LatLng(_lastPosition!.latitude, _lastPosition!.longitude), LatLng(lat, lng)], strokeWidth: 5, color: Colors.blueAccent)]),
-            MarkerLayer(markers: [
-              Marker(point: LatLng(_lastPosition!.latitude, _lastPosition!.longitude), width: 48, height: 48, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 42)),
-              Marker(point: LatLng(lat, lng), width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 42)),
-            ]),
-          ],
+        if (_lastPosition != null) SizedBox(height: 230, child: ClipRRect(borderRadius: BorderRadius.circular(14), child: FutureBuilder<List<LatLng>>(
+          future: _fetchRoadRoute(LatLng(_lastPosition!.latitude, _lastPosition!.longitude), LatLng(lat, lng)),
+          builder: (context, routeSnap) => FlutterMap(
+            options: MapOptions(initialCenter: LatLng((_lastPosition!.latitude + lat) / 2, (_lastPosition!.longitude + lng) / 2), initialZoom: 13),
+            children: [
+              TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.saree.delivery.saree'),
+              if (routeSnap.hasData) PolylineLayer(polylines: [Polyline(points: routeSnap.data!, strokeWidth: 5, color: Colors.blueAccent)]),
+              MarkerLayer(markers: [
+                Marker(point: LatLng(_lastPosition!.latitude, _lastPosition!.longitude), width: 48, height: 48, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 42)),
+                Marker(point: LatLng(lat, lng), width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 42)),
+              ]),
+            ],
+          ),
         ))),
         if (_lastPosition == null) const Padding(padding: EdgeInsets.all(8), child: Text('فعّل مشاركة الموقع ليظهر خط الطريق الأزرق من موقعك إلى العميل داخل التطبيق.')),
       ])) else const Padding(padding: EdgeInsets.all(12), child: Text('لم يرسل العميل موقعًا جغرافيًا؛ استخدم عنوان التوصيل ورقم الهاتف للتواصل معه.')),
