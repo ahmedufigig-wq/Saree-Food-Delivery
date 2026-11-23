@@ -18,7 +18,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
-import 'widgets/brand_mark.dart';
 import 'services/saree_backend.dart';
 import 'theme/saree_design_system.dart';
 import 'features/cart/cart_controller.dart';
