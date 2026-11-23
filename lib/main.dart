@@ -420,7 +420,7 @@ class _BrandSplashGateState extends State<BrandSplashGate>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2450),
+      duration: const Duration(milliseconds: 2800),
     );
     _bikeSlide = Tween<Offset>(
       begin: const Offset(-1.45, 0),
@@ -431,14 +431,14 @@ class _BrandSplashGateState extends State<BrandSplashGate>
     ));
     _brandFade = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.58, 0.96, curve: Curves.easeOut),
+      curve: const Interval(0.70, 0.98, curve: Curves.easeOut),
     );
     _brandRise = Tween<Offset>(
       begin: const Offset(0, .32),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.58, 0.96, curve: Curves.easeOutCubic),
+      curve: const Interval(0.70, 0.98, curve: Curves.easeOutCubic),
     ));
     _controller.forward().whenComplete(() {
       if (!mounted) return;
