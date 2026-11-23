@@ -2782,7 +2782,7 @@ class CourierLiveMap extends StatelessWidget {
                   if (routeSnap.hasData) PolylineLayer(polylines: [Polyline(points: routeSnap.data!, strokeWidth: 5, color: Colors.blueAccent)]),
                   MarkerLayer(markers: [
                     Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 44)),
-                    Marker(point: destination!, width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 44)),
+                    if (destination != null) Marker(point: destination, width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 44)),
                   ]),
                 ],
               ),
@@ -3773,19 +3773,28 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             ]),
             _courierTeamTab(rid),
             _promotionsTab(rid),
-            DeliveryFeeSettingsTab(
-              restaurantId: rid,
-              initialFee: (restaurant['delivery_fee_yer'] as num?)?.toInt() ?? 100,
-            ),
-            RestaurantBrandingTab(restaurantId: rid, initialCoverUrl: restaurant['cover_image_url']?.toString()),
-            RestaurantAccountSettingsTab(
-              restaurantId: rid,
-              initialName: restaurant['name']?.toString() ?? '',
-              initialPhone: restaurant['phone']?.toString() ?? '',
-            ),
-            ThermalPrinterSettingsTab(
-              restaurantId: rid,
-              restaurantName: restaurant['name']?.toString() ?? 'المطعم',
+            ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text('إعدادات المطعم والطابعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                ),
+                DeliveryFeeSettingsTab(
+                  restaurantId: rid,
+                  initialFee: (restaurant['delivery_fee_yer'] as num?)?.toInt() ?? 100,
+                ),
+                RestaurantBrandingTab(restaurantId: rid, initialCoverUrl: restaurant['cover_image_url']?.toString()),
+                RestaurantAccountSettingsTab(
+                  restaurantId: rid,
+                  initialName: restaurant['name']?.toString() ?? '',
+                  initialPhone: restaurant['phone']?.toString() ?? '',
+                ),
+                ThermalPrinterSettingsTab(
+                  restaurantId: rid,
+                  restaurantName: restaurant['name']?.toString() ?? 'المطعم',
+                ),
+              ],
             ),
           ])),
         ]);
@@ -3798,14 +3807,11 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
       selectedIndex: _tab,
       onDestinationSelected: (v) => setState(() => _tab = v),
       destinations: const [
-        NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined, size: 21), selectedIcon: Icon(Icons.restaurant_menu_rounded, size: 22), label: 'الوجبات'),
+        NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined, size: 21), selectedIcon: Icon(Icons.restaurant_menu_rounded, size: 22), label: 'الأصناف'),
         NavigationDestination(icon: Icon(Icons.receipt_long_outlined, size: 21), selectedIcon: Icon(Icons.receipt_long_rounded, size: 22), label: 'الطلبات'),
         NavigationDestination(icon: Icon(Icons.delivery_dining_outlined, size: 21), selectedIcon: Icon(Icons.delivery_dining_rounded, size: 22), label: 'المندوبون'),
         NavigationDestination(icon: Icon(Icons.local_offer_outlined, size: 21), selectedIcon: Icon(Icons.local_offer_rounded, size: 22), label: 'العروض'),
-        NavigationDestination(icon: Icon(Icons.payments_outlined, size: 21), selectedIcon: Icon(Icons.payments_rounded, size: 22), label: 'الرسوم'),
-        NavigationDestination(icon: Icon(Icons.wallpaper_outlined, size: 21), selectedIcon: Icon(Icons.wallpaper_rounded, size: 22), label: 'الخلفية'),
-        NavigationDestination(icon: Icon(Icons.manage_accounts_outlined, size: 21), selectedIcon: Icon(Icons.manage_accounts_rounded, size: 22), label: 'الحساب'),
-        NavigationDestination(icon: Icon(Icons.print_outlined, size: 21), selectedIcon: Icon(Icons.print_rounded, size: 22), label: 'الطابعة'),
+        NavigationDestination(icon: Icon(Icons.settings_outlined, size: 21), selectedIcon: Icon(Icons.settings_rounded, size: 22), label: 'الحساب والإعدادات'),
       ],
     ),
   );
