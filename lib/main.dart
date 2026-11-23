@@ -2490,7 +2490,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     try {
       var deliveryAddress = _address.text.trim();
       if (_landmark.text.trim().isNotEmpty) {
-        deliveryAddress = '$deliveryAddress\\nمعلم قريب: ${_landmark.text.trim()}';
+        deliveryAddress = '$deliveryAddress\nمعلم قريب: ${_landmark.text.trim()}';
       }
       double? deliveryLatitude = _deliveryLatitude;
       double? deliveryLongitude = _deliveryLongitude;
