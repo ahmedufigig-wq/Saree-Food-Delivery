@@ -3773,25 +3773,58 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
             _courierTeamTab(rid),
             _promotionsTab(rid),
             ListView(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               children: [
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Text('إعدادات المطعم والطابعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                const Text(
+                  'الحساب والإعدادات',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                 ),
-                DeliveryFeeSettingsTab(
-                  restaurantId: rid,
-                  initialFee: (restaurant['delivery_fee_yer'] as num?)?.toInt() ?? 100,
+                const SizedBox(height: 6),
+                const Text(
+                  'اختر القسم الذي تريد إدارته. جميع الإعدادات محفوظة ويمكن فتحها بشكل مستقل.',
+                  style: TextStyle(color: Colors.white70, height: 1.5),
                 ),
-                RestaurantBrandingTab(restaurantId: rid, initialCoverUrl: restaurant['cover_image_url']?.toString()),
-                RestaurantAccountSettingsTab(
-                  restaurantId: rid,
-                  initialName: restaurant['name']?.toString() ?? '',
-                  initialPhone: restaurant['phone']?.toString() ?? '',
+                const SizedBox(height: 14),
+                _restaurantSettingCard(
+                  context,
+                  icon: Icons.storefront_outlined,
+                  title: 'بيانات المطعم',
+                  subtitle: 'تعديل اسم المطعم ورقم التواصل',
+                  page: RestaurantAccountSettingsTab(
+                    restaurantId: rid,
+                    initialName: restaurant['name']?.toString() ?? '',
+                    initialPhone: restaurant['phone']?.toString() ?? '',
+                  ),
                 ),
-                ThermalPrinterSettingsTab(
-                  restaurantId: rid,
-                  restaurantName: restaurant['name']?.toString() ?? 'المطعم',
+                _restaurantSettingCard(
+                  context,
+                  icon: Icons.payments_outlined,
+                  title: 'رسوم التوصيل',
+                  subtitle: 'تحديد الرسوم التي تظهر للعملاء عند إتمام الطلب',
+                  page: DeliveryFeeSettingsTab(
+                    restaurantId: rid,
+                    initialFee: (restaurant['delivery_fee_yer'] as num?)?.toInt() ?? 100,
+                  ),
+                ),
+                _restaurantSettingCard(
+                  context,
+                  icon: Icons.wallpaper_outlined,
+                  title: 'خلفية المطعم',
+                  subtitle: 'اختيار أو تغيير الصورة الظاهرة في صفحة المطعم للعملاء',
+                  page: RestaurantBrandingTab(
+                    restaurantId: rid,
+                    initialCoverUrl: restaurant['cover_image_url']?.toString(),
+                  ),
+                ),
+                _restaurantSettingCard(
+                  context,
+                  icon: Icons.print_outlined,
+                  title: 'إعدادات الطابعة الحرارية',
+                  subtitle: 'Bluetooth وWi-Fi/IP والطابعات المقترنة وMAC وحجم الورق والطباعة التلقائية والاختبار',
+                  page: ThermalPrinterSettingsTab(
+                    restaurantId: rid,
+                    restaurantName: restaurant['name']?.toString() ?? 'المطعم',
+                  ),
                 ),
               ],
             ),
@@ -3816,6 +3849,39 @@ class _RestaurantPortalState extends State<RestaurantPortal> {
   );
 }
 
+
+
+  Widget _restaurantSettingCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget page,
+  }) => Card(
+    margin: const EdgeInsets.only(bottom: 12),
+    clipBehavior: Clip.antiAlias,
+    child: ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      leading: CircleAvatar(
+        backgroundColor: const Color(0x22FFD60A),
+        child: Icon(icon, color: const Color(0xFFFFD60A)),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 5),
+        child: Text(subtitle, style: const TextStyle(height: 1.4)),
+      ),
+      trailing: const Icon(Icons.chevron_left_rounded),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: Text(title)),
+            body: SafeArea(child: page),
+          ),
+        ),
+      ),
+    ),
+  );
 
 class DeliveryFeeSettingsTab extends StatefulWidget {
   const DeliveryFeeSettingsTab({
