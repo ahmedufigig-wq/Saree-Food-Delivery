@@ -2782,7 +2782,7 @@ class CourierLiveMap extends StatelessWidget {
                   if (routeSnap.hasData) PolylineLayer(polylines: [Polyline(points: routeSnap.data!, strokeWidth: 5, color: Colors.blueAccent)]),
                   MarkerLayer(markers: [
                     Marker(point: point, width: 52, height: 52, child: const Icon(Icons.delivery_dining_rounded, color: Color(0xFF047857), size: 44)),
-                    Marker(point: destination, width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 44)),
+                    Marker(point: destination!, width: 48, height: 48, child: const Icon(Icons.location_pin, color: Colors.green, size: 44)),
                   ]),
                 ],
               ),
