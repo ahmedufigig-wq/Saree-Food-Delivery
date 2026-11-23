@@ -1295,7 +1295,7 @@ class CustomerHome extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Row(mainAxisSize: MainAxisSize.min, children: [
-          BrandMark(size: 34),
+          Icon(Icons.delivery_dining_rounded, size: 34, color: Colors.white),
           SizedBox(width: 9),
           Text('سريع', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
         ]),
