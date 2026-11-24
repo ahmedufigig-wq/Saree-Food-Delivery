@@ -311,41 +311,111 @@ jobs:
             grep -q 'windowBackground' android/app/src/main/res/values/styles.xml || sed -i '/<style name="LaunchTheme"[^>]*>/a\        <item name="android:windowBackground">@drawable/launch_background</item>' android/app/src/main/res/values/styles.xml
           fi
 
-      - name: Ensure Android internet permission
+      - name: Ensure Android and foreground-location permissions
         run: |
           set -euo pipefail
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          test -f "$MANIFEST"
-          if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
-          fi
-          grep -q 'android.permission.INTERNET' "$MANIFEST"
-          if ! grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$MANIFEST"
-          fi
-          if ! grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />' "$MANIFEST"
-          fi
-          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
-          grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
-          # ESC/POS Bluetooth printers (Android 12+) and local network printers.
-          if ! grep -q 'android.permission.BLUETOOTH_CONNECT' "$MANIFEST"; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />' "$MANIFEST"
-          fi
-          if ! grep -q 'android.permission.BLUETOOTH_SCAN' "$MANIFEST"; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />' "$MANIFEST"
-          fi
-          if ! grep -q 'android.permission.BLUETOOTH"' "$MANIFEST"; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />' "$MANIFEST"
-          fi
-          if ! grep -q 'android.permission.BLUETOOTH_ADMIN"' "$MANIFEST"; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />' "$MANIFEST"
-          fi
-          grep -q 'android.permission.BLUETOOTH_CONNECT' "$MANIFEST"
-          grep -q 'android.permission.BLUETOOTH_SCAN' "$MANIFEST"
-          # Deep-link callback is added by the v2 embedding setup step.
-          grep -q 'com.saree.delivery' "$MANIFEST"
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
 
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+          tree = ET.parse(manifest)
+          root = tree.getroot()
+          android = "{http://schemas.android.com/apk/res/android}"
+
+          required = [
+              "android.permission.INTERNET",
+              "android.permission.ACCESS_FINE_LOCATION",
+              "android.permission.ACCESS_COARSE_LOCATION",
+              "android.permission.FOREGROUND_SERVICE",
+              "android.permission.FOREGROUND_SERVICE_LOCATION",
+              "android.permission.POST_NOTIFICATIONS",
+              "android.permission.BLUETOOTH_CONNECT",
+              "android.permission.BLUETOOTH_SCAN",
+          ]
+          for permission in required:
+              exists = any(
+                  node.tag == "uses-permission"
+                  and node.get(android + "name") == permission
+                  for node in root.findall("uses-permission")
+              )
+              if not exists:
+                  attributes = {android + "name": permission}
+                  if permission.endswith("BLUETOOTH_SCAN"):
+                      attributes[android + "usesPermissionFlags"] = "neverForLocation"
+                  ET.SubElement(root, "uses-permission", attributes)
+
+          for permission in ("android.permission.BLUETOOTH", "android.permission.BLUETOOTH_ADMIN"):
+              exists = any(
+                  node.get(android + "name") == permission
+                  for node in root.findall("uses-permission")
+              )
+              if not exists:
+                  ET.SubElement(root, "uses-permission", {
+                      android + "name": permission,
+                      android + "maxSdkVersion": "30",
+                  })
+
+          application = root.find("application")
+          if application is None:
+              raise SystemExit("AndroidManifest has no application element")
+          activity = next(
+              (node for node in application.findall("activity")
+               if node.get(android + "name", "").endswith("MainActivity")),
+              None,
+          )
+          if activity is None:
+              raise SystemExit("MainActivity is missing from AndroidManifest")
+
+          callback_exists = any(
+              any(
+                  data.get(android + "scheme") == "com.saree.delivery"
+                  and data.get(android + "host") == "login-callback"
+                  for data in intent.findall("data")
+              )
+              for intent in activity.findall("intent-filter")
+          )
+          if not callback_exists:
+              intent = ET.SubElement(activity, "intent-filter")
+              ET.SubElement(intent, "action", {
+                  android + "name": "android.intent.action.VIEW"
+              })
+              ET.SubElement(intent, "category", {
+                  android + "name": "android.intent.category.DEFAULT"
+              })
+              ET.SubElement(intent, "category", {
+                  android + "name": "android.intent.category.BROWSABLE"
+              })
+              ET.SubElement(intent, "data", {
+                  android + "scheme": "com.saree.delivery",
+                  android + "host": "login-callback",
+              })
+
+          tree.write(manifest, encoding="utf-8", xml_declaration=True)
+
+          check = ET.parse(manifest).getroot()
+          for permission in required:
+              if not any(
+                  node.get(android + "name") == permission
+                  for node in check.findall("uses-permission")
+              ):
+                  raise SystemExit("Missing Android permission: " + permission)
+
+          app = check.find("application")
+          main_activity = next(
+              (node for node in app.findall("activity")
+               if node.get(android + "name", "").endswith("MainActivity")),
+              None,
+          )
+          if main_activity is None or not any(
+              data.get(android + "scheme") == "com.saree.delivery"
+              and data.get(android + "host") == "login-callback"
+              for intent in main_activity.findall("intent-filter")
+              for data in intent.findall("data")
+          ):
+              raise SystemExit("Google/Supabase login callback is missing")
+          PY
 
       - name: Download Arabic PDF fonts
         run: |
