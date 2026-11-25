@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'features/courier/courier_location_service.dart';
+import 'features/courier/courier_tracking_policy.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -4354,7 +4356,7 @@ class _CourierPortalState extends State<CourierPortal> {
   bool _sharing = false;
   Position? _lastPosition;
   late Future<List<Map<String, dynamic>>> _ordersFuture;
-  StreamSubscription<Position>? _positionSub;
+  final CourierLocationService _locationService = CourierLocationService();
   StreamSubscription<List<Map<String, dynamic>>>? _assignedOrdersSubscription;
   bool _ordersStreamReady = false;
   final Set<String> _knownAssignedOrders = {};
@@ -4386,36 +4388,57 @@ class _CourierPortalState extends State<CourierPortal> {
   Future<void> _refreshOrders() async {
     final future = _loadOrders();
     if (mounted) setState(() => _ordersFuture = future);
-    await future;
+    final orders = await future;
+    if (_sharing && !CourierTrackingPolicy.canShare(orders)) {
+      await _stopSharing();
+    }
   }
 
   Future<void> _startSharing() async {
-    final enabled = await Geolocator.isLocationServiceEnabled();
-    if(!enabled) throw Exception('فعّل خدمة الموقع GPS أولاً');
-    var permission = await Geolocator.checkPermission();
-    if(permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
-    if(permission == LocationPermission.denied || permission == LocationPermission.deniedForever) throw Exception('اسمح للتطبيق بالوصول إلى الموقع من إعدادات الهاتف');
-    await _positionSub?.cancel();
-    const settings = LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 15);
-    _positionSub = Geolocator.getPositionStream(locationSettings: settings).listen((p) async {
-      if (mounted) setState(() => _lastPosition = p);
-      try { await SareeBackend.updateCourierLocation(p.latitude, p.longitude); }
-      catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر تحديث الموقع: ${SareeBackend.arabicError(e)}'))); }
-    });
-    final now = await Geolocator.getCurrentPosition();
-    _lastPosition = now;
-    await SareeBackend.updateCourierLocation(now.latitude, now.longitude);
-    if(mounted) setState(() => _sharing = true);
+    await _locationService.start(
+      onPosition: (position) {
+        if (mounted) setState(() => _lastPosition = position);
+      },
+      onUploadError: (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تعذر تحديث الموقع: ' + SareeBackend.arabicError(error)),
+            ),
+          );
+        }
+      },
+      onStreamError: (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('توقف استقبال الموقع: ' + SareeBackend.arabicError(error)),
+            ),
+          );
+          setState(() => _sharing = false);
+        }
+      },
+    );
+    if (!mounted) {
+      await _locationService.stop();
+      return;
+    }
+    setState(() => _sharing = true);
   }
 
   Future<void> _stopSharing() async {
-    await _positionSub?.cancel();
-    _positionSub = null;
-    if(mounted) setState(() => _sharing = false);
+    await _locationService.stop();
+    if (mounted) setState(() => _sharing = false);
   }
 
   @override
-  void dispose() { _positionSub?.cancel(); _assignedOrdersSubscription?.cancel(); super.dispose(); }
+  void dispose() {
+    if (_locationService.isRunning) {
+      unawaited(_locationService.stop().catchError((Object _) {}));
+    }
+    _assignedOrdersSubscription?.cancel();
+    super.dispose();
+  }
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
@@ -4533,7 +4556,7 @@ class _CourierPortalState extends State<CourierPortal> {
             value: _sharing,
             onChanged: (v) => _run(() => v ? _startSharing() : _stopSharing()),
             title: const Text('مشاركة موقعي مع العميل'),
-            subtitle: Text(_sharing ? 'الموقع يتحدث أثناء فتح التطبيق' : 'فعّلها بعد استلام الطلب ليتمكن العميل من رؤية موقعك'),
+            subtitle: Text(_sharing ? 'مشاركة الموقع مستمرة بإشعار أثناء مهمة التوصيل' : 'فعّلها بعد استلام الطلب ليتمكن العميل من رؤية موقعك'),
             secondary: const Icon(Icons.my_location_rounded),
           )),
           const Padding(padding: EdgeInsets.all(8), child: Text('مهامك الحالية', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
