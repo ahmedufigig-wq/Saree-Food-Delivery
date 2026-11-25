@@ -488,6 +488,14 @@ jobs:
             exit 1
           }
 
+      - name: Upload signed APK for pull request review
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: saree-pr-${{ github.event.pull_request.number }}-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
       # Publish the APK as a direct GitHub Release asset. Actions artifacts are
       # downloaded as ZIP archives, so they are intentionally not used here.
       - name: Publish directly installable APK
